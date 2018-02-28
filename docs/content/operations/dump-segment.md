@@ -84,9 +84,10 @@ Sample output:
 
 ### Bit frequency dumps
 When the `--dump bitfrequency` option is supplied, this tool will dump the frequency each bit position is set to 0 or 1 
-and the total number of values in the specified columns (`LONG`, `FLOAT`, `DOUBLE`, and single value `STRING` bitmap 
-index columns are currently supported). Output contains a field for each column analyzed, which provides count, type, 
-and the frequencies that bits are set (in array order). 
+and the total number of values in the specified columns (`LONG`, `FLOAT`, `DOUBLE`, and single value `STRING` integer 
+value columns are currently supported). Output contains a field for each column analyzed, which provides count, type, 
+and the frequencies that bits are set (in array order). Output may be anonymized with `--anonymize-bitfrequency` to 
+enable sharing results without providing too much insight into data schema other than column type
 
 Sample output:
 ```
@@ -98,7 +99,7 @@ Sample output:
   },
   "isRobot": {
     "count": 39244,
-    "type": "bitmap index",
+    "type": "int",
     "bitFrequency": [15420,0,0,...,0,0,0]
   },
   ...
@@ -121,3 +122,4 @@ Sample output:
 |--filter json|JSON-encoded [query filter](../querying/filters.html). Omit to include all rows. Only used if dumping rows.|no|
 |--time-iso8601|Format __time column in ISO8601 format rather than long. Only used if dumping rows.|no|
 |--decompress-bitmaps|Dump bitmaps as arrays rather than base64-encoded compressed bitmaps. Only used if dumping bitmaps.|no|
+|--anonymize-bitfrequency|Dump bitfrequency column names as a generic string instead. Only used if dumping bitfrequency.|no|

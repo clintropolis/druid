@@ -179,6 +179,12 @@ public class DumpSegment extends GuiceRunnable
       required = false)
   public boolean decompressBitmaps = false;
 
+  @Option(
+      name = "--anonymize-bitfrequency",
+      title = "Dump bitfrequency column names as a generic string instead. Only used if dumping bitfrequency.",
+      required = false)
+  public boolean anonymizeColumnNames = false;
+
   @Override
   public void run()
   {
@@ -400,11 +406,17 @@ public class DumpSegment extends GuiceRunnable
       withOutputStream(
           out -> {
             final Map<String, ColumnFrequencyAnalysis> frequencies = Maps.newHashMap();
+            final Map<String, Integer> typeCounts = Maps.newHashMap();
+
             for (String columnName : columnNames) {
               final Column column = index.getColumn(columnName);
               final ColumnCapabilities capabilities = column.getCapabilities();
               final ValueType columnType = capabilities.getType();
-
+              final String typeName = columnType.name().toLowerCase();
+              typeCounts.put(typeName, typeCounts.getOrDefault(typeName, 0) + 1);
+              final String keyName = anonymizeColumnNames
+                                     ? String.format("%s-%d",typeName, typeCounts.get(typeName))
+                                     : columnName;
               try {
                 ByteBuffer buffer = smooshMapper.mapFile(columnName);
 
@@ -439,7 +451,7 @@ public class DumpSegment extends GuiceRunnable
                       countBits64(value, longBits);
                     }
                     frequencies.put(
-                        columnName,
+                        keyName,
                         new ColumnFrequencyAnalysis(
                             "long",
                             longColumn.length(),
@@ -468,7 +480,7 @@ public class DumpSegment extends GuiceRunnable
                       countBits64(value, doubleBits);
                     }
                     frequencies.put(
-                        columnName,
+                        keyName,
                         new ColumnFrequencyAnalysis(
                             "double",
                             doubleColumn.length(),
@@ -497,7 +509,7 @@ public class DumpSegment extends GuiceRunnable
                       countBits32(value, floatBits);
                     }
                     frequencies.put(
-                        columnName,
+                        keyName,
                         new ColumnFrequencyAnalysis(
                             "float",
                             floatColumn.length(),
@@ -549,7 +561,7 @@ public class DumpSegment extends GuiceRunnable
                         countBits32(value, bitmapBits);
                       }
                       frequencies.put(
-                          columnName,
+                          keyName,
                           new ColumnFrequencyAnalysis(
                               "bitmap index",
                               theColumn.length(),
