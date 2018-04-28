@@ -42,6 +42,7 @@ import io.druid.segment.data.CompressedVSizeColumnarMultiIntsSupplier;
 import io.druid.segment.data.GenericIndexed;
 import io.druid.segment.data.GenericIndexedWriter;
 import io.druid.segment.data.ImmutableRTreeObjectStrategy;
+import io.druid.segment.data.ShapeShiftingColumnarIntsSupplier;
 import io.druid.segment.data.V3CompressedVSizeColumnarMultiIntsSupplier;
 import io.druid.segment.data.VSizeColumnarInts;
 import io.druid.segment.data.VSizeColumnarMultiInts;
@@ -81,7 +82,8 @@ public class DictionaryEncodedColumnPartSerde implements ColumnPartSerde
     UNCOMPRESSED_SINGLE_VALUE,  // 0x0
     UNCOMPRESSED_MULTI_VALUE,   // 0x1
     COMPRESSED,                 // 0x2
-    UNCOMPRESSED_WITH_FLAGS;    // 0x3
+    UNCOMPRESSED_WITH_FLAGS,    // 0x3
+    SHAPESHIFT;                 // 0x4
 
     public static VERSION fromByte(byte b)
     {
@@ -188,7 +190,12 @@ public class DictionaryEncodedColumnPartSerde implements ColumnPartSerde
       return this;
     }
 
-    public SerializerBuilder withValue(ColumnarIntsSerializer valueWriter, boolean hasMultiValue, boolean compressed)
+    public SerializerBuilder withValue(
+        ColumnarIntsSerializer valueWriter,
+        boolean hasMultiValue,
+        boolean compressed,
+        boolean shapeshift
+    )
     {
       this.valueWriter = valueWriter;
       if (hasMultiValue) {
@@ -200,12 +207,15 @@ public class DictionaryEncodedColumnPartSerde implements ColumnPartSerde
           this.flags |= Feature.MULTI_VALUE.getMask();
         }
       } else {
-        if (compressed) {
+        if (shapeshift) {
+          this.version = VERSION.SHAPESHIFT;
+        } else if (compressed) {
           this.version = VERSION.COMPRESSED;
         } else {
           this.version = VERSION.UNCOMPRESSED_SINGLE_VALUE;
         }
       }
+
       return this;
     }
 
@@ -352,6 +362,8 @@ public class DictionaryEncodedColumnPartSerde implements ColumnPartSerde
             return VSizeColumnarInts.readFromByteBuffer(buffer);
           case COMPRESSED:
             return CompressedVSizeColumnarIntsSupplier.fromByteBuffer(buffer, byteOrder);
+          case SHAPESHIFT:
+            return ShapeShiftingColumnarIntsSupplier.fromByteBuffer(buffer, byteOrder);
           default:
             throw new IAE("Unsupported single-value version[%s]", version);
         }

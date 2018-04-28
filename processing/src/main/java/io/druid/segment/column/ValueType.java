@@ -88,6 +88,13 @@ public enum ValueType
       return new SettableLongColumnValueSelector();
     }
   },
+  INT { // todo: lame, this is for benchmark value generation
+    @Override
+    public SettableColumnValueSelector makeSettableColumnValueSelector()
+    {
+      return new SettableDimensionValueSelector();
+    }
+  },
   STRING {
     @Override
     public SettableColumnValueSelector makeSettableColumnValueSelector()

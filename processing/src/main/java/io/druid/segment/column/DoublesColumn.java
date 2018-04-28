@@ -79,4 +79,9 @@ public class DoublesColumn implements GenericColumn
   {
     inspector.visit("column", column);
   }
+
+  public ColumnarDoubles getColumn()
+  {
+    return column;
+  }
 }

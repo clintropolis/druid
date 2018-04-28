@@ -44,6 +44,9 @@ public class IndexSpec
   public static final CompressionStrategy DEFAULT_METRIC_COMPRESSION = CompressionStrategy.DEFAULT_COMPRESSION_STRATEGY;
   public static final CompressionStrategy DEFAULT_DIMENSION_COMPRESSION = CompressionStrategy.DEFAULT_COMPRESSION_STRATEGY;
   public static final CompressionFactory.LongEncodingStrategy DEFAULT_LONG_ENCODING = CompressionFactory.DEFAULT_LONG_ENCODING_STRATEGY;
+  public static final EncodingStrategy DEFAULT_ENCODING_STRATEGY = EncodingStrategy.COMPRESSION;
+  public static final ShapeShiftOptimizationTarget DEFAULT_OPTIMIZATION_TARGET = ShapeShiftOptimizationTarget.FASTBUTSMALLISH;
+  public static final ShapeShiftAggressionLevel DEFAULT_AGGRO_LEVEL = ShapeShiftAggressionLevel.AGGRO;
 
   private static final Set<CompressionStrategy> METRIC_COMPRESSION = Sets.newHashSet(
       Arrays.asList(CompressionStrategy.values())
@@ -57,58 +60,115 @@ public class IndexSpec
       Arrays.asList(CompressionFactory.LongEncodingStrategy.values())
   );
 
+  private static final Set<EncodingStrategy> ENCODING_STRATEGIES = Sets.newHashSet(
+      Arrays.asList(EncodingStrategy.values())
+  );
+  private static final Set<ShapeShiftOptimizationTarget> OPTIMIZATION_TARGETS = Sets.newHashSet(
+      Arrays.asList(ShapeShiftOptimizationTarget.values())
+  );
+  private static final Set<ShapeShiftAggressionLevel> AGGRO_LEVELS = Sets.newHashSet(
+      Arrays.asList(ShapeShiftAggressionLevel.values())
+  );
+
   private final BitmapSerdeFactory bitmapSerdeFactory;
   private final CompressionStrategy dimensionCompression;
   private final CompressionStrategy metricCompression;
   private final CompressionFactory.LongEncodingStrategy longEncoding;
 
+  private final EncodingStrategy encodingStrategy;
+  private final ShapeShiftOptimizationTarget optimizationTarget;
+  private final ShapeShiftAggressionLevel aggressionLevel;
 
   /**
    * Creates an IndexSpec with default parameters
    */
   public IndexSpec()
   {
-    this(null, null, null, null);
+    this(
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+    );
+  }
+
+  public IndexSpec(
+      BitmapSerdeFactory bitmapSerdeFactory,
+      CompressionStrategy dimensionCompression,
+      CompressionStrategy metricCompression,
+      CompressionFactory.LongEncodingStrategy longEncoding
+  )
+  {
+    this(
+        bitmapSerdeFactory,
+        dimensionCompression,
+        metricCompression,
+        longEncoding,
+        null,
+        null,
+        null
+    );
   }
 
   /**
    * Creates an IndexSpec with the given storage format settings.
    *
-   *
-   * @param bitmapSerdeFactory type of bitmap to use (e.g. roaring or concise), null to use the default.
-   *                           Defaults to the bitmap type specified by the (deprecated) "druid.processing.bitmap.type"
-   *                           setting, or, if none was set, uses the default defined in {@link BitmapSerde}
-   *
+   * @param bitmapSerdeFactory   type of bitmap to use (e.g. roaring or concise), null to use the default.
+   *                             Defaults to the bitmap type specified by the (deprecated) "druid.processing.bitmap.type"
+   *                             setting, or, if none was set, uses the default defined in {@link BitmapSerde}
    * @param dimensionCompression compression format for dimension columns, null to use the default.
    *                             Defaults to {@link CompressionStrategy#DEFAULT_COMPRESSION_STRATEGY}
-   *
-   * @param metricCompression compression format for metric columns, null to use the default.
-   *                          Defaults to {@link CompressionStrategy#DEFAULT_COMPRESSION_STRATEGY}
-   *
-   * @param longEncoding encoding strategy for metric and dimension columns with type long, null to use the default.
-   *                     Defaults to {@link CompressionFactory#DEFAULT_LONG_ENCODING_STRATEGY}
+   * @param metricCompression    compression format for metric columns, null to use the default.
+   *                             Defaults to {@link CompressionStrategy#DEFAULT_COMPRESSION_STRATEGY}
+   * @param longEncoding         encoding strategy for metric and dimension columns with type long, null to use the default.
+   *                             Defaults to {@link CompressionFactory#DEFAULT_LONG_ENCODING_STRATEGY}
+   * @param encodingStrategy     encoding strategy for numerical columns
+   * @param optimizationTarget   shapeshift encoding optimization strategy
+   * @param aggroLevel           shapeshift encoding block size
    */
   @JsonCreator
   public IndexSpec(
       @JsonProperty("bitmap") BitmapSerdeFactory bitmapSerdeFactory,
       @JsonProperty("dimensionCompression") CompressionStrategy dimensionCompression,
       @JsonProperty("metricCompression") CompressionStrategy metricCompression,
-      @JsonProperty("longEncoding") CompressionFactory.LongEncodingStrategy longEncoding
+      @JsonProperty("longEncoding") CompressionFactory.LongEncodingStrategy longEncoding,
+      @JsonProperty("encodingStrategy") EncodingStrategy encodingStrategy,
+      @JsonProperty("shapeshiftOptimizationTarget") ShapeShiftOptimizationTarget optimizationTarget,
+      @JsonProperty("shapeshiftAggressionLevel") ShapeShiftAggressionLevel aggroLevel
   )
   {
     Preconditions.checkArgument(dimensionCompression == null || DIMENSION_COMPRESSION.contains(dimensionCompression),
-                                "Unknown compression type[%s]", dimensionCompression);
+                                "Unknown compression type[%s]", dimensionCompression
+    );
 
     Preconditions.checkArgument(metricCompression == null || METRIC_COMPRESSION.contains(metricCompression),
-                                "Unknown compression type[%s]", metricCompression);
+                                "Unknown compression type[%s]", metricCompression
+    );
 
     Preconditions.checkArgument(longEncoding == null || LONG_ENCODING_NAMES.contains(longEncoding),
-                                "Unknown long encoding type[%s]", longEncoding);
+                                "Unknown long encoding type[%s]", longEncoding
+    );
+
+    Preconditions.checkArgument(encodingStrategy == null || ENCODING_STRATEGIES.contains(encodingStrategy),
+                                "Unknown encoding strategy[%s]", encodingStrategy
+    );
+    Preconditions.checkArgument(optimizationTarget == null || OPTIMIZATION_TARGETS.contains(optimizationTarget),
+                                "Unknown shapeshift optimization target[%s]", optimizationTarget
+    );
+    Preconditions.checkArgument(aggroLevel == null || AGGRO_LEVELS.contains(aggroLevel),
+                                "Unknown shapeshift aggression level[%s]", aggroLevel
+    );
 
     this.bitmapSerdeFactory = bitmapSerdeFactory != null ? bitmapSerdeFactory : new ConciseBitmapSerdeFactory();
     this.dimensionCompression = dimensionCompression == null ? DEFAULT_DIMENSION_COMPRESSION : dimensionCompression;
     this.metricCompression = metricCompression == null ? DEFAULT_METRIC_COMPRESSION : metricCompression;
     this.longEncoding = longEncoding == null ? DEFAULT_LONG_ENCODING : longEncoding;
+    this.encodingStrategy = encodingStrategy == null ? DEFAULT_ENCODING_STRATEGY : encodingStrategy;
+    this.optimizationTarget = optimizationTarget == null ? DEFAULT_OPTIMIZATION_TARGET : optimizationTarget;
+    this.aggressionLevel = aggroLevel == null ? DEFAULT_AGGRO_LEVEL : aggroLevel;
   }
 
   @JsonProperty("bitmap")
@@ -135,6 +195,24 @@ public class IndexSpec
     return longEncoding;
   }
 
+  @JsonProperty
+  public EncodingStrategy getEncodingStrategy()
+  {
+    return encodingStrategy;
+  }
+
+  @JsonProperty
+  public ShapeShiftOptimizationTarget getOptimizationTarget()
+  {
+    return optimizationTarget;
+  }
+
+  @JsonProperty
+  public ShapeShiftAggressionLevel getAggressionLevel()
+  {
+    return aggressionLevel;
+  }
+
   @Override
   public boolean equals(Object o)
   {
@@ -148,13 +226,24 @@ public class IndexSpec
     return Objects.equals(bitmapSerdeFactory, indexSpec.bitmapSerdeFactory) &&
            dimensionCompression == indexSpec.dimensionCompression &&
            metricCompression == indexSpec.metricCompression &&
-           longEncoding == indexSpec.longEncoding;
+           longEncoding == indexSpec.longEncoding &&
+           encodingStrategy == indexSpec.encodingStrategy &&
+           optimizationTarget == indexSpec.optimizationTarget &&
+           aggressionLevel == indexSpec.aggressionLevel;
   }
 
   @Override
   public int hashCode()
   {
-    return Objects.hash(bitmapSerdeFactory, dimensionCompression, metricCompression, longEncoding);
+    return Objects.hash(
+        bitmapSerdeFactory,
+        dimensionCompression,
+        metricCompression,
+        longEncoding,
+        encodingStrategy,
+        optimizationTarget,
+        aggressionLevel
+    );
   }
 
   @Override
@@ -165,6 +254,60 @@ public class IndexSpec
            ", dimensionCompression=" + dimensionCompression +
            ", metricCompression=" + metricCompression +
            ", longEncoding=" + longEncoding +
+           ", encodingStrategy=" + encodingStrategy +
+           ", optimizationTarget=" + optimizationTarget +
+           ", aggressionLevel=" + aggressionLevel +
            '}';
+  }
+
+
+  public enum EncodingStrategy
+  {
+    COMPRESSION,
+    SHAPESHIFT
+  }
+
+  /**
+   * Log base 2 values per chunk in shapeshift encoding
+   */
+  public enum ShapeShiftAggressionLevel
+  {
+    /**
+     * Shapeshift will encode blocks of 2^14 integers. This puts the most memory pressure at indexing and query time in
+     * exchange for the potential to reduce encoded size. Approximate footprint is 64k off heap for decompression buffer
+     * and 129k on heap for integer arrays
+     */
+    AGGRO(14),
+    /**
+     * Shapeshift will encode blocks of 2^13 integers. Approximate footprint is 32k off heap for decompression buffer
+     * and 65k on heap for integer arrays
+     */
+    MIDDLE(13),
+    /**
+     * Shapeshift will encode blocks of 2^12 integers. This approach is very conservative and uses less overall memory
+     * than {@link IndexSpec.EncodingStrategy#COMPRESSION} in exchange for increased encoding size overhead and
+     * potentially smaller gains in overall encoded size. Approximate footprint is 16k off heap for decompression buffer
+     * and 33k on heap for integer arrays.
+     */
+    TIMID(12);
+
+    int blockSize;
+
+    ShapeShiftAggressionLevel(int blockSize)
+    {
+      this.blockSize = blockSize;
+    }
+
+    public byte getBlockSize()
+    {
+      return (byte) this.blockSize;
+    }
+  }
+
+  public enum ShapeShiftOptimizationTarget
+  {
+    SMALLER,
+    FASTBUTSMALLISH,
+    FASTER
   }
 }

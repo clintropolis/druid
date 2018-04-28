@@ -51,6 +51,8 @@ public class BenchmarkColumnSchema
     ROUNDED_NORMAL,
     ZIPF,
     ENUMERATED,
+    LAZY_ZIPF,
+    LAZY_DISCRETE_UNIFORM,
 
     // continuous distributions
     UNIFORM,
@@ -307,6 +309,29 @@ public class BenchmarkColumnSchema
     return schema;
   }
 
+  public static BenchmarkColumnSchema makeLazyDiscreteUniform(
+      String name,
+      ValueType type,
+      boolean isMetric,
+      int rowSize,
+      Double nullProbability,
+      int startInt,
+      int endInt
+  )
+  {
+    BenchmarkColumnSchema schema = new BenchmarkColumnSchema(
+        name,
+        type,
+        isMetric,
+        rowSize,
+        nullProbability,
+        ValueDistribution.LAZY_DISCRETE_UNIFORM
+    );
+    schema.startInt = startInt;
+    schema.endInt = endInt;
+    return schema;
+  }
+
   public static BenchmarkColumnSchema makeContinuousUniform(
       String name,
       ValueType type,
@@ -398,6 +423,30 @@ public class BenchmarkColumnSchema
         ValueDistribution.ZIPF
     );
     schema.enumeratedValues = enumeratedValues;
+    schema.zipfExponent = zipfExponent;
+    return schema;
+  }
+  public static BenchmarkColumnSchema makeLazyZipf(
+      String name,
+      ValueType type,
+      boolean isMetric,
+      int rowSize,
+      Double nullProbability,
+      int startInt,
+      int endInt,
+      Double zipfExponent
+  )
+  {
+    BenchmarkColumnSchema schema = new BenchmarkColumnSchema(
+        name,
+        type,
+        isMetric,
+        rowSize,
+        nullProbability,
+        ValueDistribution.LAZY_ZIPF
+    );
+    schema.startInt = startInt;
+    schema.endInt = endInt;
     schema.zipfExponent = zipfExponent;
     return schema;
   }

@@ -36,6 +36,8 @@ public class CompressedPools
 {
   private static final Logger log = new Logger(CompressedPools.class);
 
+  public static final int SMALLEST_BUFFER_SIZE = 0x1000;
+  public static final int SMALLER_BUFFER_SIZE = 0x8000;
   public static final int BUFFER_SIZE = 0x10000;
   private static final NonBlockingPool<BufferRecycler> bufferRecyclerPool = new StupidPool<>(
       "bufferRecyclerPool",
@@ -92,6 +94,35 @@ public class CompressedPools
       }
   );
 
+  private static final NonBlockingPool<ByteBuffer> littleBigEndByteBufPool = new StupidPool<ByteBuffer>(
+      "littleBigEndByteBufPool",
+      new Supplier<ByteBuffer>()
+      {
+        private final AtomicLong counter = new AtomicLong(0);
+
+        @Override
+        public ByteBuffer get()
+        {
+          log.info("Allocating new littleBigEndByteBuf[%,d]", counter.incrementAndGet());
+          return ByteBuffer.allocateDirect(SMALLER_BUFFER_SIZE).order(ByteOrder.BIG_ENDIAN);
+        }
+      }
+  );
+  private static final NonBlockingPool<ByteBuffer> littlestBigEndByteBufPool = new StupidPool<ByteBuffer>(
+      "littlestBigEndByteBufPool",
+      new Supplier<ByteBuffer>()
+      {
+        private final AtomicLong counter = new AtomicLong(0);
+
+        @Override
+        public ByteBuffer get()
+        {
+          log.info("Allocating new littlestBigEndByteBuf[%,d]", counter.incrementAndGet());
+          return ByteBuffer.allocateDirect(SMALLEST_BUFFER_SIZE).order(ByteOrder.BIG_ENDIAN);
+        }
+      }
+  );
+
   private static final NonBlockingPool<ByteBuffer> littleEndByteBufPool = new StupidPool<ByteBuffer>(
       "littleEndByteBufPool",
       new Supplier<ByteBuffer>()
@@ -107,11 +138,57 @@ public class CompressedPools
       }
   );
 
+  private static final NonBlockingPool<ByteBuffer> littlerEndByteBufPool = new StupidPool<ByteBuffer>(
+      "littlerEndByteBufPool",
+      new Supplier<ByteBuffer>()
+      {
+        private final AtomicLong counter = new AtomicLong(0);
+
+        @Override
+        public ByteBuffer get()
+        {
+          log.info("Allocating new littlerEndByteBuf[%,d]", counter.incrementAndGet());
+          return ByteBuffer.allocateDirect(SMALLER_BUFFER_SIZE).order(ByteOrder.LITTLE_ENDIAN);
+        }
+      }
+  );
+
+  private static final NonBlockingPool<ByteBuffer> littlestEndByteBufPool = new StupidPool<ByteBuffer>(
+      "littlestEndByteBufPool",
+      new Supplier<ByteBuffer>()
+      {
+        private final AtomicLong counter = new AtomicLong(0);
+
+        @Override
+        public ByteBuffer get()
+        {
+          log.info("Allocating new littlestEndByteBuf[%,d]", counter.incrementAndGet());
+          return ByteBuffer.allocateDirect(SMALLEST_BUFFER_SIZE).order(ByteOrder.LITTLE_ENDIAN);
+        }
+      }
+  );
+
   public static ResourceHolder<ByteBuffer> getByteBuf(ByteOrder order)
   {
     if (order == ByteOrder.LITTLE_ENDIAN) {
       return littleEndByteBufPool.take();
     }
     return bigEndByteBufPool.take();
+  }
+
+  public static ResourceHolder<ByteBuffer> getSmallerByteBuf(ByteOrder order)
+  {
+    if (order == ByteOrder.LITTLE_ENDIAN) {
+      return littlerEndByteBufPool.take();
+    }
+    return littleBigEndByteBufPool.take();
+  }
+
+  public static ResourceHolder<ByteBuffer> getSmallestByteBuf(ByteOrder order)
+  {
+    if (order == ByteOrder.LITTLE_ENDIAN) {
+      return littlestEndByteBufPool.take();
+    }
+    return littlestBigEndByteBufPool.take();
   }
 }

@@ -78,4 +78,9 @@ public class FloatsColumn implements GenericColumn
   {
     inspector.visit("column", column);
   }
+
+  public ColumnarFloats getColumn()
+  {
+    return column;
+  }
 }

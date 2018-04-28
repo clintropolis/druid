@@ -24,6 +24,7 @@ import org.apache.commons.math3.distribution.AbstractIntegerDistribution;
 import org.apache.commons.math3.distribution.AbstractRealDistribution;
 import org.apache.commons.math3.distribution.EnumeratedDistribution;
 import org.apache.commons.math3.distribution.NormalDistribution;
+import org.apache.commons.math3.distribution.UniformIntegerDistribution;
 import org.apache.commons.math3.distribution.UniformRealDistribution;
 import org.apache.commons.math3.distribution.ZipfDistribution;
 import org.apache.commons.math3.util.Pair;
@@ -40,6 +41,8 @@ public class BenchmarkColumnValueGenerator
 
   private Serializable distribution;
   private Random simpleRng;
+
+  private long counter;
 
   public BenchmarkColumnValueGenerator(
       BenchmarkColumnSchema schema,
@@ -123,6 +126,20 @@ public class BenchmarkColumnValueGenerator
           ret = Float.parseFloat(input.toString());
         }
         break;
+      case DOUBLE:
+        if (input instanceof Number) {
+          ret = ((Number) input).doubleValue();
+        } else {
+          ret = Double.parseDouble(input.toString());
+        }
+        break;
+      case INT:
+        if (input instanceof Number) {
+          ret = ((Number) input).intValue();
+        } else {
+          ret = Integer.parseInt(input.toString());
+        }
+        break;
       default:
         throw new UnsupportedOperationException("Unknown data type: " + type);
     }
@@ -187,6 +204,15 @@ public class BenchmarkColumnValueGenerator
           }
         }
         distribution = new EnumeratedTreeDistribution<>(probabilities);
+        break;
+      case LAZY_ZIPF:
+        int lazyCardinality;
+        Integer startInt = schema.getStartInt();
+        lazyCardinality = schema.getEndInt() - startInt;
+        distribution = new ZipfDistribution(lazyCardinality, schema.getZipfExponent());
+        break;
+      case LAZY_DISCRETE_UNIFORM:
+        distribution = new UniformIntegerDistribution(schema.getStartInt(), schema.getEndInt());
         break;
       case ENUMERATED:
         for (int i = 0; i < enumeratedValues.size(); i++) {
