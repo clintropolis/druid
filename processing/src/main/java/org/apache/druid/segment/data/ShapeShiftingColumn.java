@@ -75,8 +75,10 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
   final int chunkIndexMask;
   final ByteOrder byteOrder;
   // shared chunk data areas for decoders that need space
-  ResourceHolder<ByteBuffer> bufHolder;
+  ResourceHolder<ByteBuffer> decompressionBufHolder;
+  ResourceHolder<ByteBuffer> decodedDataBufHolder;
   private final Supplier<ByteBuffer> decompressedDataBuffer;
+  private final Supplier<ByteBuffer> decodedDataBuffer;
 
   protected int currentChunk = -1;
   protected ByteBuffer currentValueBuffer;
@@ -104,19 +106,29 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
 
     // todo: meh side effects...
     this.decompressedDataBuffer = Suppliers.memoize(() -> {
-      this.bufHolder = CompressedPools.getShapeshiftDecodedValuesBuffer(
+      this.decompressionBufHolder = CompressedPools.getShapeshiftDecodedValuesBuffer(
           logValuesPerChunk + sourceData.getLogBytesPerValue(),
           byteOrder
       );
-      return this.bufHolder.get();
+      return this.decompressionBufHolder.get();
+    });
+    this.decodedDataBuffer = Suppliers.memoize(() -> {
+      this.decodedDataBufHolder = CompressedPools.getShapeshiftDecodedValuesBuffer(
+          logValuesPerChunk + sourceData.getLogBytesPerValue(),
+          byteOrder
+      );
+      return this.decodedDataBufHolder.get();
     });
   }
 
   @Override
   public void close() throws IOException
   {
-    if (bufHolder != null) {
-      bufHolder.close();
+    if (decompressionBufHolder != null) {
+      decompressionBufHolder.close();
+    }
+    if (decodedDataBufHolder != null) {
+      decodedDataBufHolder.close();
     }
   }
 
@@ -214,6 +226,16 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
   public ByteBuffer getDecompressedDataBuffer()
   {
     return this.decompressedDataBuffer.get();
+  }
+
+  /**
+   * Get shared bytebuffer for eagerly decoded blocks
+   *
+   * @return
+   */
+  public ByteBuffer getDecodedDataBuffer()
+  {
+    return this.decodedDataBuffer.get();
   }
 
   /**

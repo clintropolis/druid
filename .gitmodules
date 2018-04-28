@@ -1,0 +1,4 @@
+[submodule "processing-native/src/lib/FastPFor"]
+	path = processing-native/src/lib/FastPFor
+	url = git@github.com:lemire/FastPFor.git
+	ignore = dirty

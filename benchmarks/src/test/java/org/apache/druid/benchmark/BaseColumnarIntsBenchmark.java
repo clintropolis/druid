@@ -75,14 +75,15 @@ public class BaseColumnarIntsBenchmark
 
       ByteBuffer uncompressedDataBuffer =
           CompressionStrategy.LZ4.getCompressor()
-                                 .allocateInBuffer(8 + ((1 << blockSize) * Integer.BYTES), writeOutMedium.getCloser())
+                                 .allocateInBuffer(((1 << blockSize) * Integer.BYTES), writeOutMedium.getCloser())
                                  .order(byteOrder);
+
       ByteBuffer compressedDataBuffer =
           CompressionStrategy.LZ4.getCompressor()
                                  .allocateOutBuffer(
                                      ((1 << blockSize) * Integer.BYTES) + 1024,
                                      writeOutMedium.getCloser()
-                                 );
+                                 ).order(byteOrder);
       switch (encoding) {
         case "vsize-byte":
           final VSizeColumnarInts vsize = VSizeColumnarInts.fromArray(vals);
@@ -223,29 +224,32 @@ public class BaseColumnarIntsBenchmark
           }
           sslzrleSerializer.writeTo(output, null);
           return (int) sslzrleSerializer.getSerializedSize();
+
         case "shapeshift-fastpfor":
-          final IntFormEncoder[] dfastcodecs = new IntFormEncoder[]{
+          final IntFormEncoder[] nfastcodecs = new IntFormEncoder[]{
               new LemireIntFormEncoder(
                   blockSize,
                   IntCodecs.FASTPFOR,
                   "fastpfor",
+                  uncompressedDataBuffer,
+                  compressedDataBuffer,
                   byteOrder
               )
           };
-          final ShapeShiftingColumnarIntsSerializer ssfastPforSerializer =
+          final ShapeShiftingColumnarIntsSerializer ssnfastPforSerializer =
               new ShapeShiftingColumnarIntsSerializer(
                   writeOutMedium,
-                  dfastcodecs,
+                  nfastcodecs,
                   optimizationTarget,
                   blockSizeEnum,
                   byteOrder
               );
-          ssfastPforSerializer.open();
+          ssnfastPforSerializer.open();
           for (int val : vals) {
-            ssfastPforSerializer.addValue(val);
+            ssnfastPforSerializer.addValue(val);
           }
-          ssfastPforSerializer.writeTo(output, null);
-          return (int) ssfastPforSerializer.getSerializedSize();
+          ssnfastPforSerializer.writeTo(output, null);
+          return (int) ssnfastPforSerializer.getSerializedSize();
         case "shapeshift":
         case "shapeshift-13":
         case "shapeshift-12":
@@ -346,18 +350,6 @@ public class BaseColumnarIntsBenchmark
       case "shapeshift-smaller-12":
       case "shapeshift-faster-12":
         return ShapeShiftingColumnarIntsSupplier.fromByteBuffer(buffer, byteOrder).get();
-      case "shapeshift-lazy":
-        return ShapeShiftingColumnarIntsSupplier.fromByteBuffer(
-            buffer,
-            byteOrder,
-            ShapeShiftingColumnarIntsSupplier.ShapeShiftingColumnarIntsDecodeOptimization.MIXED
-        ).get();
-      case "shapeshift-eager":
-        return ShapeShiftingColumnarIntsSupplier.fromByteBuffer(
-            buffer,
-            byteOrder,
-            ShapeShiftingColumnarIntsSupplier.ShapeShiftingColumnarIntsDecodeOptimization.BLOCK
-        ).get();
     }
     throw new IllegalArgumentException("unknown encoding");
   }
@@ -399,7 +391,8 @@ public class BaseColumnarIntsBenchmark
   }
 
   //@Param({"shapeshift-bytepack", "shapeshift-rle-bytepack", "shapeshift-fastpfor", "shapeshift-lz4-bytepack", "shapeshift-lz4-rle-bytepack", "compressed-vsize-byte"})
-  @Param({"compressed-vsize-byte", "shapeshift"})
+//  @Param({ "shapeshift-rle-bytepack", "shapeshift-lz4-rle-bytepack"})
+  @Param({"shapeshift", "compressed-vsize-byte"})
   String encoding;
 
   Random rand = new Random(0);

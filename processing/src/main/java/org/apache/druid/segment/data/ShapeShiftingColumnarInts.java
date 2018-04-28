@@ -19,14 +19,8 @@
 
 package org.apache.druid.segment.data;
 
-import com.google.common.base.Supplier;
-import com.google.common.base.Suppliers;
 import it.unimi.dsi.fastutil.bytes.Byte2ObjectMap;
-import org.apache.druid.collections.ResourceHolder;
 import org.apache.druid.query.monomorphicprocessing.RuntimeShapeInspector;
-import org.apache.druid.segment.CompressedPools;
-import org.apache.druid.segment.data.codecs.ArrayFormDecoder;
-import org.apache.druid.segment.data.codecs.CompressedFormDecoder;
 import org.apache.druid.segment.data.codecs.FormDecoder;
 import org.apache.druid.segment.data.codecs.ints.BytePackedIntFormDecoder;
 import sun.misc.Unsafe;
@@ -43,12 +37,7 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
 
   protected final GetIntBuffer getInt24;
   protected final GetIntUnsafe getInt24Unsafe;
-  ResourceHolder<int[]> decodedValuesHolder;
 
-  private final Supplier<int[]> decodedValuesSupplier;
-
-  protected int[] tmp;
-  protected int[] decodedValues;
   protected DecodeIndex currentForm;
   protected int currentBytesPerValue = 4;
   protected int currentConstant = 0;
@@ -59,10 +48,6 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
   )
   {
     super(sourceData, decoders);
-    this.decodedValuesSupplier = Suppliers.memoize(() -> {
-      decodedValuesHolder = CompressedPools.getShapeshiftIntsDecodedValuesArray(logValuesPerChunk);
-      return decodedValuesHolder.get();
-    });
 
     getInt24 = byteOrder.equals(ByteOrder.LITTLE_ENDIAN)
                       ? (_buffer, pos) -> _buffer.getInt(pos) & BytePackedIntFormDecoder.LITTLE_ENDIAN_INT_24_MASK
@@ -81,18 +66,13 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
   @Override
   public void inspectRuntimeShape(final RuntimeShapeInspector inspector)
   {
-    // todo: idk
     super.inspectRuntimeShape(inspector);
-    inspector.visit("decodedValues", decodedValuesSupplier);
   }
 
   @Override
   public void close() throws IOException
   {
     super.close();
-    if (decodedValuesHolder != null) {
-      decodedValuesHolder.close();
-    }
   }
 
   @Override
@@ -105,17 +85,6 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
     }
 
     return currentForm.decode(index & chunkIndexMask);
-  }
-
-  /**
-   * integer array sized to number of values, to allow {@link FormDecoder} a place for fully
-   * decoded values upon transformation
-   *
-   * @return
-   */
-  public final int[] getDecodedValues()
-  {
-    return decodedValues = decodedValuesSupplier.get();
   }
 
   /**
@@ -159,9 +128,7 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
   }
 
   /**
-   * Transform {@link ShapeShiftingColumnarInts} to the form of the requested chunk, which may either be eagerly
-   * decoded entirely to {@link ShapeShiftingColumnarInts#decodedValuesSupplier} with values retrieved by
-   * {@link ShapeShiftingColumnarInts#decodeBlockForm(int)}, or randomly accessible, which may set
+   * Transform {@link ShapeShiftingColumnarInts} to the form of the requested chunk, which which may set
    * {@link ShapeShiftingColumnarInts#currentValuesAddress}, {@link ShapeShiftingColumnarInts#currentValuesStartOffset},
    * {@link ShapeShiftingColumnarInts#currentBytesPerValue}, {@link ShapeShiftingColumnarInts#currentConstant} and be
    * decoded by {@link ShapeShiftingColumnarInts#decodeBufferForm(int)}.
@@ -171,31 +138,18 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
   @Override
   public void transform(FormDecoder<ShapeShiftingColumnarInts> nextForm)
   {
-    currentBytesPerValue = 4;
+    currentBytesPerValue = Integer.BYTES;
     currentConstant = 0;
+    final boolean isNative = getCurrentValueBuffer().isDirect() && byteOrder.equals(ByteOrder.nativeOrder());
 
     nextForm.transform(this);
-    if (nextForm instanceof ArrayFormDecoder) {
-      currentForm = this::decodeBlockForm;
-    } else if (!(nextForm instanceof CompressedFormDecoder)) {
-      if (getCurrentValueBuffer().isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
-        currentForm = this::decodeUnsafeForm;
-      } else {
-        currentForm = this::decodeBufferForm;
-      }
+    switch (currentBytesPerValue) {
+      case Integer.BYTES:
+        currentForm = isNative ? this::decodeUnsafeForm : this::decodeBufferForm;
+        break;
+      default:
+        currentForm = isNative ? this::unpackDecodeUnsafeForm : this::unpackDecodeBufferForm;
     }
-  }
-
-  /**
-   * get value at index produced {@link FormDecoder} transformation
-   *
-   * @param index masked index into the chunk array (index & {@link ShapeShiftingColumnarInts#chunkIndexMask})
-   *
-   * @return decoded row value at index
-   */
-  private int decodeBlockForm(int index)
-  {
-    return decodedValues[index];
   }
 
   /**
@@ -206,6 +160,12 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
    * @return decoded row value at index
    */
   private int decodeUnsafeForm(int index)
+  {
+    final long pos = currentValuesAddress + (index * Integer.BYTES);
+    return unsafe.getInt(pos);
+  }
+
+  private int unpackDecodeUnsafeForm(int index)
   {
     final long pos = currentValuesAddress + (index * currentBytesPerValue);
     switch (currentBytesPerValue) {
@@ -230,6 +190,13 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
    * @return decoded row value at index
    */
   private int decodeBufferForm(int index)
+  {
+    final int pos = getCurrentValuesStartOffset() + (index * currentBytesPerValue);
+    final ByteBuffer buffer = getCurrentValueBuffer();
+    return buffer.getInt(pos);
+  }
+
+  private int unpackDecodeBufferForm(int index)
   {
     final int pos = getCurrentValuesStartOffset() + (index * currentBytesPerValue);
     final ByteBuffer buffer = getCurrentValueBuffer();

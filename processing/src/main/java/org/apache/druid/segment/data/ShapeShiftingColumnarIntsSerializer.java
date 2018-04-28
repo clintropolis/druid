@@ -67,11 +67,11 @@ public class ShapeShiftingColumnarIntsSerializer
 
     ByteBuffer uncompressedDataBuffer =
         compressionStrategy.getCompressor()
-                               .allocateInBuffer(8 + ((1 << intBlockSize) * Integer.BYTES), closer)
-                               .order(byteOrder);
+                           .allocateInBuffer(8 + ((1 << intBlockSize) * Integer.BYTES), closer)
+                           .order(byteOrder);
     ByteBuffer compressedDataBuffer =
         compressionStrategy.getCompressor()
-                               .allocateOutBuffer(((1 << intBlockSize) * Integer.BYTES) + 1024, closer);
+                           .allocateOutBuffer(((1 << intBlockSize) * Integer.BYTES) + 1024, closer);
 
     final CompressibleIntFormEncoder rle = new RunLengthBytePackedIntFormEncoder(
         intBlockSize,
@@ -101,7 +101,14 @@ public class ShapeShiftingColumnarIntsSerializer
             uncompressedDataBuffer,
             compressedDataBuffer
         ),
-        new LemireIntFormEncoder(intBlockSize, IntCodecs.FASTPFOR, "fastpfor", byteOrder)
+        new LemireIntFormEncoder(
+            intBlockSize,
+            IntCodecs.FASTPFOR,
+            "fastpfor",
+            uncompressedDataBuffer,
+            compressedDataBuffer,
+            byteOrder
+        )
     };
 
     return defaultCodecs;

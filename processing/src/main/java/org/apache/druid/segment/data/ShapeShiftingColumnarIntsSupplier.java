@@ -19,17 +19,13 @@
 
 package org.apache.druid.segment.data;
 
-import com.google.common.annotations.VisibleForTesting;
 import it.unimi.dsi.fastutil.bytes.Byte2IntMap;
 import it.unimi.dsi.fastutil.bytes.Byte2ObjectMap;
 import org.apache.druid.java.util.common.io.smoosh.FileSmoosher;
 import org.apache.druid.java.util.common.logger.Logger;
-import org.apache.druid.segment.data.codecs.ConstantFormDecoder;
-import org.apache.druid.segment.data.codecs.DirectFormDecoder;
 import org.apache.druid.segment.data.codecs.FormDecoder;
 import org.apache.druid.segment.data.codecs.ints.IntCodecs;
 
-import javax.annotation.Nullable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -43,16 +39,12 @@ public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<Colum
   private static Logger log = new Logger(ShapeShiftingColumnarIntsSupplier.class);
 
   private final ShapeShiftingColumnData columnData;
-  // null = default, false = force ShapeShiftingColumnarInts, true = force ShapeShiftingBlockColumnarInts
-  private final ShapeShiftingColumnarIntsDecodeOptimization overrideOptimization;
 
   private ShapeShiftingColumnarIntsSupplier(
-      ShapeShiftingColumnData columnData,
-      @Nullable ShapeShiftingColumnarIntsDecodeOptimization overrideOptimization
+      ShapeShiftingColumnData columnData
   )
   {
     this.columnData = columnData;
-    this.overrideOptimization = overrideOptimization;
   }
 
   /**
@@ -72,29 +64,7 @@ public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<Colum
     ShapeShiftingColumnData columnData =
         new ShapeShiftingColumnData(buffer, (byte) 2, byteOrder, true);
 
-    return new ShapeShiftingColumnarIntsSupplier(columnData, null);
-  }
-
-  /**
-   * Create a new instance from a {@link ByteBuffer} with position set to the start of a
-   * {@link ShapeShiftingColumnarInts}
-   *
-   * @param buffer
-   * @param byteOrder
-   *
-   * @return
-   */
-  @VisibleForTesting
-  public static ShapeShiftingColumnarIntsSupplier fromByteBuffer(
-      final ByteBuffer buffer,
-      final ByteOrder byteOrder,
-      ShapeShiftingColumnarIntsDecodeOptimization overrideOptimization
-  )
-  {
-    ShapeShiftingColumnData columnData =
-        new ShapeShiftingColumnData(buffer, (byte) 2, byteOrder, true);
-
-    return new ShapeShiftingColumnarIntsSupplier(columnData, overrideOptimization);
+    return new ShapeShiftingColumnarIntsSupplier(columnData);
   }
 
   /**
@@ -113,18 +83,7 @@ public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<Colum
         columnData.getByteOrder()
     );
 
-    ShapeShiftingColumnarIntsDecodeOptimization optimization =
-        overrideOptimization != null
-        ? overrideOptimization
-        : ShapeShiftingColumnarIntsDecodeOptimization.fromComposition(columnData, decoders);
-
-    switch (optimization) {
-      case BLOCK:
-        return new ShapeShiftingBlockColumnarInts(columnData, decoders);
-      case MIXED:
-      default:
-        return new ShapeShiftingColumnarInts(columnData, decoders);
-    }
+    return new ShapeShiftingColumnarInts(columnData, decoders);
   }
 
   @Override
@@ -139,7 +98,7 @@ public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<Colum
       final FileSmoosher smoosher
   ) throws IOException
   {
-        // todo: idk
+    // todo: idk
     //    ByteBuffer intToBytesHelperBuffer = ByteBuffer.allocate(Integer.BYTES).order(columnData.getByteOrder());
 
     //    ShapeShiftingColumnSerializer.writeShapeShiftHeader(
@@ -153,49 +112,5 @@ public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<Colum
     //        columnData.getOffsetsSize()
     //    );
     channel.write(columnData.getBaseBuffer());
-  }
-
-  public enum ShapeShiftingColumnarIntsDecodeOptimization
-  {
-    MIXED,
-    BLOCK;
-
-    public static ShapeShiftingColumnarIntsDecodeOptimization fromComposition(
-        ShapeShiftingColumnData columnData,
-        Byte2ObjectMap<FormDecoder<ShapeShiftingColumnarInts>> decoders
-    )
-    {
-      int numDirectAccess = 0;
-      int preferDirectAccess = 0;
-      final Byte2IntMap composition = columnData.getComposition();
-      for (Byte2ObjectMap.Entry<FormDecoder<ShapeShiftingColumnarInts>> intDecoderEntry : decoders.byte2ObjectEntrySet()) {
-        final FormDecoder<ShapeShiftingColumnarInts> intDecoder = intDecoderEntry.getValue();
-        if (intDecoder instanceof DirectFormDecoder) {
-          final int count = composition.get(intDecoderEntry.getByteKey());
-          numDirectAccess += count;
-          if (!(intDecoder instanceof ConstantFormDecoder)) {
-            preferDirectAccess += count;
-          }
-        }
-      }
-
-      if (preferDirectAccess == 0) {
-        log.info(
-            "Using block optimized strategy, %d:%d have random access, %d prefer random access",
-            numDirectAccess,
-            columnData.getNumChunks(),
-            preferDirectAccess
-        );
-        return BLOCK;
-      } else {
-        log.info(
-            "Using mixed access strategy, %d:%d have random access, %d prefer random access",
-            numDirectAccess,
-            columnData.getNumChunks(),
-            preferDirectAccess
-        );
-        return MIXED;
-      }
-    }
   }
 }

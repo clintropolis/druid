@@ -19,43 +19,50 @@
 
 package org.apache.druid.segment.data.codecs.ints;
 
-import me.lemire.integercompression.IntWrapper;
-import me.lemire.integercompression.SkippableIntegerCODEC;
 import org.apache.druid.collections.NonBlockingPool;
 import org.apache.druid.collections.ResourceHolder;
-import org.apache.druid.java.util.common.ISE;
+import org.apache.druid.processing.codecs.FastPFor.NativeFastPForCodec;
 import org.apache.druid.segment.CompressedPools;
 import org.apache.druid.segment.writeout.WriteOutBytes;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 /**
- * Integer form encoder using {@link <a href="https://github.com/lemire/JavaFastPFOR">JavaFastPFOR</a>}. Any
- * {@link SkippableIntegerCODEC} should work, but currently only {@link me.lemire.integercompression.FastPFOR} is
- * setup as a known encoding in {@link IntCodecs} as {@link IntCodecs#FASTPFOR}.
+ * Integer form encoder using {@link <a href="https://github.com/lemire/FastPFOR">FastPFOR</a>} provided by
+ * druid-native-processing module.
  *
  * layout:
  * | header (byte) | encoded values  (numOutputInts * Integer.BYTES) |
  */
 public final class LemireIntFormEncoder extends BaseIntFormEncoder
 {
-  private final NonBlockingPool<SkippableIntegerCODEC> codecPool;
   private final byte header;
   private final String name;
   private int numOutputInts;
+  private final ByteBuffer valuesBuffer;
+  private final ByteBuffer encodedValuesBuffer;
+
+  private final NonBlockingPool<NativeFastPForCodec> codecPool;
+
 
   public LemireIntFormEncoder(
       byte logValuesPerChunk,
       byte header,
       String name,
+      ByteBuffer valuesBuffer,
+      ByteBuffer encodedValuesBuffer,
       ByteOrder byteOrder
   )
   {
     super(logValuesPerChunk, byteOrder);
     this.header = header;
     this.name = name;
-    this.codecPool = CompressedPools.getShapeshiftLemirePool(header, logValuesPerChunk);
+    this.valuesBuffer = valuesBuffer;
+    this.encodedValuesBuffer = encodedValuesBuffer;
+    this.codecPool = CompressedPools.getShapeshiftNativeLemirePool(header, logValuesPerChunk);
+
   }
 
   @Override
@@ -65,11 +72,9 @@ public final class LemireIntFormEncoder extends BaseIntFormEncoder
       IntFormMetrics metrics
   )
   {
-    try (ResourceHolder<int[]> tmpHolder = CompressedPools.getShapeshiftIntsEncodedValuesArray(logValuesPerChunk)) {
-      final int[] encodedValuesTmp = tmpHolder.get();
-      numOutputInts = doEncode(values, encodedValuesTmp, numValues);
-      return numOutputInts * Integer.BYTES;
-    }
+    numOutputInts = doEncode(values, numValues);
+    metrics.setCompressionBufferHolder(getHeader());
+    return numOutputInts * Integer.BYTES + Long.BYTES;
   }
 
   @Override
@@ -80,13 +85,10 @@ public final class LemireIntFormEncoder extends BaseIntFormEncoder
       IntFormMetrics metrics
   ) throws IOException
   {
-    try (ResourceHolder<int[]> tmpHolder = CompressedPools.getShapeshiftIntsEncodedValuesArray(logValuesPerChunk)) {
-      final int[] encodedValuesTmp = tmpHolder.get();
-      numOutputInts = doEncode(values, encodedValuesTmp, numValues);
-      for (int i = 0; i < numOutputInts; i++) {
-        valuesOut.write(toBytes(encodedValuesTmp[i]));
-      }
-    }
+    numOutputInts = doEncode(values, numValues);
+//    valuesOut.write(new byte[15]);
+    int numWrittenBytes = valuesOut.write(encodedValuesBuffer);
+    assert (numWrittenBytes == numOutputInts << 2);
   }
 
   @Override
@@ -101,20 +103,23 @@ public final class LemireIntFormEncoder extends BaseIntFormEncoder
     return name;
   }
 
-  private int doEncode(int[] values, int[] encodedValuesTmp, final int numValues)
+  private int doEncode(int[] values, final int numValues)
   {
-    final IntWrapper inPos = new IntWrapper(0);
-    final IntWrapper outPos = new IntWrapper(0);
-
-    try (ResourceHolder<SkippableIntegerCODEC> codecHolder = codecPool.take()) {
-      final SkippableIntegerCODEC codec = codecHolder.get();
-      codec.headlessCompress(values, inPos, numValues, encodedValuesTmp, outPos);
+    valuesBuffer.clear();
+    for (int i = 0; i < numValues; i++) {
+      valuesBuffer.putInt(values[i]);
     }
-
-    if (inPos.get() != numValues) {
-      throw new ISE("Expected to compress[%d] ints, but read[%d]", numValues, inPos.get());
+    try (ResourceHolder<NativeFastPForCodec> nfpfHolder = codecPool.take()) {
+      NativeFastPForCodec npf = nfpfHolder.get();
+      int size = npf.encode(
+          valuesBuffer,
+          numValues,
+          encodedValuesBuffer,
+          (1 << logValuesPerChunk)
+      );
+      encodedValuesBuffer.position(0);
+      encodedValuesBuffer.limit(size * Integer.BYTES);
+      return size;
     }
-
-    return outPos.get();
   }
 }

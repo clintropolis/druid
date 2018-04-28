@@ -21,8 +21,6 @@ package org.apache.druid.segment.data.codecs.ints;
 
 import org.apache.druid.segment.data.ShapeShiftingColumnarInts;
 import org.apache.druid.segment.data.codecs.BaseFormDecoder;
-import org.apache.druid.segment.data.codecs.ConstantFormDecoder;
-import org.apache.druid.segment.data.codecs.DirectFormDecoder;
 
 import java.nio.ByteOrder;
 
@@ -33,7 +31,6 @@ import java.nio.ByteOrder;
  * | header: IntCodecs.ZERO (byte) |
  */
 public final class ZeroIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
-    implements ConstantFormDecoder<ShapeShiftingColumnarInts>, DirectFormDecoder<ShapeShiftingColumnarInts>
 {
   public ZeroIntFormDecoder(byte logValuesPerChunk, ByteOrder byteOrder)
   {

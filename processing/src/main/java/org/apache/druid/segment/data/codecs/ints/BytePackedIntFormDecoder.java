@@ -21,7 +21,6 @@ package org.apache.druid.segment.data.codecs.ints;
 
 import org.apache.druid.segment.data.ShapeShiftingColumnarInts;
 import org.apache.druid.segment.data.codecs.BaseFormDecoder;
-import org.apache.druid.segment.data.codecs.DirectFormDecoder;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -34,7 +33,6 @@ import java.nio.ByteOrder;
  * | header: IntCodecs.BYTEPACK (byte) | numBytes (byte) | encoded values  (numValues * numBytes) |
  */
 public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
-    implements DirectFormDecoder<ShapeShiftingColumnarInts>
 {
   public static final int BIG_ENDIAN_INT_24_SHIFT = Integer.SIZE - 24;
   public static final int LITTLE_ENDIAN_INT_24_MASK = (int) ((1L << 24) - 1);

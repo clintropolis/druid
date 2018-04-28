@@ -21,9 +21,9 @@ package org.apache.druid.segment.data.codecs.ints;
 
 import org.apache.druid.segment.data.ShapeShiftingColumn;
 import org.apache.druid.segment.data.ShapeShiftingColumnarInts;
-import org.apache.druid.segment.data.codecs.ArrayFormDecoder;
 import org.apache.druid.segment.data.codecs.BaseFormDecoder;
 import sun.misc.Unsafe;
+import sun.nio.ch.DirectBuffer;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -33,7 +33,6 @@ import java.nio.ByteOrder;
  * | header: IntCodecs.RLE_BYTEPACK (byte) | numBytes (byte) | encoded values ((2 * numDistinctRuns * numBytes) + (numSingleValues * numBytes)) |
  */
 public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
-    implements ArrayFormDecoder<ShapeShiftingColumnarInts>
 {
   static final int value_mask_int8 = 0x7F;
   static final int value_mask_int16 = 0x7FFF;
@@ -60,15 +59,21 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
     final ByteBuffer metaBuffer = columnarInts.getBuffer();
     final int metaOffset = columnarInts.getCurrentChunkStartOffset();
     final byte numBytes = metaBuffer.get(metaOffset);
-    final int[] decodedChunk = columnarInts.getDecodedValues();
     final int numValues = columnarInts.getCurrentChunkNumValues();
     final int startOffset = columnarInts.getCurrentValuesStartOffset();
+    final ByteBuffer decodedDataBuffer = columnarInts.getDecodedDataBuffer();
 
-    if (buffer.isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
+    if (buffer.isDirect() && decodedDataBuffer.isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
       final long addr = columnarInts.getCurrentValuesAddress();
-      decodeIntsUnsafe(addr, numValues, decodedChunk, numBytes, byteOrder);
+      decodeIntsUnsafe(addr, numValues, decodedDataBuffer, numBytes, byteOrder);
     } else {
-      decodeIntsBuffer(buffer, startOffset, numValues, decodedChunk, numBytes, byteOrder);
+      decodeIntsBuffer(buffer, startOffset, numValues, decodedDataBuffer, numBytes, byteOrder);
+    }
+
+    columnarInts.setCurrentBytesPerValue(Integer.BYTES);
+    columnarInts.setCurrentValueBuffer(decodedDataBuffer);
+    if (decodedDataBuffer.isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
+      columnarInts.setCurrentValuesAddress(((DirectBuffer) decodedDataBuffer).address());
     }
   }
 
@@ -87,13 +92,15 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
   private static void decodeIntsUnsafe(
       long addr,
       final int numValues,
-      final int[] decodedValues,
+      final ByteBuffer decodedValuesBuffer,
       final int bytePerValue,
       final ByteOrder byteOrder
   )
   {
     int runCount;
     int runValue;
+    decodedValuesBuffer.clear();
+    long destAddr = ((DirectBuffer) decodedValuesBuffer).address();
 
     final boolean isBigEndian = byteOrder.equals(ByteOrder.BIG_ENDIAN);
     final DecodeAddressFunction decode;
@@ -128,16 +135,19 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
       final int nextVal = decode.get(addr);
       addr += bytePerValue;
       if ((nextVal & runMask) == 0) {
-        decodedValues[i] = nextVal;
+        unsafe.putInt(destAddr, nextVal);
+        destAddr += Integer.BYTES;
       } else {
         runCount = nextVal & valueMask;
         runValue = decode.get(addr);
         addr += bytePerValue;
         do {
-          decodedValues[i] = runValue;
+          unsafe.putInt(destAddr, runValue);
+          destAddr += Integer.BYTES;
         } while (--runCount > 0 && ++i < numValues);
       }
     }
+    decodedValuesBuffer.limit(numValues * Integer.BYTES);
   }
 
 
@@ -172,7 +182,7 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
       ByteBuffer buffer,
       final int startOffset,
       final int numValues,
-      final int[] decodedValues,
+      final ByteBuffer decodedValuesBuffer,
       final int bytePerValue,
       final ByteOrder byteOrder
   )
@@ -182,6 +192,7 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
     int runCount;
     int runValue;
 
+    decodedValuesBuffer.clear();
     final boolean isBigEndian = byteOrder.equals(ByteOrder.BIG_ENDIAN);
     final DecodeBufferFunction decode;
     final int runMask;
@@ -215,16 +226,17 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
       final int nextVal = decode.get(buffer, bufferPosition);
       bufferPosition += bytePerValue;
       if ((nextVal & runMask) == 0) {
-        decodedValues[i] = nextVal;
+        decodedValuesBuffer.putInt(nextVal);
       } else {
         runCount = nextVal & valueMask;
         runValue = decode.get(buffer, bufferPosition);
         bufferPosition += bytePerValue;
         do {
-          decodedValues[i] = runValue;
+          decodedValuesBuffer.putInt(runValue);
         } while (--runCount > 0 && ++i < numValues);
       }
     }
+    decodedValuesBuffer.flip();
   }
 
   private static int decodeInt8(

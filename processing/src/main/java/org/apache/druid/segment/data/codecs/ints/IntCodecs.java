@@ -23,6 +23,7 @@ import it.unimi.dsi.fastutil.bytes.Byte2ObjectArrayMap;
 import it.unimi.dsi.fastutil.bytes.Byte2ObjectMap;
 import it.unimi.dsi.fastutil.bytes.ByteSet;
 import org.apache.druid.java.util.common.RE;
+import org.apache.druid.processing.codecs.FastPFor.NativeFastPForCodecs;
 import org.apache.druid.segment.data.ShapeShiftingColumnarInts;
 import org.apache.druid.segment.data.codecs.CompressedFormDecoder;
 import org.apache.druid.segment.data.codecs.FormDecoder;
@@ -70,12 +71,22 @@ public class IntCodecs
         return new BytePackedIntFormDecoder(logValuesPerChunk, byteOrder);
       case RLE_BYTEPACK:
         return new RunLengthBytePackedIntFormDecoder(logValuesPerChunk, byteOrder);
-      case FASTPFOR:
-        return new LemireIntFormDecoder(logValuesPerChunk, IntCodecs.FASTPFOR, byteOrder);
       case COMPRESSED:
         return new CompressedFormDecoder<>(logValuesPerChunk, byteOrder, IntCodecs.COMPRESSED);
+      case FASTPFOR:
+        return new LemireIntFormDecoder(logValuesPerChunk, IntCodecs.FASTPFOR, byteOrder);
     }
 
     throw new RE("Unknown decoder[%d]", (int) header);
+  }
+
+  public static NativeFastPForCodecs getNativeLemireCodecName(byte header)
+  {
+    switch (header) {
+      case IntCodecs.FASTPFOR:
+        return NativeFastPForCodecs.SIMD_FASTPFOR_256;
+      default:
+        throw new RuntimeException("unknown codec");
+    }
   }
 }

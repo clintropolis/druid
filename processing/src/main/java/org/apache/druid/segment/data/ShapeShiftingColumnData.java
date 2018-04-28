@@ -185,7 +185,9 @@ public class ShapeShiftingColumnData
 
   /**
    * get start and end offset of chunk in {@link ShapeShiftingColumnData#baseBuffer}
+   *
    * @param chunk index of chunk
+   *
    * @return
    */
   public ChunkPosition getChunkPosition(int chunk)

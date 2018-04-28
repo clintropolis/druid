@@ -65,8 +65,8 @@ public class ShapeShiftingColumnarIntsSerdeTest
     Set<List<Object>> combinations = Sets.cartesianProduct(
         Sets.newHashSet(IndexSpec.ShapeShiftBlockSize.values()),
         Sets.newHashSet(IndexSpec.ShapeShiftOptimizationTarget.values()),
-        Sets.newHashSet(ByteOrder.LITTLE_ENDIAN, ByteOrder.BIG_ENDIAN),
-        Sets.newHashSet("bytepack", "rle-bytepack", "fastpfor", "lz4-bytepack", "lz4-rle-bytepack", "lz4", "default")
+        Sets.newHashSet(ByteOrder.LITTLE_ENDIAN),
+        Sets.newHashSet("bytepack", "rle-bytepack", "fastpfor", "lz4-bytepack", "lz4-rle-bytepack")
     );
 
     return combinations.stream()
@@ -264,10 +264,6 @@ public class ShapeShiftingColumnarIntsSerdeTest
                                     ((CompressedFormEncoder) e).getInnerEncoder() instanceof RunLengthBytePackedIntFormEncoder
                        ).toArray(IntFormEncoder[]::new);
         break;
-      case "lz4":
-        encoders =
-            encoderList.stream().filter(e -> e instanceof CompressedFormEncoder).toArray(IntFormEncoder[]::new);
-        break;
     }
 
     ShapeShiftingColumnarIntsSerializer serializer = new ShapeShiftingColumnarIntsSerializer(
@@ -288,7 +284,10 @@ public class ShapeShiftingColumnarIntsSerdeTest
     final byte[] bytes = baos.toByteArray();
     Assert.assertEquals(serializer.getSerializedSize(), bytes.length);
 
-    supplier = ShapeShiftingColumnarIntsSupplier.fromByteBuffer(ByteBuffer.wrap(bytes), byteOrder);
+    ByteBuffer directBuffer = ByteBuffer.allocateDirect(bytes.length).order(byteOrder);
+    directBuffer.put(bytes);
+    directBuffer.flip();
+    supplier = ShapeShiftingColumnarIntsSupplier.fromByteBuffer(directBuffer, byteOrder);
     columnarInts = supplier.get();
   }
 
@@ -342,7 +341,7 @@ public class ShapeShiftingColumnarIntsSerdeTest
     // sequential access
     int[] indices = new int[vals.length];
     for (int i = 0, size = columnarInts.size(); i < size; i++) {
-      Assert.assertEquals("row mismatch at " + i, vals[i], columnarInts.get(i), 0.0);
+      Assert.assertEquals(vals[i], columnarInts.get(i), 0.0);
       indices[i] = i;
     }
 
