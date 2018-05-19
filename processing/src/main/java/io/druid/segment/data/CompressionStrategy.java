@@ -158,10 +158,22 @@ public enum CompressionStrategy
   public interface Decompressor
   {
     /**
-     * Implementations of this method are expected to call out.flip() after writing to the output buffer
+     * Decompress data starting from {@code in.position()} to {@code out}. Implementations of this method are
+     * expected to call {@code out.flip()} after writing to the output buffer.
+     * @param in        input buffer
+     * @param numBytes  number of bytes to read
+     * @param out       destination buffer for decompressed data
      */
     void decompress(ByteBuffer in, int numBytes, ByteBuffer out);
 
+    /**
+     * Decompress data starting from offset specified by {@code inOffset} of {@code in} to {@code out}. Implementations
+     * of this method are expected to call {@code out.flip()} after writing to the output buffer.
+     * @param in        input buffer
+     * @param inOffset  input buffer start position
+     * @param numBytes  number of bytes to read
+     * @param out       destination buffer for decompressed data
+     */
     void decompress(ByteBuffer in, int inOffset, int numBytes, ByteBuffer out);
   }
 

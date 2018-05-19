@@ -20,7 +20,6 @@
 package io.druid.segment.data.codecs.ints;
 
 import io.druid.java.util.common.ISE;
-import io.druid.segment.data.ShapeShiftingColumnarIntsSerializer.IntFormMetrics;
 import io.druid.segment.writeout.WriteOutBytes;
 import me.lemire.integercompression.IntWrapper;
 import me.lemire.integercompression.SkippableIntegerCODEC;
@@ -28,7 +27,7 @@ import me.lemire.integercompression.SkippableIntegerCODEC;
 import java.io.IOException;
 import java.nio.ByteOrder;
 
-public final class LemireIntFormEncoder extends IntFormEncoder
+public final class LemireIntFormEncoder extends BaseIntFormEncoder
 {
   // Straight from the horse's mouth (https://github.com/lemire/JavaFastPFOR/blob/master/example.java).
   private static final int SHOULD_BE_ENOUGH = 1024;

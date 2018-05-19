@@ -20,21 +20,13 @@
 package io.druid.segment.data.codecs.ints;
 
 import io.druid.segment.data.CompressionStrategy;
-import io.druid.segment.data.ShapeShiftingColumnarIntsSerializer.IntFormMetrics;
-import io.druid.segment.writeout.WriteOutBytes;
+import io.druid.segment.data.codecs.CompressedFormEncoder;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-public class CompressedIntFormEncoder extends IntFormEncoder
+public final class CompressedIntFormEncoder extends CompressedFormEncoder<int[], IntFormMetrics> implements IntFormEncoder
 {
-  private final CompressibleIntFormEncoder intEncoder;
-  private final CompressionStrategy compressionStrategy;
-  private final CompressionStrategy.Compressor compressor;
-  private final ByteBuffer uncompressedDataBuffer;
-  private final ByteBuffer compressedDataBuffer;
-
   public CompressedIntFormEncoder(
       byte logValuesPerChunk,
       ByteOrder byteOrder,
@@ -44,78 +36,6 @@ public class CompressedIntFormEncoder extends IntFormEncoder
       ByteBuffer uncompressedDataBuffer
   )
   {
-    super(logValuesPerChunk, byteOrder);
-    this.intEncoder = encoder;
-    this.compressionStrategy = strategy;
-    this.compressor = compressionStrategy.getCompressor();
-    this.compressedDataBuffer = compressedDataBuffer;
-    this.uncompressedDataBuffer = uncompressedDataBuffer;
-  }
-
-  @Override
-  public int getEncodedSize(
-      int[] values,
-      int numValues,
-      IntFormMetrics metrics
-  ) throws IOException
-  {
-    if (!intEncoder.shouldAttemptCompression(metrics)) {
-      return Integer.MAX_VALUE;
-    }
-
-    uncompressedDataBuffer.clear();
-    uncompressedDataBuffer.put(intEncoder.getHeader());
-    compressedDataBuffer.clear();
-    intEncoder.encodeToBuffer(uncompressedDataBuffer, values, numValues, metrics);
-    ByteBuffer buff = compressor.compress(uncompressedDataBuffer, compressedDataBuffer);
-    return 1 + buff.remaining();
-  }
-
-  @Override
-  public void encode(
-      WriteOutBytes valuesOut,
-      int[] values,
-      int numValues,
-      IntFormMetrics metrics
-  ) throws IOException
-  {
-    uncompressedDataBuffer.clear();
-    uncompressedDataBuffer.put(intEncoder.getHeader());
-    compressedDataBuffer.clear();
-    intEncoder.encodeToBuffer(uncompressedDataBuffer, values, numValues, metrics);
-    valuesOut.write(new byte[]{compressionStrategy.getId()});
-    valuesOut.write(compressor.compress(uncompressedDataBuffer, compressedDataBuffer));
-  }
-
-  @Override
-  public byte getHeader()
-  {
-    return IntCodecs.COMPRESSED;
-  }
-
-  @Override
-  public String getName()
-  {
-    return compressionStrategy.toString() + "-" + intEncoder.getName();
-  }
-
-  @Override
-  public boolean hasRandomAccessSupport()
-  {
-    return intEncoder.hasRandomAccessSupport();
-  }
-
-  @Override
-  public double getSpeedModifier(IntFormMetrics metrics)
-  {
-    switch (metrics.getOptimizationTarget()) {
-      case FASTER:
-        return intEncoder.getSpeedModifier(metrics) + 0.30;
-      case SMALLER:
-        return intEncoder.getSpeedModifier(metrics);
-      case FASTBUTSMALLISH:
-      default:
-        return intEncoder.getSpeedModifier(metrics) + 0.05;
-    }
+    super(logValuesPerChunk, byteOrder, strategy, encoder, compressedDataBuffer, uncompressedDataBuffer);
   }
 }

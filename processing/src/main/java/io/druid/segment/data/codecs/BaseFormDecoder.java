@@ -17,10 +17,22 @@
  * under the License.
  */
 
-package io.druid.segment.data.codecs.ints;
+package io.druid.segment.data.codecs;
 
-import io.druid.segment.data.codecs.FormEncoder;
+import io.druid.segment.data.ShapeShiftingColumn;
 
-public interface IntFormEncoder extends FormEncoder<int[], IntFormMetrics>
+import java.nio.ByteOrder;
+
+public abstract class BaseFormDecoder<TColumn extends ShapeShiftingColumn> implements FormDecoder<TColumn>
 {
+  protected final byte logValuesPerChunk;
+  protected final int valuesPerChunk;
+  protected final ByteOrder byteOrder;
+
+  public BaseFormDecoder(byte logValuesPerChunk, ByteOrder byteOrder)
+  {
+    this.logValuesPerChunk = logValuesPerChunk;
+    this.valuesPerChunk = 1 << logValuesPerChunk;
+    this.byteOrder = byteOrder;
+  }
 }

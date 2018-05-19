@@ -17,10 +17,24 @@
  * under the License.
  */
 
-package io.druid.segment.data.codecs.ints;
+package io.druid.segment.data.codecs;
 
-import io.druid.segment.data.codecs.FormEncoder;
+import io.druid.segment.IndexSpec;
 
-public interface IntFormEncoder extends FormEncoder<int[], IntFormMetrics>
+public abstract class FormMetrics
 {
+  private IndexSpec.ShapeShiftOptimizationTarget optimizationTarget;
+
+  public FormMetrics(IndexSpec.ShapeShiftOptimizationTarget optimizationTarget)
+  {
+    this.optimizationTarget = optimizationTarget;
+  }
+
+  public IndexSpec.ShapeShiftOptimizationTarget getOptimizationTarget()
+  {
+    return this.optimizationTarget;
+  }
+
+  public abstract int getNumValues();
+
 }

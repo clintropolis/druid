@@ -17,10 +17,23 @@
  * under the License.
  */
 
-package io.druid.segment.data.codecs.ints;
+package io.druid.segment.data.codecs;
 
-import io.druid.segment.data.codecs.FormEncoder;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
-public interface IntFormEncoder extends FormEncoder<int[], IntFormMetrics>
+public interface CompressibleFormEncoder<TChunk, TChunkMetrics extends FormMetrics>
+    extends FormEncoder<TChunk, TChunkMetrics>
 {
+  void encodeToBuffer(
+      ByteBuffer buffer,
+      TChunk values,
+      int numValues,
+      TChunkMetrics metadata
+  ) throws IOException;
+
+  default boolean shouldAttemptCompression(TChunkMetrics hints)
+  {
+    return true;
+  }
 }

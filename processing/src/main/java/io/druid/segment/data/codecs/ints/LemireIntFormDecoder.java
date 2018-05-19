@@ -20,7 +20,7 @@
 package io.druid.segment.data.codecs.ints;
 
 import io.druid.segment.data.ShapeShiftingColumnarInts;
-import io.druid.segment.data.codecs.ShapeShiftingFormDecoder;
+import io.druid.segment.data.codecs.BaseFormDecoder;
 import me.lemire.integercompression.IntWrapper;
 import me.lemire.integercompression.SkippableIntegerCODEC;
 import sun.misc.Unsafe;
@@ -29,7 +29,7 @@ import sun.nio.ch.DirectBuffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-public class LemireIntFormDecoder extends ShapeShiftingFormDecoder<ShapeShiftingColumnarInts>
+public final class LemireIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
 {
   private static final Unsafe unsafe = ShapeShiftingColumnarInts.getTheUnsafe();
   private final SkippableIntegerCODEC codec;
@@ -72,14 +72,14 @@ public class LemireIntFormDecoder extends ShapeShiftingFormDecoder<ShapeShifting
     // Copy chunk into an int array.
     final int chunkSizeAsInts = chunkSizeBytes / Integer.BYTES;
 
-    if (!byteOrder.equals(ByteOrder.nativeOrder())) {
-      for (int i = 0, bufferPos = startOffset; i < chunkSizeAsInts; i += 1, bufferPos += Integer.BYTES) {
-        tmp[i] = buffer.getInt(bufferPos);
-      }
-    } else {
+    if (buffer.isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
       long addr = ((DirectBuffer) buffer).address() + startOffset;
       for (int i = 0; i < chunkSizeAsInts; i++, addr += Integer.BYTES) {
         tmp[i] = unsafe.getInt(addr);
+      }
+    } else {
+      for (int i = 0, bufferPos = startOffset; i < chunkSizeAsInts; i += 1, bufferPos += Integer.BYTES) {
+        tmp[i] = buffer.getInt(bufferPos);
       }
     }
 

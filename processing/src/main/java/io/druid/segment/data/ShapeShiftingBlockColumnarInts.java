@@ -19,23 +19,11 @@
 
 package io.druid.segment.data;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-
 public final class ShapeShiftingBlockColumnarInts extends ShapeShiftingColumnarInts
 {
-  private int[] decodedValues;
-
-  public ShapeShiftingBlockColumnarInts(
-      ByteBuffer buffer,
-      int numChunks,
-      int numValues,
-      byte logValuesPerChunk,
-      int offsetsSize,
-      ByteOrder byteOrder
-  )
+  public ShapeShiftingBlockColumnarInts(ShapeShiftingColumnData sourceData)
   {
-    super(buffer, numChunks, numValues, logValuesPerChunk, offsetsSize, byteOrder);
+    super(sourceData);
 
   }
 
@@ -52,8 +40,9 @@ public final class ShapeShiftingBlockColumnarInts extends ShapeShiftingColumnarI
   }
 
   @Override
-  public void get(int[] vector, int startIndex, int endIndex)
+  public void get(int[] out, int startIndex, int length)
   {
+    final int endIndex = startIndex + length;
     final int startChunk = startIndex >> logValuesPerChunk;
     final int endChunk = (endIndex - 1) >> logValuesPerChunk;
 
@@ -63,27 +52,29 @@ public final class ShapeShiftingBlockColumnarInts extends ShapeShiftingColumnarI
     if (startChunk == endChunk) {
       final int endPos = (endIndex - startIndex);
       for (int outPos = 0, index = startIndex; outPos < endPos; outPos++, index++) {
-        vector[outPos] = decodedValues[index & chunkIndexMask];
+        out[outPos] = decodedValues[index & chunkIndexMask];
       }
     } else {
       // find split index
+      // todo: maybe handle more than 1 split in the event vector size > block size
       int splitIndex = startIndex;
-      while ((++splitIndex >> logValuesPerChunk) == startChunk) { }
+      while ((++splitIndex >> logValuesPerChunk) == startChunk) {
+      }
 
       final int splitPos = (splitIndex - startIndex);
       for (int outPos = 0, index = startIndex; outPos < splitPos; outPos++, index++) {
-        vector[outPos] = decodedValues[index & chunkIndexMask];
+        out[outPos] = decodedValues[index & chunkIndexMask];
       }
       loadChunk(endChunk);
       final int endPos = splitPos + (endIndex - splitIndex);
       for (int outPos = splitPos, index = splitIndex; outPos < endPos; outPos++, index++) {
-        vector[outPos] = decodedValues[index & chunkIndexMask];
+        out[outPos] = decodedValues[index & chunkIndexMask];
       }
     }
   }
 
   @Override
-  public void get(int[] vector, int[] indices, int numValues)
+  public void get(int[] out, int[] indices, int length)
   {
     int desiredChunk = indices[0] >> logValuesPerChunk;
 
@@ -91,9 +82,9 @@ public final class ShapeShiftingBlockColumnarInts extends ShapeShiftingColumnarI
       loadChunk(desiredChunk);
     }
 
-    for (int i = 0; i < numValues; ) {
-      while (i < numValues && (desiredChunk = (indices[i] >> logValuesPerChunk)) == currentChunk) {
-        vector[i] = decodedValues[indices[i] & chunkIndexMask];
+    for (int i = 0; i < length; ) {
+      while (i < length && (desiredChunk = (indices[i] >> logValuesPerChunk)) == currentChunk) {
+        out[i] = decodedValues[indices[i] & chunkIndexMask];
         i++;
       }
       loadChunk(desiredChunk);

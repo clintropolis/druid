@@ -27,6 +27,7 @@ import io.druid.segment.IndexSpec;
 import io.druid.segment.data.ColumnarInts;
 import io.druid.segment.data.CompressedVSizeColumnarIntsSupplier;
 import io.druid.segment.data.CompressionStrategy;
+import io.druid.segment.data.FastPforIntsSerializer;
 import io.druid.segment.data.FastPforIntsSupplier;
 import io.druid.segment.data.IndexedInts;
 import io.druid.segment.data.ShapeShiftingColumnarIntsSerializer;
@@ -120,6 +121,20 @@ public class BaseColumnarIntsBenchmark
         );
         compressedBigEndian.writeTo(output, null);
         return (int) compressedBigEndian.getSerializedSize();
+      case "fastpfor":
+        final SkippableIntegerCODEC fastPforcodec = new SkippableComposition(new FastPFOR(), new VariableByte());
+        final FastPforIntsSerializer fastPforSerializer =
+            new FastPforIntsSerializer(
+                writeOutMedium,
+                fastPforcodec,
+                blockSize
+            );
+        fastPforSerializer.open();
+        for (int val : vals) {
+          fastPforSerializer.addValue(val);
+        }
+        fastPforSerializer.writeTo(output, null);
+        return (int) fastPforSerializer.getSerializedSize();
       case "shapeshift-unencoded":
         final IntFormEncoder[] ssucodecs = new IntFormEncoder[]{
             new UnencodedIntFormEncoder(

@@ -20,29 +20,15 @@
 package io.druid.segment.data.codecs;
 
 import io.druid.segment.data.ShapeShiftingColumn;
-import io.druid.segment.data.ShapeShiftingColumnarInts;
 
-import java.nio.ByteOrder;
-
-public abstract class RandomAccessShapeShiftingFormDecoder<TColumn extends ShapeShiftingColumn>
-    extends ShapeShiftingFormDecoder<TColumn>
+public interface FormDecoder<TColumn extends ShapeShiftingColumn>
 {
-  public RandomAccessShapeShiftingFormDecoder(byte logValuesPerChunk, ByteOrder byteOrder)
-  {
-    super(logValuesPerChunk, byteOrder);
-  }
-
-  public abstract void transformBuffer(
-      ShapeShiftingColumnarInts columnarInts,
+  void transform(
+      TColumn column,
       int startOffset,
       int endOffset,
       int numValues
   );
 
-  public abstract void transformUnsafe(
-      ShapeShiftingColumnarInts columnarInts,
-      int startOffset,
-      int endOffset,
-      int numValues
-  );
+  byte getHeader();
 }

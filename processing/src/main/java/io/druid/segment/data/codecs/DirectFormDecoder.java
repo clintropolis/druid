@@ -17,10 +17,23 @@
  * under the License.
  */
 
-package io.druid.segment.data.codecs.ints;
+package io.druid.segment.data.codecs;
 
-import io.druid.segment.data.codecs.FormEncoder;
+import io.druid.segment.data.ShapeShiftingColumn;
 
-public interface IntFormEncoder extends FormEncoder<int[], IntFormMetrics>
+public interface DirectFormDecoder<TColumn extends ShapeShiftingColumn> extends FormDecoder<TColumn>
 {
+  void transformBuffer(
+      TColumn column,
+      int startOffset,
+      int endOffset,
+      int numValues
+  );
+
+  void transformUnsafe(
+      TColumn column,
+      int startOffset,
+      int endOffset,
+      int numValues
+  );
 }

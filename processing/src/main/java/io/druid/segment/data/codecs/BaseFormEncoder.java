@@ -17,10 +17,23 @@
  * under the License.
  */
 
-package io.druid.segment.data.codecs.ints;
+package io.druid.segment.data.codecs;
 
-import io.druid.segment.data.codecs.FormEncoder;
+import java.nio.ByteOrder;
 
-public interface IntFormEncoder extends FormEncoder<int[], IntFormMetrics>
+public abstract class BaseFormEncoder<TChunk, TChunkMetrics extends FormMetrics>
+    implements FormEncoder<TChunk, TChunkMetrics>
 {
+  protected final byte logValuesPerChunk;
+  protected final int valuesPerChunk;
+  protected final ByteOrder byteOrder;
+  protected final boolean isBigEndian;
+
+  public BaseFormEncoder(byte logValuesPerChunk, ByteOrder byteOrder)
+  {
+    this.logValuesPerChunk = logValuesPerChunk;
+    this.valuesPerChunk = 1 << logValuesPerChunk;
+    this.byteOrder = byteOrder;
+    this.isBigEndian = byteOrder.equals(ByteOrder.BIG_ENDIAN);
+  }
 }

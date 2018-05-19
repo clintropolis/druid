@@ -20,14 +20,20 @@
 package io.druid.segment.data.codecs.ints;
 
 import io.druid.segment.data.ShapeShiftingColumnarInts;
-import io.druid.segment.data.codecs.RandomAccessShapeShiftingFormDecoder;
+import io.druid.segment.data.codecs.BaseFormDecoder;
+import io.druid.segment.data.codecs.DirectFormDecoder;
 import sun.misc.Unsafe;
 import sun.nio.ch.DirectBuffer;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-public class BytePackedIntFormDecoder extends RandomAccessShapeShiftingFormDecoder<ShapeShiftingColumnarInts>
+/**
+ * Byte packing integer decoder based on
+ * {@link io.druid.segment.data.CompressedVSizeColumnarIntsSupplier.CompressedVSizeColumnarInts}
+ */
+public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
+    implements DirectFormDecoder<ShapeShiftingColumnarInts>
 {
   static final Unsafe unsafe = ShapeShiftingColumnarInts.getTheUnsafe();
   public static final int bigEndianShift3 = Integer.SIZE - 24;
@@ -49,7 +55,7 @@ public class BytePackedIntFormDecoder extends RandomAccessShapeShiftingFormDecod
   }
 
   @Override
-  public final void transform(
+  public void transform(
       ShapeShiftingColumnarInts columnarInts,
       int startOffset,
       int endOffset,
@@ -60,36 +66,35 @@ public class BytePackedIntFormDecoder extends RandomAccessShapeShiftingFormDecod
     final int[] decodedChunk = columnarInts.getDecodedValues();
     final byte numBytes = buffer.get(startOffset);
 
-    if (!byteOrder.equals(ByteOrder.nativeOrder())) {
-      switch (numBytes) {
-        case 1:
-          decodeByteSizedInts(buffer, startOffset + 1, numValues, decodedChunk, numBytes);
-          break;
-        case 2:
-          decodeShortSizedInts(buffer, startOffset + 1, numValues, decodedChunk, numBytes);
-          break;
-        case 3:
-          oddFunction.decode(buffer, startOffset + 1, numValues, decodedChunk, numBytes);
-          break;
-        case 4:
-          decodeIntSizedInts(buffer, startOffset + 1, numValues, decodedChunk, numBytes);
-          break;
-      }
-    } else {
-
+    if (buffer.isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
       long addr = ((DirectBuffer) buffer).address() + startOffset + 1;
       switch (numBytes) {
         case 1:
-          decodeByteSizedIntsUnsafe(addr, numValues, decodedChunk, numBytes);
+          decodeByteSizedIntsUnsafe(addr, numValues, decodedChunk);
           break;
         case 2:
-          decodeShortSizedIntsUnsafe(addr, numValues, decodedChunk, numBytes);
+          decodeShortSizedIntsUnsafe(addr, numValues, decodedChunk);
           break;
         case 3:
-          oddFunctionUnsafe.decode(addr, numValues, decodedChunk, numBytes);
+          oddFunctionUnsafe.decode(addr, numValues, decodedChunk);
           break;
         case 4:
-          decodeIntSizedIntsUnsafe(addr, numValues, decodedChunk, numBytes);
+          decodeIntSizedIntsUnsafe(addr, numValues, decodedChunk);
+          break;
+      }
+    } else {
+      switch (numBytes) {
+        case 1:
+          decodeByteSizedInts(buffer, startOffset + 1, numValues, decodedChunk);
+          break;
+        case 2:
+          decodeShortSizedInts(buffer, startOffset + 1, numValues, decodedChunk);
+          break;
+        case 3:
+          oddFunction.decode(buffer, startOffset + 1, numValues, decodedChunk);
+          break;
+        case 4:
+          decodeIntSizedInts(buffer, startOffset + 1, numValues, decodedChunk);
           break;
       }
     }
@@ -133,8 +138,7 @@ public class BytePackedIntFormDecoder extends RandomAccessShapeShiftingFormDecod
       ByteBuffer buffer,
       int startOffset,
       final int numValues,
-      final int[] decoded,
-      final int numBytes
+      final int[] decoded
   )
   {
     for (int i = 0, pos = startOffset; i < numValues; i++, pos++) {
@@ -146,8 +150,7 @@ public class BytePackedIntFormDecoder extends RandomAccessShapeShiftingFormDecod
       ByteBuffer buffer,
       int startOffset,
       final int numValues,
-      final int[] decoded,
-      final int numBytes
+      final int[] decoded
   )
   {
     for (int i = 0, pos = startOffset; i < numValues; i++, pos += Short.BYTES) {
@@ -159,12 +162,11 @@ public class BytePackedIntFormDecoder extends RandomAccessShapeShiftingFormDecod
       ByteBuffer buffer,
       int startOffset,
       final int numValues,
-      final int[] decoded,
-      final int numBytes
+      final int[] decoded
   )
   {
     // big-endian:    0x000c0b0a stored 0c 0b 0a XX, read 0x0c0b0aXX >>> 8
-    for (int i = 0, pos = startOffset; i < numValues; i++, pos += numBytes) {
+    for (int i = 0, pos = startOffset; i < numValues; i++, pos += 3) {
       decoded[i] = buffer.getInt(pos) >>> bigEndianShift3;
     }
   }
@@ -173,12 +175,11 @@ public class BytePackedIntFormDecoder extends RandomAccessShapeShiftingFormDecod
       ByteBuffer buffer,
       int startOffset,
       final int numValues,
-      final int[] decoded,
-      final int numBytes
+      final int[] decoded
   )
   {
     // little-endian: 0x000c0b0a stored 0a 0b 0c XX, read 0xXX0c0b0a & 0x00FFFFFF
-    for (int i = 0, pos = startOffset; i < numValues; i++, pos += numBytes) {
+    for (int i = 0, pos = startOffset; i < numValues; i++, pos += 3) {
       decoded[i] = buffer.getInt(pos) & littleEndianMask3;
     }
   }
@@ -187,8 +188,7 @@ public class BytePackedIntFormDecoder extends RandomAccessShapeShiftingFormDecod
       ByteBuffer buffer,
       int startOffset,
       final int numValues,
-      final int[] decoded,
-      final int numBytes
+      final int[] decoded
   )
   {
     for (int i = 0, pos = startOffset; i < numValues; i++, pos += Integer.BYTES) {
@@ -196,7 +196,7 @@ public class BytePackedIntFormDecoder extends RandomAccessShapeShiftingFormDecod
     }
   }
 
-  private static void decodeByteSizedIntsUnsafe(long addr, final int numValues, final int[] decoded, final int numBytes)
+  private static void decodeByteSizedIntsUnsafe(long addr, final int numValues, final int[] decoded)
   {
     for (int i = 0; i < numValues; i++, addr++) {
       decoded[i] = unsafe.getByte(addr) & 0xFF;
@@ -206,8 +206,7 @@ public class BytePackedIntFormDecoder extends RandomAccessShapeShiftingFormDecod
   private static void decodeShortSizedIntsUnsafe(
       long addr,
       final int numValues,
-      final int[] decoded,
-      final int numBytes
+      final int[] decoded
   )
   {
     for (int i = 0; i < numValues; i++, addr += 2) {
@@ -218,12 +217,11 @@ public class BytePackedIntFormDecoder extends RandomAccessShapeShiftingFormDecod
   private static void decodeBigEndianOddSizedIntsUnsafe(
       long addr,
       final int numValues,
-      final int[] decoded,
-      final int numBytes
+      final int[] decoded
   )
   {
     // big-endian:    0x000c0b0a stored 0c 0b 0a XX, read 0x0c0b0aXX >>> 8
-    for (int i = 0; i < numValues; i++, addr += numBytes) {
+    for (int i = 0; i < numValues; i++, addr += 3) {
       decoded[i] = unsafe.getInt(addr) >>> bigEndianShift3;
     }
   }
@@ -231,17 +229,16 @@ public class BytePackedIntFormDecoder extends RandomAccessShapeShiftingFormDecod
   private static void decodeLittleEndianOddSizedIntsUnsafe(
       long addr,
       final int numValues,
-      final int[] decoded,
-      final int numBytes
+      final int[] decoded
   )
   {
     // little-endian: 0x000c0b0a stored 0a 0b 0c XX, read 0xXX0c0b0a & 0x00FFFFFF
-    for (int i = 0; i < numValues; i++, addr += numBytes) {
+    for (int i = 0; i < numValues; i++, addr += 3) {
       decoded[i] = unsafe.getInt(addr) & littleEndianMask3;
     }
   }
 
-  private static void decodeIntSizedIntsUnsafe(long addr, final int numValues, final int[] decoded, final int numBytes)
+  private static void decodeIntSizedIntsUnsafe(long addr, final int numValues, final int[] decoded)
   {
     for (int i = 0; i < numValues; i++, addr += 4) {
       decoded[i] = unsafe.getInt(addr);
@@ -251,12 +248,12 @@ public class BytePackedIntFormDecoder extends RandomAccessShapeShiftingFormDecod
   @FunctionalInterface
   public interface DecoderFunction
   {
-    void decode(ByteBuffer buffer, int startOffset, int numValues, int[] decoded, int numBytes);
+    void decode(ByteBuffer buffer, int startOffset, int numValues, int[] decoded);
   }
 
   @FunctionalInterface
   public interface UnsafeDecoderFunction
   {
-    void decode(long address, int numValues, int[] decoded, int numBytes);
+    void decode(long address, int numValues, int[] decoded);
   }
 }

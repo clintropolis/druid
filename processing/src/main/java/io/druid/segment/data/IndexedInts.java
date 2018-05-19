@@ -46,18 +46,18 @@ public interface IndexedInts extends HotLoopCallee
   int get(int index);
 
   @CalledFromHotLoop
-  default void get(int[] vector, int startIndex, int endIndex)
+  default void get(int[] out, int startIndex, int length)
   {
-    for (int outPos = 0, i = startIndex; i < endIndex; i++, outPos++) {
-      vector[outPos] = this.get(i);
+    for (int outPos = 0, i = startIndex; i < startIndex + length; i++, outPos++) {
+      out[outPos] = this.get(i);
     }
   }
 
   @CalledFromHotLoop
-  default void get(int[] vector, int[] indices, int numValues)
+  default void get(int[] out, int[] indices, int length)
   {
-    for (int i = 0; i < numValues; i++) {
-      vector[i] = this.get(indices[i]);
+    for (int i = 0; i < length; i++) {
+      out[i] = this.get(indices[i]);
     }
   }
 

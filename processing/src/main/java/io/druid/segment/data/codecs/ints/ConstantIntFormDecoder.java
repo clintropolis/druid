@@ -20,12 +20,14 @@
 package io.druid.segment.data.codecs.ints;
 
 import io.druid.segment.data.ShapeShiftingColumnarInts;
-import io.druid.segment.data.codecs.RandomAccessShapeShiftingFormDecoder;
+import io.druid.segment.data.codecs.BaseFormDecoder;
+import io.druid.segment.data.codecs.DirectFormDecoder;
 
 import java.nio.ByteOrder;
 import java.util.Arrays;
 
-public class ConstantIntFormDecoder extends RandomAccessShapeShiftingFormDecoder<ShapeShiftingColumnarInts>
+public final class ConstantIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
+    implements DirectFormDecoder<ShapeShiftingColumnarInts>
 {
   public ConstantIntFormDecoder(final byte logValuesPerChunk, final ByteOrder byteOrder)
   {
@@ -33,7 +35,7 @@ public class ConstantIntFormDecoder extends RandomAccessShapeShiftingFormDecoder
   }
 
   @Override
-  public final void transform(
+  public void transform(
       ShapeShiftingColumnarInts columnarInts,
       int startOffset,
       int endOffset,

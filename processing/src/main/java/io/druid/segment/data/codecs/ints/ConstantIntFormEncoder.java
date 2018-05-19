@@ -19,13 +19,12 @@
 
 package io.druid.segment.data.codecs.ints;
 
-import io.druid.segment.data.ShapeShiftingColumnarIntsSerializer.IntFormMetrics;
 import io.druid.segment.writeout.WriteOutBytes;
 
 import java.io.IOException;
 import java.nio.ByteOrder;
 
-public class ConstantIntFormEncoder extends IntFormEncoder
+public class ConstantIntFormEncoder extends BaseIntFormEncoder
 {
   public ConstantIntFormEncoder(final byte logValuesPerChunk, final ByteOrder byteOrder)
   {
@@ -57,6 +56,12 @@ public class ConstantIntFormEncoder extends IntFormEncoder
   }
 
   @Override
+  public double getSpeedModifier(IntFormMetrics metrics)
+  {
+    return 0.2; // count as 1 byte for sake of comparison, iow, never replace zero, but prefer this over rle
+  }
+
+  @Override
   public byte getHeader()
   {
     return IntCodecs.CONSTANT;
@@ -69,7 +74,7 @@ public class ConstantIntFormEncoder extends IntFormEncoder
   }
 
   @Override
-  public boolean hasRandomAccessSupport()
+  public boolean hasDirectAccessSupport()
   {
     return true;
   }

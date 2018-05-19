@@ -19,12 +19,11 @@
 
 package io.druid.segment.data.codecs.ints;
 
-import io.druid.segment.data.ShapeShiftingColumnarIntsSerializer.IntFormMetrics;
 import io.druid.segment.writeout.WriteOutBytes;
 
 import java.nio.ByteOrder;
 
-public class ZeroIntFormEncoder extends IntFormEncoder
+public class ZeroIntFormEncoder extends BaseIntFormEncoder
 {
   public ZeroIntFormEncoder(byte logValuesPerChunk, ByteOrder byteOrder)
   {
@@ -68,7 +67,7 @@ public class ZeroIntFormEncoder extends IntFormEncoder
   }
 
   @Override
-  public boolean hasRandomAccessSupport()
+  public boolean hasDirectAccessSupport()
   {
     return true;
   }

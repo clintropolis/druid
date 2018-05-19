@@ -20,13 +20,15 @@
 package io.druid.segment.data.codecs.ints;
 
 import io.druid.segment.data.ShapeShiftingColumnarInts;
-import io.druid.segment.data.codecs.RandomAccessShapeShiftingFormDecoder;
+import io.druid.segment.data.codecs.BaseFormDecoder;
+import io.druid.segment.data.codecs.DirectFormDecoder;
 import sun.nio.ch.DirectBuffer;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-public class UnencodedIntFormDecoder extends RandomAccessShapeShiftingFormDecoder<ShapeShiftingColumnarInts>
+public final class UnencodedIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
+    implements DirectFormDecoder<ShapeShiftingColumnarInts>
 {
   public UnencodedIntFormDecoder(byte logValuesPerChunk, ByteOrder byteOrder)
   {
@@ -34,7 +36,7 @@ public class UnencodedIntFormDecoder extends RandomAccessShapeShiftingFormDecode
   }
 
   @Override
-  public final void transform(
+  public void transform(
       ShapeShiftingColumnarInts columnarInts,
       int startOffset,
       int endOffset,
@@ -43,6 +45,7 @@ public class UnencodedIntFormDecoder extends RandomAccessShapeShiftingFormDecode
   {
     final ByteBuffer buffer = columnarInts.getCurrentReadBuffer();
     final int[] decodedChunk = columnarInts.getDecodedValues();
+    // todo: call out to bytepack decoder?
     for (int i = 0, pos = startOffset; i < numValues; i++, pos += Integer.BYTES) {
       decodedChunk[i] = buffer.getInt(pos);
     }

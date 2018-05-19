@@ -20,14 +20,14 @@
 package io.druid.segment.data.codecs.ints;
 
 import io.druid.segment.data.ShapeShiftingColumnarInts;
-import io.druid.segment.data.codecs.ShapeShiftingFormDecoder;
+import io.druid.segment.data.codecs.BaseFormDecoder;
 import sun.misc.Unsafe;
 import sun.nio.ch.DirectBuffer;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-public class RunLengthBytePackedIntFormDecoder extends ShapeShiftingFormDecoder<ShapeShiftingColumnarInts>
+public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
 {
   static final int mask1 = 0x7F;
   static final int mask2 = 0x7FFF;
@@ -63,7 +63,7 @@ public class RunLengthBytePackedIntFormDecoder extends ShapeShiftingFormDecoder<
   }
 
   @Override
-  public final void transform(
+  public void transform(
       ShapeShiftingColumnarInts columnarInts,
       int startOffset,
       int endOffset,
@@ -74,36 +74,35 @@ public class RunLengthBytePackedIntFormDecoder extends ShapeShiftingFormDecoder<
     final int[] decodedChunk = columnarInts.getDecodedValues();
     final byte numBytes = buffer.get(startOffset);
 
-    if (!byteOrder.equals(ByteOrder.nativeOrder())) {
-      switch (numBytes) {
-        case 1:
-          decodeByteSizedInts(buffer, startOffset + 1, numValues, decodedChunk, numBytes);
-          break;
-        case 2:
-          decodeShortSizedInts(buffer, startOffset + 1, numValues, decodedChunk, numBytes);
-          break;
-        case 3:
-          oddFunction.decode(buffer, startOffset + 1, numValues, decodedChunk, numBytes);
-          break;
-        case 4:
-          decodeIntSizedInts(buffer, startOffset + 1, numValues, decodedChunk, numBytes);
-          break;
-      }
-    } else {
-
+    if (buffer.isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
       long addr = ((DirectBuffer) buffer).address() + startOffset + 1;
       switch (numBytes) {
         case 1:
-          decodeByteSizedIntsUnsafe(addr, numValues, decodedChunk, numBytes);
+          decodeByteSizedIntsUnsafe(addr, numValues, decodedChunk);
           break;
         case 2:
-          decodeShortSizedIntsUnsafe(addr, numValues, decodedChunk, numBytes);
+          decodeShortSizedIntsUnsafe(addr, numValues, decodedChunk);
           break;
         case 3:
-          oddFunctionUnsafe.decode(addr, numValues, decodedChunk, numBytes);
+          oddFunctionUnsafe.decode(addr, numValues, decodedChunk);
           break;
         case 4:
-          decodeIntSizedIntsUnsafe(addr, numValues, decodedChunk, numBytes);
+          decodeIntSizedIntsUnsafe(addr, numValues, decodedChunk);
+          break;
+      }
+    } else {
+      switch (numBytes) {
+        case 1:
+          decodeByteSizedInts(buffer, startOffset + 1, numValues, decodedChunk);
+          break;
+        case 2:
+          decodeShortSizedInts(buffer, startOffset + 1, numValues, decodedChunk);
+          break;
+        case 3:
+          oddFunction.decode(buffer, startOffset + 1, numValues, decodedChunk);
+          break;
+        case 4:
+          decodeIntSizedInts(buffer, startOffset + 1, numValues, decodedChunk);
           break;
       }
     }
@@ -119,8 +118,7 @@ public class RunLengthBytePackedIntFormDecoder extends ShapeShiftingFormDecoder<
   private static void decodeByteSizedIntsUnsafe(
       long addr,
       final int numValues,
-      final int[] decoded,
-      final int numBytes
+      final int[] decoded
   )
   {
     int runCount;
@@ -143,8 +141,7 @@ public class RunLengthBytePackedIntFormDecoder extends ShapeShiftingFormDecoder<
   private static void decodeShortSizedIntsUnsafe(
       long addr,
       final int numValues,
-      final int[] decoded,
-      final int numBytes
+      final int[] decoded
   )
   {
     int runCount;
@@ -170,8 +167,7 @@ public class RunLengthBytePackedIntFormDecoder extends ShapeShiftingFormDecoder<
   private static void decodeBigEndianOddSizedIntsUnsafe(
       long addr,
       final int numValues,
-      final int[] decoded,
-      final int numBytes
+      final int[] decoded
   )
   {
     // todo: numBytes is always 3...
@@ -198,8 +194,7 @@ public class RunLengthBytePackedIntFormDecoder extends ShapeShiftingFormDecoder<
   private static void decodeLittleEndianOddSizedIntsUnsafe(
       long addr,
       final int numValues,
-      final int[] decoded,
-      final int numBytes
+      final int[] decoded
   )
   {
     // todo: numBytes is always 3...
@@ -224,7 +219,7 @@ public class RunLengthBytePackedIntFormDecoder extends ShapeShiftingFormDecoder<
     }
   }
 
-  private static void decodeIntSizedIntsUnsafe(long addr, final int numValues, final int[] decoded, final int numBytes)
+  private static void decodeIntSizedIntsUnsafe(long addr, final int numValues, final int[] decoded)
   {
     int runCount;
     int runValue;
@@ -249,8 +244,7 @@ public class RunLengthBytePackedIntFormDecoder extends ShapeShiftingFormDecoder<
       ByteBuffer buffer,
       final int startOffset,
       final int numValues,
-      final int[] decoded,
-      final int numBytes
+      final int[] decoded
   )
   {
     int runCount;
@@ -275,8 +269,7 @@ public class RunLengthBytePackedIntFormDecoder extends ShapeShiftingFormDecoder<
       ByteBuffer buffer,
       final int startOffset,
       final int numValues,
-      final int[] decoded,
-      final int numBytes
+      final int[] decoded
   )
   {
     int bufferPosition = startOffset;
@@ -303,25 +296,22 @@ public class RunLengthBytePackedIntFormDecoder extends ShapeShiftingFormDecoder<
       ByteBuffer buffer,
       final int startOffset,
       final int numValues,
-      final int[] decoded,
-      final int numBytes
+      final int[] decoded
   )
   {
-    // todo: numBytes is always 3...
-    // example for numBytes = 3
     // big-endian:    0x000c0b0a stored 0c 0b 0a XX, read 0x0c0b0aXX >>> 8
     int runCount;
     int runValue;
     int bufferPosition = startOffset;
     for (int i = 0; i < numValues; i++) {
       final int nextVal = buffer.getInt(bufferPosition) >>> bigEndianShift3;
-      bufferPosition += numBytes;
+      bufferPosition += 3;
       if ((nextVal & runMask3) == 0) {
         decoded[i] = nextVal;
       } else {
         runCount = nextVal & mask3;
         runValue = buffer.getInt(bufferPosition) >>> bigEndianShift3;
-        bufferPosition += numBytes;
+        bufferPosition += 3;
         do {
           decoded[i] = runValue;
         } while (--runCount > 0 && ++i < numValues);
@@ -333,12 +323,9 @@ public class RunLengthBytePackedIntFormDecoder extends ShapeShiftingFormDecoder<
       ByteBuffer buffer,
       final int startOffset,
       final int numValues,
-      final int[] decoded,
-      final int numBytes
+      final int[] decoded
   )
   {
-    // todo: numBytes is always 3...
-    // example for numBytes = 3
     // little-endian: 0x000c0b0a stored 0a 0b 0c XX, read 0xXX0c0b0a & 0x00FFFFFF
     int runCount;
     int runValue;
@@ -346,13 +333,13 @@ public class RunLengthBytePackedIntFormDecoder extends ShapeShiftingFormDecoder<
 
     for (int i = 0; i < numValues; i++) {
       final int nextVal = buffer.getInt(bufferPosition) & littleEndianMask3;
-      bufferPosition += numBytes;
+      bufferPosition += 3;
       if ((nextVal & runMask3) == 0) {
         decoded[i] = nextVal;
       } else {
         runCount = nextVal & mask3;
         runValue = buffer.getInt(bufferPosition) & littleEndianMask3;
-        bufferPosition += numBytes;
+        bufferPosition += 3;
         do {
           decoded[i] = runValue;
         } while (--runCount > 0 && ++i < numValues);
@@ -364,8 +351,7 @@ public class RunLengthBytePackedIntFormDecoder extends ShapeShiftingFormDecoder<
       ByteBuffer buffer,
       final int startOffset,
       final int numValues,
-      final int[] decoded,
-      final int numBytes
+      final int[] decoded
   )
   {
     int runCount;

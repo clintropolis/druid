@@ -20,7 +20,6 @@
 package io.druid.segment.data.codecs.ints;
 
 import io.druid.java.util.common.IAE;
-import io.druid.segment.data.ShapeShiftingColumnarIntsSerializer.IntFormMetrics;
 import io.druid.segment.writeout.WriteOutBytes;
 
 import java.io.IOException;
@@ -74,7 +73,7 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
     final byte numBytesBytepack = BytePackedIntFormEncoder.getNumBytesForMax(metrics.getMaxValue());
     final int bytepackSize = numBytesBytepack * numValues;
     final int projectedSize = projectSize(metrics);
-    if (!metrics.isSingleEncoder() && projectedSize > bytepackSize) {
+    if (projectedSize > bytepackSize) {
       return Integer.MAX_VALUE;
     }
     return projectedSize;
@@ -99,7 +98,7 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
         modifier = 1.0 - (((double) bytepackSize - (double) projectedSize)) / (double) bytepackSize;
         break;
     }
-    return 2.0 - modifier;
+    return Math.max(2.0 - modifier, 1.0);
   }
 
   @Override
@@ -149,9 +148,6 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
   @Override
   public boolean shouldAttemptCompression(IntFormMetrics hints)
   {
-    if (hints.isSingleEncoder()) {
-      return true;
-    }
     // if not very many runs, cheese it out of here since i am expensive-ish
     // todo: this is totally scientific. 100%. If we don't have at least 3/4 runs, then bail on trying compression since expensive
     if (hints.getNumRunValues() < (3 * (hints.getNumValues() / 4))) {

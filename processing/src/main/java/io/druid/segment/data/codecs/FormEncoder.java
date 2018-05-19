@@ -19,34 +19,42 @@
 
 package io.druid.segment.data.codecs;
 
-import io.druid.segment.data.ShapeShiftingColumn;
+import io.druid.segment.writeout.WriteOutBytes;
 
-import java.nio.ByteOrder;
+import java.io.IOException;
 
-/**
- * Base type for decoding chunks of all {@link ShapeShiftingColumn}
- *
- * @param <TColumn>
- */
-public abstract class ShapeShiftingFormDecoder<TColumn extends ShapeShiftingColumn>
+public interface FormEncoder<TChunk, TChunkMetrics extends FormMetrics>
 {
-  protected final byte logValuesPerChunk;
-  protected final int valuesPerChunk;
-  protected final ByteOrder byteOrder;
+  int getEncodedSize(
+      TChunk values,
+      int numValues,
+      TChunkMetrics metrics
+  ) throws IOException;
 
-  public ShapeShiftingFormDecoder(byte logValuesPerChunk, ByteOrder byteOrder)
+
+  void encode(
+      WriteOutBytes valuesOut,
+      TChunk values,
+      int numValues,
+      TChunkMetrics metrics
+  ) throws IOException;
+
+  byte getHeader();
+
+  String getName();
+
+  default double getSpeedModifier(TChunkMetrics metrics)
   {
-    this.logValuesPerChunk = logValuesPerChunk;
-    this.valuesPerChunk = 1 << logValuesPerChunk;
-    this.byteOrder = byteOrder;
+    return 1.0;
   }
 
-  public abstract void transform(
-      TColumn column,
-      int startOffset,
-      int endOffset,
-      int numValues
-  );
+  default boolean hasDirectAccessSupport()
+  {
+    return false;
+  }
 
-  public abstract byte getHeader();
+  default boolean preferDirectAccess()
+  {
+    return false;
+  }
 }

@@ -19,28 +19,15 @@
 
 package io.druid.segment.data.codecs.ints;
 
-import io.druid.segment.data.ShapeShiftingColumnarIntsSerializer.IntFormMetrics;
+import io.druid.segment.data.codecs.CompressibleFormEncoder;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-public abstract class CompressibleIntFormEncoder extends IntFormEncoder
+public abstract class CompressibleIntFormEncoder extends BaseIntFormEncoder
+    implements CompressibleFormEncoder<int[], IntFormMetrics>
 {
   public CompressibleIntFormEncoder(byte logValuesPerChunk, ByteOrder byteOrder)
   {
     super(logValuesPerChunk, byteOrder);
-  }
-
-  public abstract void encodeToBuffer(
-      ByteBuffer buffer,
-      int[] values,
-      int numValues,
-      IntFormMetrics metadata
-  ) throws IOException;
-
-  public boolean shouldAttemptCompression(IntFormMetrics hints)
-  {
-    return true;
   }
 }

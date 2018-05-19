@@ -19,9 +19,9 @@
 
 package io.druid.segment.data;
 
-import io.druid.collections.ResourceHolder;
 import io.druid.java.util.common.io.smoosh.FileSmoosher;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -29,32 +29,13 @@ import java.nio.channels.WritableByteChannel;
 
 public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<ColumnarInts>
 {
-  private final ByteBuffer buffer;
-  private final int numChunks;
-  private final int numValues;
-  private final byte logValuesPerChunk;
-  private final int offsetsSize;
-  private final ByteOrder byteOrder;
-  private final byte decodeStrategy;
-  private ResourceHolder<ByteBuffer> bufHolder;
+  private final ShapeShiftingColumnData columnData;
 
   private ShapeShiftingColumnarIntsSupplier(
-      final ByteBuffer buffer,
-      final int numChunks,
-      final int numValues,
-      final byte logValuesPerChunk,
-      final byte decodeStrategy,
-      final int offsetsSize,
-      final ByteOrder byteOrder
+      ShapeShiftingColumnData columnData
   )
   {
-    this.buffer = buffer;
-    this.numChunks = numChunks;
-    this.numValues = numValues;
-    this.logValuesPerChunk = logValuesPerChunk;
-    this.decodeStrategy = decodeStrategy;
-    this.offsetsSize = offsetsSize;
-    this.byteOrder = byteOrder;
+    this.columnData = columnData;
   }
 
   public static ShapeShiftingColumnarIntsSupplier fromByteBuffer(
@@ -62,87 +43,34 @@ public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<Colum
       final ByteOrder byteOrder
   )
   {
-    final ByteBuffer ourBuffer = buffer.slice().order(byteOrder);
-    final int numChunks = ourBuffer.getInt(1);
-    final int numValues = ourBuffer.getInt(1 + Integer.BYTES);
-    final byte logValuesPerChunk = ourBuffer.get(1 + 2 * Integer.BYTES);
-    final byte decodeStrategy = ourBuffer.get(1 + (2 * Integer.BYTES) + 1);
-    final int offsetsSize = ourBuffer.getInt(1 + (2 * Integer.BYTES) + 1 + 1);
-
-    ourBuffer.limit(
-        ShapeShiftingColumnarIntsSerializer.HEADER_BYTES + offsetsSize +
-        ourBuffer.getInt(ShapeShiftingColumnarIntsSerializer.HEADER_BYTES + numChunks * Integer.BYTES)
-    );
-
-    buffer.position(buffer.position() + ourBuffer.remaining());
-
-    return new ShapeShiftingColumnarIntsSupplier(
-        ourBuffer.slice().order(byteOrder),
-        numChunks,
-        numValues,
-        logValuesPerChunk,
-        decodeStrategy,
-        offsetsSize,
-        byteOrder
-    );
+    return fromByteBuffer(buffer, byteOrder, null);
   }
 
   public static ShapeShiftingColumnarIntsSupplier fromByteBuffer(
       final ByteBuffer buffer,
       final ByteOrder byteOrder,
-      final byte overrideDecodeStrategy
+      @Nullable Byte overrideDecodeStrategy
   )
   {
-    final ByteBuffer ourBuffer = buffer.slice().order(byteOrder);
-    final int numChunks = ourBuffer.getInt(1);
-    final int numValues = ourBuffer.getInt(1 + Integer.BYTES);
-    final byte logValuesPerChunk = ourBuffer.get(1 + 2 * Integer.BYTES);
-    final int offsetsSize = ourBuffer.getInt(1 + (2 * Integer.BYTES) + 1 + 1);
+    ShapeShiftingColumnData columnData =
+        new ShapeShiftingColumnData(buffer, byteOrder, overrideDecodeStrategy, true);
 
-    ourBuffer.limit(
-        ShapeShiftingColumnarIntsSerializer.HEADER_BYTES + offsetsSize +
-        ourBuffer.getInt(ShapeShiftingColumnarIntsSerializer.HEADER_BYTES + numChunks * Integer.BYTES)
-    );
-
-    buffer.position(buffer.position() + ourBuffer.remaining());
-
-    return new ShapeShiftingColumnarIntsSupplier(
-        ourBuffer.slice().order(byteOrder),
-        numChunks,
-        numValues,
-        logValuesPerChunk,
-        overrideDecodeStrategy,
-        offsetsSize,
-        byteOrder
-    );
+    return new ShapeShiftingColumnarIntsSupplier(columnData);
   }
 
   @Override
   public ColumnarInts get()
   {
-    return decodeStrategy == 0 ?
-           new ShapeShiftingColumnarInts(
-               buffer,
-               numChunks,
-               numValues,
-               logValuesPerChunk,
-               offsetsSize,
-               byteOrder
-           ) :
-           new ShapeShiftingBlockColumnarInts(
-               buffer,
-               numChunks,
-               numValues,
-               logValuesPerChunk,
-               offsetsSize,
-               byteOrder
-           );
+    if (columnData.getDecodeStrategy() == ShapeShiftingColumnSerializer.DecodeStrategy.BLOCK.byteValue) {
+      return new ShapeShiftingBlockColumnarInts(columnData);
+    }
+    return new ShapeShiftingColumnarInts(columnData);
   }
 
   @Override
   public long getSerializedSize() throws IOException
   {
-    return buffer.remaining();
+    return columnData.getBaseBuffer().remaining();
   }
 
   @Override

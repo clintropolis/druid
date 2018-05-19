@@ -20,13 +20,15 @@
 package io.druid.segment.data.codecs.ints;
 
 import io.druid.java.util.common.IAE;
-import io.druid.segment.data.ShapeShiftingColumnarIntsSerializer.IntFormMetrics;
 import io.druid.segment.writeout.WriteOutBytes;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+/**
+ * Byte packing integer encoder based on {@link io.druid.segment.data.CompressedVSizeColumnarIntsSerializer}
+ */
 public class BytePackedIntFormEncoder extends CompressibleIntFormEncoder
 {
   public BytePackedIntFormEncoder(final byte logValuesPerChunk, ByteOrder byteOrder)
@@ -126,9 +128,14 @@ public class BytePackedIntFormEncoder extends CompressibleIntFormEncoder
   }
 
   @Override
-  public boolean hasRandomAccessSupport()
+  public boolean hasDirectAccessSupport()
   {
     return true;
   }
 
+  @Override
+  public boolean preferDirectAccess()
+  {
+    return true;
+  }
 }

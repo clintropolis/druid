@@ -19,7 +19,6 @@
 
 package io.druid.segment.data.codecs.ints;
 
-import io.druid.segment.data.ShapeShiftingColumnarIntsSerializer.IntFormMetrics;
 import io.druid.segment.writeout.WriteOutBytes;
 
 import java.io.IOException;
@@ -80,7 +79,13 @@ public class UnencodedIntFormEncoder extends CompressibleIntFormEncoder
   }
 
   @Override
-  public boolean hasRandomAccessSupport()
+  public boolean hasDirectAccessSupport()
+  {
+    return true;
+  }
+
+  @Override
+  public boolean preferDirectAccess()
   {
     return true;
   }

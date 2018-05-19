@@ -33,7 +33,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.WritableByteChannel;
 
-public class FastPforIntsSerializer extends SingleValueColumnarIntsSerializer
+public class FastPforIntsSerializer implements SingleValueColumnarIntsSerializer
 {
   // version (byte) | numChunks (int) | numValues (int) | logValuesPerChunk (byte) | offsetsOutSize (int)
   static final int HEADER_BYTES = 1 + 2 * Integer.BYTES + 1 + Integer.BYTES;
