@@ -74,5 +74,4 @@ public final class ZeroIntFormDecoder extends BaseFormDecoder<ShapeShiftingColum
   {
     return IntCodecs.ZERO;
   }
-
 }

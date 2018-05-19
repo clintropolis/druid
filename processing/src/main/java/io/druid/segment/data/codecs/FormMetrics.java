@@ -36,5 +36,4 @@ public abstract class FormMetrics
   }
 
   public abstract int getNumValues();
-
 }

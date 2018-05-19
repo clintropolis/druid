@@ -19,6 +19,7 @@
 
 package io.druid.segment.data.codecs.ints;
 
+import io.druid.segment.data.ShapeShiftingColumn;
 import io.druid.segment.data.ShapeShiftingColumnarInts;
 import io.druid.segment.data.codecs.BaseFormDecoder;
 import me.lemire.integercompression.IntWrapper;
@@ -31,7 +32,7 @@ import java.nio.ByteOrder;
 
 public final class LemireIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
 {
-  private static final Unsafe unsafe = ShapeShiftingColumnarInts.getTheUnsafe();
+  private static final Unsafe unsafe = ShapeShiftingColumn.getTheUnsafe();
   private final SkippableIntegerCODEC codec;
 
   public LemireIntFormDecoder(

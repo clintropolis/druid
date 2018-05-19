@@ -28,7 +28,7 @@ import java.nio.ByteOrder;
 
 abstract class BaseIntFormEncoder extends BaseFormEncoder<int[], IntFormMetrics> implements IntFormEncoder
 {
-  final ByteBuffer intToBytesHelperBuffer;
+  private final ByteBuffer intToBytesHelperBuffer;
 
   BaseIntFormEncoder(byte logValuesPerChunk, ByteOrder byteOrder)
   {
@@ -36,14 +36,14 @@ abstract class BaseIntFormEncoder extends BaseFormEncoder<int[], IntFormMetrics>
     intToBytesHelperBuffer = ByteBuffer.allocate(Integer.BYTES).order(byteOrder);
   }
 
-  protected ByteBuffer toBytes(final int n)
+  protected final ByteBuffer toBytes(final int n)
   {
     intToBytesHelperBuffer.putInt(0, n);
     intToBytesHelperBuffer.rewind();
     return intToBytesHelperBuffer;
   }
 
-  void writeOutValue(WriteOutBytes valuesOut, int numBytes, int value) throws IOException
+  final void writeOutValue(WriteOutBytes valuesOut, int numBytes, int value) throws IOException
   {
     intToBytesHelperBuffer.putInt(0, value);
     intToBytesHelperBuffer.position(0);
@@ -54,7 +54,7 @@ abstract class BaseIntFormEncoder extends BaseFormEncoder<int[], IntFormMetrics>
     }
   }
 
-  void writeOutValue(ByteBuffer valuesOut, int numBytes, int value)
+  final void writeOutValue(ByteBuffer valuesOut, int numBytes, int value)
   {
     intToBytesHelperBuffer.putInt(0, value);
     intToBytesHelperBuffer.position(0);

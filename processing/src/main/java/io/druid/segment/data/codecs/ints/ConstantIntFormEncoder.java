@@ -78,5 +78,4 @@ public class ConstantIntFormEncoder extends BaseIntFormEncoder
   {
     return true;
   }
-
 }

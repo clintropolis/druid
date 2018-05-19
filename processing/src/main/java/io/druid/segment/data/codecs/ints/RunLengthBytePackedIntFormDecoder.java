@@ -19,6 +19,7 @@
 
 package io.druid.segment.data.codecs.ints;
 
+import io.druid.segment.data.ShapeShiftingColumn;
 import io.druid.segment.data.ShapeShiftingColumnarInts;
 import io.druid.segment.data.codecs.BaseFormDecoder;
 import sun.misc.Unsafe;
@@ -39,14 +40,11 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
   static final int runMask3 = 0x800000;
   static final int runMask4 = 0x80000000;
 
-  public static final int bigEndianShift3 = Integer.SIZE - 24;
-  public static final int littleEndianMask3 = (int) ((1L << 24) - 1);
-
-  private static final Unsafe unsafe = ShapeShiftingColumnarInts.getTheUnsafe();
+  private static final Unsafe unsafe = ShapeShiftingColumn.getTheUnsafe();
 
 
-  final BytePackedIntFormDecoder.DecoderFunction oddFunction;
-  final BytePackedIntFormDecoder.UnsafeDecoderFunction oddFunctionUnsafe;
+  private final BytePackedIntFormDecoder.DecoderFunction oddFunction;
+  private final BytePackedIntFormDecoder.UnsafeDecoderFunction oddFunctionUnsafe;
 
 
   public RunLengthBytePackedIntFormDecoder(final byte logValuesPerChunk, ByteOrder byteOrder)
@@ -176,13 +174,13 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
     int runCount;
     int runValue;
     for (int i = 0; i < numValues; i++) {
-      final int nextVal = unsafe.getInt(addr) >>> bigEndianShift3;
+      final int nextVal = unsafe.getInt(addr) >>> BytePackedIntFormDecoder.bigEndianShift3;
       addr += 3;
       if ((nextVal & runMask3) == 0) {
         decoded[i] = nextVal;
       } else {
         runCount = nextVal & mask3;
-        runValue = unsafe.getInt(addr) >>> bigEndianShift3;
+        runValue = unsafe.getInt(addr) >>> BytePackedIntFormDecoder.bigEndianShift3;
         addr += 3;
         do {
           decoded[i] = runValue;
@@ -204,13 +202,13 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
     int runValue;
 
     for (int i = 0; i < numValues; i++) {
-      final int nextVal = unsafe.getInt(addr) & littleEndianMask3;
+      final int nextVal = unsafe.getInt(addr) & BytePackedIntFormDecoder.littleEndianMask3;
       addr += 3;
       if ((nextVal & runMask3) == 0) {
         decoded[i] = nextVal;
       } else {
         runCount = nextVal & mask3;
-        runValue = unsafe.getInt(addr) & littleEndianMask3;
+        runValue = unsafe.getInt(addr) & BytePackedIntFormDecoder.littleEndianMask3;
         addr += 3;
         do {
           decoded[i] = runValue;
@@ -304,13 +302,13 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
     int runValue;
     int bufferPosition = startOffset;
     for (int i = 0; i < numValues; i++) {
-      final int nextVal = buffer.getInt(bufferPosition) >>> bigEndianShift3;
+      final int nextVal = buffer.getInt(bufferPosition) >>> BytePackedIntFormDecoder.bigEndianShift3;
       bufferPosition += 3;
       if ((nextVal & runMask3) == 0) {
         decoded[i] = nextVal;
       } else {
         runCount = nextVal & mask3;
-        runValue = buffer.getInt(bufferPosition) >>> bigEndianShift3;
+        runValue = buffer.getInt(bufferPosition) >>> BytePackedIntFormDecoder.bigEndianShift3;
         bufferPosition += 3;
         do {
           decoded[i] = runValue;
@@ -332,13 +330,13 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
     int bufferPosition = startOffset;
 
     for (int i = 0; i < numValues; i++) {
-      final int nextVal = buffer.getInt(bufferPosition) & littleEndianMask3;
+      final int nextVal = buffer.getInt(bufferPosition) & BytePackedIntFormDecoder.littleEndianMask3;
       bufferPosition += 3;
       if ((nextVal & runMask3) == 0) {
         decoded[i] = nextVal;
       } else {
         runCount = nextVal & mask3;
-        runValue = buffer.getInt(bufferPosition) & littleEndianMask3;
+        runValue = buffer.getInt(bufferPosition) & BytePackedIntFormDecoder.littleEndianMask3;
         bufferPosition += 3;
         do {
           decoded[i] = runValue;

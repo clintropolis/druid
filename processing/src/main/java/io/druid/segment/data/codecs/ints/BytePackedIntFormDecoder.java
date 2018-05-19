@@ -19,6 +19,7 @@
 
 package io.druid.segment.data.codecs.ints;
 
+import io.druid.segment.data.ShapeShiftingColumn;
 import io.druid.segment.data.ShapeShiftingColumnarInts;
 import io.druid.segment.data.codecs.BaseFormDecoder;
 import io.druid.segment.data.codecs.DirectFormDecoder;
@@ -35,17 +36,16 @@ import java.nio.ByteOrder;
 public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
     implements DirectFormDecoder<ShapeShiftingColumnarInts>
 {
-  static final Unsafe unsafe = ShapeShiftingColumnarInts.getTheUnsafe();
+  private static final Unsafe unsafe = ShapeShiftingColumn.getTheUnsafe();
   public static final int bigEndianShift3 = Integer.SIZE - 24;
   public static final int littleEndianMask3 = (int) ((1L << 24) - 1);
-  final DecoderFunction oddFunction;
-  final UnsafeDecoderFunction oddFunctionUnsafe;
-  final boolean isBigEndian;
+  private final DecoderFunction oddFunction;
+  private final UnsafeDecoderFunction oddFunctionUnsafe;
 
   public BytePackedIntFormDecoder(final byte logValuesPerChunk, ByteOrder byteOrder)
   {
     super(logValuesPerChunk, byteOrder);
-    this.isBigEndian = byteOrder.equals(ByteOrder.BIG_ENDIAN);
+    boolean isBigEndian = byteOrder.equals(ByteOrder.BIG_ENDIAN);
     this.oddFunction = !isBigEndian
                        ? BytePackedIntFormDecoder::decodeLittleEndianOddSizedInts
                        : BytePackedIntFormDecoder::decodeBigEndianOddSizedInts;
@@ -134,7 +134,7 @@ public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftin
     return IntCodecs.BYTEPACK;
   }
 
-  static void decodeByteSizedInts(
+  private static void decodeByteSizedInts(
       ByteBuffer buffer,
       int startOffset,
       final int numValues,
@@ -146,7 +146,7 @@ public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftin
     }
   }
 
-  static void decodeShortSizedInts(
+  private static void decodeShortSizedInts(
       ByteBuffer buffer,
       int startOffset,
       final int numValues,
@@ -158,7 +158,7 @@ public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftin
     }
   }
 
-  static void decodeBigEndianOddSizedInts(
+  private static void decodeBigEndianOddSizedInts(
       ByteBuffer buffer,
       int startOffset,
       final int numValues,
@@ -171,7 +171,7 @@ public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftin
     }
   }
 
-  static void decodeLittleEndianOddSizedInts(
+  private static void decodeLittleEndianOddSizedInts(
       ByteBuffer buffer,
       int startOffset,
       final int numValues,
@@ -184,7 +184,7 @@ public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftin
     }
   }
 
-  static void decodeIntSizedInts(
+  private static void decodeIntSizedInts(
       ByteBuffer buffer,
       int startOffset,
       final int numValues,

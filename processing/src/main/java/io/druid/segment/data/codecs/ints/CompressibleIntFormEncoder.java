@@ -26,7 +26,7 @@ import java.nio.ByteOrder;
 public abstract class CompressibleIntFormEncoder extends BaseIntFormEncoder
     implements CompressibleFormEncoder<int[], IntFormMetrics>
 {
-  public CompressibleIntFormEncoder(byte logValuesPerChunk, ByteOrder byteOrder)
+  CompressibleIntFormEncoder(byte logValuesPerChunk, ByteOrder byteOrder)
   {
     super(logValuesPerChunk, byteOrder);
   }

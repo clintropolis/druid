@@ -73,6 +73,7 @@ public class IntFormMetrics extends FormMetrics
     numValues++;
   }
 
+  @Override
   public int getNumValues()
   {
     return numValues;

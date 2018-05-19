@@ -78,5 +78,4 @@ public final class ConstantIntFormDecoder extends BaseFormDecoder<ShapeShiftingC
   {
     return IntCodecs.CONSTANT;
   }
-
 }

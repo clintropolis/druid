@@ -90,11 +90,7 @@ public class UnencodedIntFormEncoder extends CompressibleIntFormEncoder
     return true;
   }
 
-  private void encodeValues(
-      WriteOutFunction writer,
-      int[] values,
-      int numValues
-  ) throws IOException
+  private void encodeValues(WriteOutFunction writer, int[] values, int numValues) throws IOException
   {
     for (int i = 0; i < numValues; i++) {
       writer.write(values[i]);
