@@ -76,8 +76,12 @@ public class BaseColumnarIntsBenchmark
   {
     int numBytes = VSizeColumnarInts.getNumBytesForMax(maxValue);
 
-    IndexSpec.ShapeShiftAggressionLevel aggro = IndexSpec.ShapeShiftAggressionLevel.AGGRO;
-    final byte blockSize = aggro.getBlockSize();
+    IndexSpec.ShapeShiftAggressionLevel aggro = encoding.endsWith("-13")
+                                                ? IndexSpec.ShapeShiftAggressionLevel.MIDDLE
+                                                : encoding.endsWith("-12")
+                                                  ? IndexSpec.ShapeShiftAggressionLevel.TIMID
+                                                  : IndexSpec.ShapeShiftAggressionLevel.AGGRO;
+    byte blockSize = aggro.getBlockSize();
     IndexSpec.ShapeShiftOptimizationTarget optimizationTarget =
         IndexSpec.ShapeShiftOptimizationTarget.FASTBUTSMALLISH;
 
@@ -266,10 +270,16 @@ public class BaseColumnarIntsBenchmark
         ssfastPforSerializer.writeTo(output, null);
         return (int) ssfastPforSerializer.getSerializedSize();
       case "shapeshift":
+      case "shapeshift-13":
+      case "shapeshift-12":
       case "shapeshift-lazy":
       case "shapeshift-eager":
       case "shapeshift-faster":
+      case "shapeshift-faster-13":
+      case "shapeshift-faster-12":
       case "shapeshift-smaller":
+      case "shapeshift-smaller-13":
+      case "shapeshift-smaller-12":
         final SkippableIntegerCODEC sscodec = new SkippableComposition(new FastPFOR(), new VariableByte());
         final CompressibleIntFormEncoder rle = new RunLengthBytePackedIntFormEncoder(
             blockSize,
@@ -386,6 +396,12 @@ public class BaseColumnarIntsBenchmark
       case "shapeshift-lz4-only":
       case "shapeshift-smaller":
       case "shapeshift-faster":
+      case "shapeshift-13":
+      case "shapeshift-smaller-13":
+      case "shapeshift-faster-13":
+      case "shapeshift-12":
+      case "shapeshift-smaller-12":
+      case "shapeshift-faster-12":
         return ShapeShiftingColumnarIntsSupplier.fromByteBuffer(buffer, ByteOrder.LITTLE_ENDIAN).get();
       case "shapeshift-lazy":
         return ShapeShiftingColumnarIntsSupplier.fromByteBuffer(buffer, ByteOrder.LITTLE_ENDIAN, (byte) 1).get();
