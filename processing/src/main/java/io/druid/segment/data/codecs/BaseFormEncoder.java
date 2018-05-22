@@ -21,6 +21,13 @@ package io.druid.segment.data.codecs;
 
 import java.nio.ByteOrder;
 
+/**
+ * Common base type for {@link FormEncoder} implementations of any type of
+ * {@link io.druid.segment.data.ShapeShiftingColumnSerializer}
+ *
+ * @param <TChunk>
+ * @param <TChunkMetrics>
+ */
 public abstract class BaseFormEncoder<TChunk, TChunkMetrics extends FormMetrics>
     implements FormEncoder<TChunk, TChunkMetrics>
 {

@@ -25,6 +25,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+/**
+ * Unencoded integer encoder that writes full sized integer values as is.
+ *
+ * layout:
+ * | header: IntCodecs.UNENCODED (byte) | values  (numValues * Integer.BYTES) |
+ */
 public class UnencodedIntFormEncoder extends CompressibleIntFormEncoder
 {
   public UnencodedIntFormEncoder(byte logValuesPerChunk, ByteOrder byteOrder)

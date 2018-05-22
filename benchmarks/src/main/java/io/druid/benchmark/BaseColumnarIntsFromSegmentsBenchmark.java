@@ -35,17 +35,17 @@ import java.util.ArrayList;
 public class BaseColumnarIntsFromSegmentsBenchmark extends BaseColumnarIntsBenchmark
 {
   //CHECKSTYLE.OFF: Regexp
-//  @Param({
-//      "batch-twitter-values-int-geo.txt",
-////      "batch-twitter-values-int-hashtags.txt", multivalue?
-//      "batch-twitter-values-int-lang.txt",
-//      "batch-twitter-values-int-retweet.txt",
-//      "batch-twitter-values-int-screen_name.txt",
-//      "batch-twitter-values-int-source.txt",
-//      "batch-twitter-values-int-text.txt",
-//      "batch-twitter-values-int-utc_offset.txt",
-//      "batch-twitter-values-int-verified.txt"
-//  })
+  @Param({
+      "batch-twitter-values-int-geo.txt",
+//      "batch-twitter-values-int-hashtags.txt", multivalue?
+      "batch-twitter-values-int-lang.txt",
+      "batch-twitter-values-int-retweet.txt",
+      "batch-twitter-values-int-screen_name.txt",
+      "batch-twitter-values-int-source.txt",
+      "batch-twitter-values-int-text.txt",
+      "batch-twitter-values-int-utc_offset.txt",
+      "batch-twitter-values-int-verified.txt"
+  })
 
 //  @Param({
 //      "batch-wiki-values-int-channel.txt",
@@ -116,26 +116,26 @@ public class BaseColumnarIntsFromSegmentsBenchmark extends BaseColumnarIntsBench
 //  })
 
 
-  @Param({
-      "tpch-lineitem-1g-values-int-l_comment.txt",
-      "tpch-lineitem-1g-values-int-l_commitdate.txt",
-      "tpch-lineitem-1g-values-int-l_linenumber.txt",
-      "tpch-lineitem-1g-values-int-l_linestatus.txt",
-      "tpch-lineitem-1g-values-int-l_orderkey.txt",
-      "tpch-lineitem-1g-values-int-l_partkey.txt",
-      "tpch-lineitem-1g-values-int-l_receiptdate.txt",
-      "tpch-lineitem-1g-values-int-l_returnflag.txt",
-      "tpch-lineitem-1g-values-int-l_shipinstruct.txt",
-      "tpch-lineitem-1g-values-int-l_shipmode.txt",
-      "tpch-lineitem-1g-values-int-l_suppkey.txt"
-  })
+//  @Param({
+//      "tpch-lineitem-1g-values-int-l_comment.txt",
+//      "tpch-lineitem-1g-values-int-l_commitdate.txt",
+//      "tpch-lineitem-1g-values-int-l_linenumber.txt",
+//      "tpch-lineitem-1g-values-int-l_linestatus.txt",
+//      "tpch-lineitem-1g-values-int-l_orderkey.txt",
+//      "tpch-lineitem-1g-values-int-l_partkey.txt",
+//      "tpch-lineitem-1g-values-int-l_receiptdate.txt",
+//      "tpch-lineitem-1g-values-int-l_returnflag.txt",
+//      "tpch-lineitem-1g-values-int-l_shipinstruct.txt",
+//      "tpch-lineitem-1g-values-int-l_shipmode.txt",
+//      "tpch-lineitem-1g-values-int-l_suppkey.txt"
+//  })
 
   String fileName;
 
-//  @Param({"3259585"})       ?// twitter
+  @Param({"3259585"})       // twitter
 //  @Param({"533652"})        // wiki
 //  @Param({"3783642"})       // clarity
-  @Param({"6001215"})         // tpch-lineitem-1g
+//  @Param({"6001215"})         // tpch-lineitem-1g
   int rows;
 
 

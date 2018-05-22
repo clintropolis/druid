@@ -37,6 +37,7 @@ import io.druid.segment.data.codecs.ints.BytePackedIntFormEncoder;
 import io.druid.segment.data.codecs.ints.CompressedIntFormEncoder;
 import io.druid.segment.data.codecs.ints.CompressibleIntFormEncoder;
 import io.druid.segment.data.codecs.ints.ConstantIntFormEncoder;
+import io.druid.segment.data.codecs.ints.IntCodecs;
 import io.druid.segment.data.codecs.ints.IntFormEncoder;
 import io.druid.segment.data.codecs.ints.LemireIntFormEncoder;
 import io.druid.segment.data.codecs.ints.RunLengthBytePackedIntFormEncoder;
@@ -254,7 +255,12 @@ public class BaseColumnarIntsBenchmark
         return (int) sslzrleSerializer.getSerializedSize();
       case "shapeshift-fastpfor":
         final SkippableIntegerCODEC ssfastPforcodec = new SkippableComposition(new FastPFOR(), new VariableByte());
-        final IntFormEncoder[] dfastcodecs = new IntFormEncoder[]{new LemireIntFormEncoder(ssfastPforcodec, blockSize)};
+        final IntFormEncoder[] dfastcodecs = new IntFormEncoder[]{new LemireIntFormEncoder(
+            blockSize,
+            IntCodecs.FASTPFOR,
+            "fastpfor",
+            ssfastPforcodec
+        )};
         final ShapeShiftingColumnarIntsSerializer ssfastPforSerializer =
             new ShapeShiftingColumnarIntsSerializer(
                 writeOutMedium,
@@ -308,15 +314,15 @@ public class BaseColumnarIntsBenchmark
                 compressedDataBuffer,
                 uncompressedDataBuffer
             ),
-            new LemireIntFormEncoder(sscodec, blockSize)
+            new LemireIntFormEncoder(blockSize, IntCodecs.FASTPFOR, "fastpfor", sscodec)
         };
         final ShapeShiftingColumnarIntsSerializer ssSerializer =
             new ShapeShiftingColumnarIntsSerializer(
                 writeOutMedium,
                 sscodecs,
-                encoding.equals("shapeshift-smaller")
+                encoding.contains("shapeshift-smaller")
                 ? IndexSpec.ShapeShiftOptimizationTarget.SMALLER
-                : encoding.equals("shapeshift-faster")
+                : encoding.contains("shapeshift-faster")
                   ? IndexSpec.ShapeShiftOptimizationTarget.FASTER
                   : optimizationTarget,
                 aggro,
@@ -567,7 +573,7 @@ public class BaseColumnarIntsBenchmark
 
 
   //@Param({"shapeshift-bytepack", "shapeshift-rle-bytepack", "shapeshift-fastpfor", "shapeshift-lz4-bytepack", "shapeshift-lz4-rle-bytepack", "compressed-vsize-byte"})
-  @Param({"shapeshift", "shapeshift-smaller", "shapeshift-faster", "compressed-vsize-byte"})
+  @Param({"shapeshift-12", "compressed-vsize-byte"})
   String encoding;
 
   Random rand = new Random(0);

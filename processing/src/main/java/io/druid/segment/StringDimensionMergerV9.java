@@ -59,6 +59,7 @@ import io.druid.segment.data.codecs.ints.BytePackedIntFormEncoder;
 import io.druid.segment.data.codecs.ints.CompressedIntFormEncoder;
 import io.druid.segment.data.codecs.ints.CompressibleIntFormEncoder;
 import io.druid.segment.data.codecs.ints.ConstantIntFormEncoder;
+import io.druid.segment.data.codecs.ints.IntCodecs;
 import io.druid.segment.data.codecs.ints.IntFormEncoder;
 import io.druid.segment.data.codecs.ints.LemireIntFormEncoder;
 import io.druid.segment.data.codecs.ints.RunLengthBytePackedIntFormEncoder;
@@ -242,7 +243,7 @@ public class StringDimensionMergerV9 implements DimensionMergerV9
           encodedValueSerializer = new VSizeColumnarIntsSerializer(segmentWriteOutMedium, cardinality);
         }
       } else {
-        //todo: this is super lame.
+        //todo: this is super lame, maybe put in a factory somewhere?
         final ByteOrder byteOrder = IndexIO.BYTE_ORDER;
         final byte blockSize = indexSpec.getAggressionLevel().getBlockSize();
         final ByteBuffer uncompressedDataBuffer =
@@ -283,7 +284,7 @@ public class StringDimensionMergerV9 implements DimensionMergerV9
                 compressedDataBuffer,
                 uncompressedDataBuffer
             ),
-            new LemireIntFormEncoder(sscodec, blockSize)
+            new LemireIntFormEncoder(blockSize, IntCodecs.FASTPFOR, "fastpfor", sscodec)
         };
         encodedValueSerializer =
             new ShapeShiftingColumnarIntsSerializer(

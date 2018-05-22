@@ -78,7 +78,7 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn implements Co
         .put(IntCodecs.BYTEPACK, new BytePackedIntFormDecoder(logValuesPerChunk, byteOrder))
         .put(IntCodecs.RLE_BYTEPACK, new RunLengthBytePackedIntFormDecoder(logValuesPerChunk, byteOrder))
         .put(IntCodecs.COMPRESSED, new CompressedFormDecoder<>(logValuesPerChunk, byteOrder, IntCodecs.COMPRESSED))
-        .put(IntCodecs.FASTPFOR, new LemireIntFormDecoder(fastPforCodec, logValuesPerChunk))
+        .put(IntCodecs.FASTPFOR, new LemireIntFormDecoder(logValuesPerChunk, IntCodecs.FASTPFOR, fastPforCodec))
         .build();
     oddSizeValueGet = byteOrder.equals(ByteOrder.LITTLE_ENDIAN)
                       ? (_buffer, pos) -> _buffer.getInt(pos) & BytePackedIntFormDecoder.littleEndianMask3
@@ -118,6 +118,12 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn implements Co
   protected int headerSize()
   {
     return ShapeShiftingColumnarIntsSerializer.HEADER_BYTES;
+  }
+
+  @Override
+  protected FormDecoder<? extends ShapeShiftingColumn> getFormDecoder(byte header)
+  {
+    return decoders.get(header);
   }
 
   @Override

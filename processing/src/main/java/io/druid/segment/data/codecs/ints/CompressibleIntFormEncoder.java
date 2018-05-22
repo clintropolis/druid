@@ -23,6 +23,10 @@ import io.druid.segment.data.codecs.CompressibleFormEncoder;
 
 import java.nio.ByteOrder;
 
+/**
+ * Base type for {@link IntFormEncoder} implementations which also implement {@link CompressibleFormEncoder} and are
+ * compressible with a {@link io.druid.segment.data.CompressionStrategy}
+ */
 public abstract class CompressibleIntFormEncoder extends BaseIntFormEncoder
     implements CompressibleFormEncoder<int[], IntFormMetrics>
 {

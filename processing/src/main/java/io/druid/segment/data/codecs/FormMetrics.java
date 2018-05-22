@@ -21,19 +21,58 @@ package io.druid.segment.data.codecs;
 
 import io.druid.segment.IndexSpec;
 
+/**
+ * Base type for collecting statistics about a block of values for
+ * {@link io.druid.segment.data.ShapeShiftingColumnSerializer} to provide to {@link FormEncoder} implementations to
+ * make decisions about what encoding to employ.
+ */
 public abstract class FormMetrics
 {
   private IndexSpec.ShapeShiftOptimizationTarget optimizationTarget;
+
+  private byte compressionBufferHolder = -1;
 
   public FormMetrics(IndexSpec.ShapeShiftOptimizationTarget optimizationTarget)
   {
     this.optimizationTarget = optimizationTarget;
   }
 
+  /**
+   * Get {@link IndexSpec.ShapeShiftOptimizationTarget}, useful for {@link FormEncoder}
+   * implementations to adapt their calculations to the supplied indexing preference
+   *
+   * @return
+   */
   public IndexSpec.ShapeShiftOptimizationTarget getOptimizationTarget()
   {
     return this.optimizationTarget;
   }
 
+  /**
+   * Total number of rows processed for this block of values
+   *
+   * @return
+   */
   public abstract int getNumValues();
+
+  /**
+   * byte header value of last encoder to use compressed bytebuffer, allowing re-use if encoder is chosen rather than
+   * recompressing
+   *
+   * @return
+   */
+  public byte getCompressionBufferHolder()
+  {
+    return compressionBufferHolder;
+  }
+
+  /**
+   * Set encoder header as holder of
+   *
+   * @param encoder
+   */
+  public void setCompressionBufferHolder(byte encoder)
+  {
+    this.compressionBufferHolder = encoder;
+  }
 }

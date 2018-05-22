@@ -27,7 +27,12 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 /**
- * Byte packing integer encoder based on {@link io.druid.segment.data.CompressedVSizeColumnarIntsSerializer}
+ * Byte packing integer encoder based on {@link io.druid.segment.data.CompressedVSizeColumnarIntsSerializer}. This
+ * encoder is a {@link CompressibleIntFormEncoder} and can be compressed with any
+ * {@link io.druid.segment.data.CompressionStrategy}.
+ *
+ * layout:
+ * | header: IntCodecs.BYTEPACK (byte) | numBytes (byte) | encoded values  (numValues * numBytes) |
  */
 public class BytePackedIntFormEncoder extends CompressibleIntFormEncoder
 {
@@ -52,11 +57,6 @@ public class BytePackedIntFormEncoder extends CompressibleIntFormEncoder
     return 4;
   }
 
-  static int getPaddingBytes(int numBytes)
-  {
-    return numBytes == 3 ? 1 : 0;
-  }
-
   @Override
   public int getEncodedSize(
       int[] values,
@@ -65,7 +65,7 @@ public class BytePackedIntFormEncoder extends CompressibleIntFormEncoder
   )
   {
     final int numBytes = getNumBytesForMax(metrics.getMaxValue());
-    return (numValues * numBytes) + getPaddingBytes(numBytes);
+    return (numValues * numBytes) + Integer.BYTES - numBytes;
   }
 
   @Override
@@ -80,9 +80,7 @@ public class BytePackedIntFormEncoder extends CompressibleIntFormEncoder
     valuesOut.write(new byte[]{numBytes});
     WriteOutFunction writer = (value) -> writeOutValue(valuesOut, numBytes, value);
     encodeValues(writer, values, numValues);
-    if (numBytes == 3) {
-      valuesOut.write(new byte[]{0});
-    }
+    valuesOut.write(new byte[Integer.BYTES - numBytes]);
   }
 
   @Override
@@ -94,15 +92,30 @@ public class BytePackedIntFormEncoder extends CompressibleIntFormEncoder
   ) throws IOException
   {
     final byte numBytes = BytePackedIntFormEncoder.getNumBytesForMax(metadata.getMaxValue());
-    buffer.put(numBytes);
-
     WriteOutFunction writer = (value) -> writeOutValue(buffer, numBytes, value);
     encodeValues(writer, values, numValues);
-    if (numBytes == 3) {
-      buffer.put((byte) 0);
-    }
+    buffer.put(new byte[Integer.BYTES - numBytes]);
     buffer.flip();
   }
+
+  @Override
+  public void encodeCompressionMetadata(
+      WriteOutBytes valuesOut,
+      int[] values,
+      int numValues,
+      IntFormMetrics metrics
+  ) throws IOException
+  {
+    final byte numBytes = getNumBytesForMax(metrics.getMaxValue());
+    valuesOut.write(new byte[]{numBytes});
+  }
+
+  @Override
+  public int getMetadataSize()
+  {
+    return 1;
+  }
+
 
   private void encodeValues(
       WriteOutFunction writer,

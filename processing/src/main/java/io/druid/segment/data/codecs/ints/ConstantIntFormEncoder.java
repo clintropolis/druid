@@ -24,6 +24,13 @@ import io.druid.segment.writeout.WriteOutBytes;
 import java.io.IOException;
 import java.nio.ByteOrder;
 
+/**
+ * Encoding optimization used if all values are the same within a chunk are constant, using 5 bytes total, including
+ * the header.
+ *
+ * layout:
+ * | header: IntCodecs.CONSTANT (byte) | constant value (int) |
+ */
 public class ConstantIntFormEncoder extends BaseIntFormEncoder
 {
   public ConstantIntFormEncoder(final byte logValuesPerChunk, final ByteOrder byteOrder)

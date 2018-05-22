@@ -27,20 +27,36 @@ import me.lemire.integercompression.SkippableIntegerCODEC;
 import java.io.IOException;
 import java.nio.ByteOrder;
 
+/**
+ * Integer form encoder using {@link <a href="https://github.com/lemire/JavaFastPFOR">JavaFastPFOR</a>}. Any
+ * {@link SkippableIntegerCODEC} should work, but currently only {@link me.lemire.integercompression.FastPFOR} is
+ * setup as a known encoding in {@link IntCodecs} as {@link IntCodecs#FASTPFOR}.
+ *
+ * layout:
+ * | header (byte) | encoded values  (numOutputInts * Integer.BYTES) |
+ */
 public final class LemireIntFormEncoder extends BaseIntFormEncoder
 {
   // Straight from the horse's mouth (https://github.com/lemire/JavaFastPFOR/blob/master/example.java).
   private static final int SHOULD_BE_ENOUGH = 1024;
   private final SkippableIntegerCODEC codec;
   private final int[] encodedValuesTmp;
+  private final byte header;
+  private final String name;
+  private int numOutputInts;
 
   public LemireIntFormEncoder(
-      SkippableIntegerCODEC codec,
-      byte logValuesPerChunk
+      byte logValuesPerChunk,
+      byte header,
+      String name,
+      SkippableIntegerCODEC codec
   )
   {
     super(logValuesPerChunk, ByteOrder.LITTLE_ENDIAN);
+    this.header = header;
+    this.name = name;
     this.codec = codec;
+    // todo: pass this in so we can share?
     this.encodedValuesTmp = new int[valuesPerChunk + SHOULD_BE_ENOUGH];
   }
 
@@ -51,7 +67,9 @@ public final class LemireIntFormEncoder extends BaseIntFormEncoder
       IntFormMetrics metrics
   )
   {
-    return doEncode(values, numValues) * Integer.BYTES;
+    metrics.setTmpEncodedValuesHolder(header);
+    numOutputInts = doEncode(values, numValues);
+    return numOutputInts * Integer.BYTES;
   }
 
   @Override
@@ -62,9 +80,11 @@ public final class LemireIntFormEncoder extends BaseIntFormEncoder
       IntFormMetrics metrics
   ) throws IOException
   {
-    int numOutputInts = doEncode(values, numValues);
+    if (metrics.getTmpEncodedValuesHolder() != header) {
+      numOutputInts = doEncode(values, numValues);
+    }
 
-    for (int i = 0; i < numOutputInts; i++) {
+    for (int i = 0; i < this.numOutputInts; i++) {
       valuesOut.write(toBytes(encodedValuesTmp[i]));
     }
   }
@@ -72,13 +92,13 @@ public final class LemireIntFormEncoder extends BaseIntFormEncoder
   @Override
   public byte getHeader()
   {
-    return IntCodecs.FASTPFOR;
+    return header;
   }
 
   @Override
   public String getName()
   {
-    return "fastpfor";
+    return name;
   }
 
   private int doEncode(int[] values, final int numValues)

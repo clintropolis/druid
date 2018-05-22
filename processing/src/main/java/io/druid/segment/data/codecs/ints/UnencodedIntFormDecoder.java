@@ -27,6 +27,12 @@ import sun.nio.ch.DirectBuffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+/**
+ * "Unencoded" decoder, reads full sized integer values from shapeshifting int column read buffer.
+ *
+ * layout:
+ * | header: IntCodecs.UNENCODED (byte) | values  (numValues * Integer.BYTES) |
+ */
 public final class UnencodedIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
     implements DirectFormDecoder<ShapeShiftingColumnarInts>
 {

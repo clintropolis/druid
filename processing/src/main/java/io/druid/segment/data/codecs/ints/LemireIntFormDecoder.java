@@ -30,20 +30,40 @@ import sun.nio.ch.DirectBuffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+/**
+ * Integer form decoder using {@link <a href="https://github.com/lemire/JavaFastPFOR">JavaFastPFOR</a>}. Any
+ * {@link SkippableIntegerCODEC} will work, but currently only {@link me.lemire.integercompression.FastPFOR} is
+ * setup as a known encoding in {@link IntCodecs} as {@link IntCodecs#FASTPFOR}.
+ * Eagerly decodes all values to {@link ShapeShiftingColumnarInts#decodedValues}.
+ *
+ * layout:
+ * | header (byte) | encoded values  (numOutputInts * Integer.BYTES) |
+ */
 public final class LemireIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
 {
   private static final Unsafe unsafe = ShapeShiftingColumn.getTheUnsafe();
   private final SkippableIntegerCODEC codec;
+  private final byte header;
 
   public LemireIntFormDecoder(
-      SkippableIntegerCODEC codec,
-      byte logValuesPerChunk
+      byte logValuesPerChunk,
+      byte header,
+      SkippableIntegerCODEC codec
   )
   {
     super(logValuesPerChunk, ByteOrder.LITTLE_ENDIAN);
+    this.header = header;
     this.codec = codec;
   }
 
+  /**
+   * Eagerly decode all values into value array of shapeshifting int column
+   *
+   * @param columnarInts
+   * @param startOffset
+   * @param endOffset
+   * @param numValues
+   */
   @Override
   public void transform(
       ShapeShiftingColumnarInts columnarInts,
@@ -71,7 +91,7 @@ public final class LemireIntFormDecoder extends BaseFormDecoder<ShapeShiftingCol
     //CHECKSTYLE.ON: Regexp
 
     // Copy chunk into an int array.
-    final int chunkSizeAsInts = chunkSizeBytes / Integer.BYTES;
+    final int chunkSizeAsInts = chunkSizeBytes >> 2;
 
     if (buffer.isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
       long addr = ((DirectBuffer) buffer).address() + startOffset;
@@ -118,7 +138,6 @@ public final class LemireIntFormDecoder extends BaseFormDecoder<ShapeShiftingCol
   @Override
   public byte getHeader()
   {
-    return IntCodecs.FASTPFOR;
+    return header;
   }
-
 }

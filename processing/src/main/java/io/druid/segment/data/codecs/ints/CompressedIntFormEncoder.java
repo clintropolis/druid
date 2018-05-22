@@ -25,7 +25,16 @@ import io.druid.segment.data.codecs.CompressedFormEncoder;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-public final class CompressedIntFormEncoder extends CompressedFormEncoder<int[], IntFormMetrics> implements IntFormEncoder
+/**
+ * Int typed {@link CompressedFormEncoder} for compressing a {@link CompressibleIntFormEncoder} with a
+ * {@link CompressionStrategy}. The inner encoder encodes to a temporary data buffer, and then data is compressed to
+ * the compression buffer.
+ *
+ * layout:
+ * | header: IntCodecs.COMPRESSED (byte) | compressed data (compressedDataBuffer.remaining()) |
+ */
+public final class CompressedIntFormEncoder extends CompressedFormEncoder<int[], IntFormMetrics>
+    implements IntFormEncoder
 {
   public CompressedIntFormEncoder(
       byte logValuesPerChunk,

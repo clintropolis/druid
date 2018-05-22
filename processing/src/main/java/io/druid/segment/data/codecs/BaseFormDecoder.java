@@ -23,6 +23,11 @@ import io.druid.segment.data.ShapeShiftingColumn;
 
 import java.nio.ByteOrder;
 
+/**
+ * Common base type for {@link FormDecoder} implementations of any type of {@link ShapeShiftingColumn}
+ *
+ * @param <TColumn>
+ */
 public abstract class BaseFormDecoder<TColumn extends ShapeShiftingColumn> implements FormDecoder<TColumn>
 {
   protected final byte logValuesPerChunk;

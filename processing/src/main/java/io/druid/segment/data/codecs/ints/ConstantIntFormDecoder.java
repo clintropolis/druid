@@ -26,6 +26,12 @@ import io.druid.segment.data.codecs.DirectFormDecoder;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 
+/**
+ * Decoder used if all values are the same within a chunk are constant.
+ *
+ * layout:
+ * | header: IntCodecs.CONSTANT (byte) | constant value (int) |
+ */
 public final class ConstantIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
     implements DirectFormDecoder<ShapeShiftingColumnarInts>
 {

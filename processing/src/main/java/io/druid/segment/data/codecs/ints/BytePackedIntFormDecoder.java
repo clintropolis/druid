@@ -30,8 +30,11 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 /**
- * Byte packing integer decoder based on
+ * Byte packed integer decoder based on
  * {@link io.druid.segment.data.CompressedVSizeColumnarIntsSupplier.CompressedVSizeColumnarInts}
+ *
+ * layout:
+ * | header: IntCodecs.BYTEPACK (byte) | numBytes (byte) | encoded values  (numValues * numBytes) |
  */
 public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
     implements DirectFormDecoder<ShapeShiftingColumnarInts>
@@ -54,6 +57,14 @@ public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftin
                              : BytePackedIntFormDecoder::decodeBigEndianOddSizedIntsUnsafe;
   }
 
+  /**
+   * Eagerly decode all values into value array of shapeshifting int column
+   *
+   * @param columnarInts
+   * @param startOffset
+   * @param endOffset
+   * @param numValues
+   */
   @Override
   public void transform(
       ShapeShiftingColumnarInts columnarInts,
@@ -63,11 +74,13 @@ public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftin
   )
   {
     final ByteBuffer buffer = columnarInts.getCurrentReadBuffer();
+    final ByteBuffer metaBuffer = columnarInts.getCurrentMetadataBuffer();
+    final int metaOffset = columnarInts.getCurrentMetadataOffset();
+    final byte numBytes = metaBuffer.get(metaOffset);
     final int[] decodedChunk = columnarInts.getDecodedValues();
-    final byte numBytes = buffer.get(startOffset);
 
     if (buffer.isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
-      long addr = ((DirectBuffer) buffer).address() + startOffset + 1;
+      long addr = ((DirectBuffer) buffer).address() + startOffset;
       switch (numBytes) {
         case 1:
           decodeByteSizedIntsUnsafe(addr, numValues, decodedChunk);
@@ -85,21 +98,29 @@ public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftin
     } else {
       switch (numBytes) {
         case 1:
-          decodeByteSizedInts(buffer, startOffset + 1, numValues, decodedChunk);
+          decodeByteSizedInts(buffer, startOffset, numValues, decodedChunk);
           break;
         case 2:
-          decodeShortSizedInts(buffer, startOffset + 1, numValues, decodedChunk);
+          decodeShortSizedInts(buffer, startOffset, numValues, decodedChunk);
           break;
         case 3:
-          oddFunction.decode(buffer, startOffset + 1, numValues, decodedChunk);
+          oddFunction.decode(buffer, startOffset, numValues, decodedChunk);
           break;
         case 4:
-          decodeIntSizedInts(buffer, startOffset + 1, numValues, decodedChunk);
+          decodeIntSizedInts(buffer, startOffset, numValues, decodedChunk);
           break;
       }
     }
   }
 
+  /**
+   * Set shapeshifting int column buffer offset and byte per value for direct buffer reads
+   *
+   * @param columnarInts
+   * @param startOffset
+   * @param endOffset
+   * @param numValues
+   */
   @Override
   public void transformBuffer(
       ShapeShiftingColumnarInts columnarInts,
@@ -108,12 +129,21 @@ public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftin
       int numValues
   )
   {
-    final ByteBuffer buffer = columnarInts.getCurrentReadBuffer();
-    final byte numBytes = buffer.get(startOffset);
+    final ByteBuffer metaBuffer = columnarInts.getCurrentMetadataBuffer();
+    final int metaOffset = columnarInts.getCurrentMetadataOffset();
+    final byte numBytes = metaBuffer.get(metaOffset);
     columnarInts.setCurrentBytesPerValue(numBytes);
-    columnarInts.setCurrentBufferOffset(startOffset + 1);
+    columnarInts.setCurrentBufferOffset(startOffset);
   }
 
+  /**
+   * Set shapeshifting int column memory address and byte per value for direct unsafe reads
+   *
+   * @param columnarInts
+   * @param startOffset
+   * @param endOffset
+   * @param numValues
+   */
   @Override
   public void transformUnsafe(
       ShapeShiftingColumnarInts columnarInts,
@@ -123,15 +153,23 @@ public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftin
   )
   {
     final ByteBuffer buffer = columnarInts.getCurrentReadBuffer();
-    final byte numBytes = buffer.get(startOffset);
+    final ByteBuffer metaBuffer = columnarInts.getCurrentMetadataBuffer();
+    final int metaOffset = columnarInts.getCurrentMetadataOffset();
+    final byte numBytes = metaBuffer.get(metaOffset);
     columnarInts.setCurrentBytesPerValue(numBytes);
-    columnarInts.setCurrentBaseAddress(((DirectBuffer) buffer).address() + startOffset + 1);
+    columnarInts.setCurrentBaseAddress(((DirectBuffer) buffer).address() + startOffset);
   }
 
   @Override
   public byte getHeader()
   {
     return IntCodecs.BYTEPACK;
+  }
+
+  @Override
+  public int getMetadataSize()
+  {
+    return 1;
   }
 
   private static void decodeByteSizedInts(

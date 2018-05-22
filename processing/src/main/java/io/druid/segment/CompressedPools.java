@@ -36,7 +36,7 @@ public class CompressedPools
 {
   private static final Logger log = new Logger(CompressedPools.class);
 
-  public static final int SMALLEST_BUFFER_SIZE = 0x1000;
+  public static final int SMALLEST_BUFFER_SIZE = 0x4000;
   public static final int SMALLER_BUFFER_SIZE = 0x8000;
   public static final int BUFFER_SIZE = 0x10000;
   private static final NonBlockingPool<BufferRecycler> bufferRecyclerPool = new StupidPool<>(

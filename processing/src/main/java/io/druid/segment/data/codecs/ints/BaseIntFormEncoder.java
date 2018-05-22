@@ -26,6 +26,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+/**
+ * Base type for {@link IntFormEncoder} implementations, provides int to byte helper methods
+ */
 abstract class BaseIntFormEncoder extends BaseFormEncoder<int[], IntFormMetrics> implements IntFormEncoder
 {
   private final ByteBuffer intToBytesHelperBuffer;
@@ -36,6 +39,13 @@ abstract class BaseIntFormEncoder extends BaseFormEncoder<int[], IntFormMetrics>
     intToBytesHelperBuffer = ByteBuffer.allocate(Integer.BYTES).order(byteOrder);
   }
 
+  /**
+   * Write integer value to helper buffer
+   *
+   * @param n
+   *
+   * @return
+   */
   protected final ByteBuffer toBytes(final int n)
   {
     intToBytesHelperBuffer.putInt(0, n);
@@ -43,6 +53,15 @@ abstract class BaseIntFormEncoder extends BaseFormEncoder<int[], IntFormMetrics>
     return intToBytesHelperBuffer;
   }
 
+  /**
+   * Write integer {@param value} byte packed into {@param numBytes} bytes to {@link WriteOutBytes} output
+   *
+   * @param valuesOut
+   * @param numBytes
+   * @param value
+   *
+   * @throws IOException
+   */
   final void writeOutValue(WriteOutBytes valuesOut, int numBytes, int value) throws IOException
   {
     intToBytesHelperBuffer.putInt(0, value);
@@ -54,6 +73,13 @@ abstract class BaseIntFormEncoder extends BaseFormEncoder<int[], IntFormMetrics>
     }
   }
 
+  /**
+   * Write integer {@param value} byte packed into {@param numBytes} bytes to {@link ByteBuffer} output
+   *
+   * @param valuesOut
+   * @param numBytes
+   * @param value
+   */
   final void writeOutValue(ByteBuffer valuesOut, int numBytes, int value)
   {
     intToBytesHelperBuffer.putInt(0, value);

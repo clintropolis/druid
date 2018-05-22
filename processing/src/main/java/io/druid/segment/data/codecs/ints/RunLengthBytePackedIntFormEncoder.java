@@ -26,6 +26,17 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+/**
+ * Simple run-length encoding implementation which uses a bytepacking strategy similar to
+ * {@link BytePackedIntFormEncoder}, where the maximum run length and maximum row value are analzyed to choose a
+ * number of bytes which both the row values and run counts can be encoded, using the high bit to indicate if the
+ * bytes represent a run or a single value. A run is encoded with 2 values sized with the chosen number of bytes,
+ * the first with the high bit set and the run length encoded, the 2nd with the value that is repeated. A single
+ * value is packed into numBytes with the high bit not set.
+ *
+ * layout:
+ * | header: IntCodecs.RLE_BYTEPACK (byte) | numBytes (byte) | encoded values ((2 * numDistinctRuns * numBytes) + (numSingleValues * numBytes)) |
+ */
 public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncoder
 {
   public RunLengthBytePackedIntFormEncoder(final byte logValuesPerChunk, ByteOrder byteOrder)
@@ -79,6 +90,15 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
     return projectedSize;
   }
 
+  /**
+   * Run length speed modifier is dependent on how effective run length encoding is on the data itself if the
+   * optimization strategy is not {@link io.druid.segment.IndexSpec.ShapeShiftOptimizationTarget#SMALLER}, since
+   * decode performance is not great if run count is small, but approaching 1.0 as the values become constant.
+   *
+   * @param metrics
+   *
+   * @return
+   */
   @Override
   public double getSpeedModifier(IntFormMetrics metrics)
   {
@@ -86,6 +106,7 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
     final byte numBytesBytepack = BytePackedIntFormEncoder.getNumBytesForMax(metrics.getMaxValue());
     final int bytepackSize = numBytesBytepack * metrics.getNumValues();
     final int projectedSize = projectSize(metrics);
+    // don't bother if not smaller than bytepacking
     if (projectedSize > bytepackSize) {
       return 10.0;
     }
@@ -95,7 +116,7 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
         modifier = 1.0;
         break;
       default:
-        modifier = 1.0 - (((double) bytepackSize - (double) projectedSize)) / (double) bytepackSize;
+        modifier = (((double) bytepackSize - (double) projectedSize)) / (double) bytepackSize;
         break;
     }
     return Math.max(2.0 - modifier, 1.0);
@@ -132,7 +153,6 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
   {
     final byte numBytes =
         RunLengthBytePackedIntFormEncoder.getNumBytesForMax(metadata.getMaxValue(), metadata.getLongestRun());
-    buffer.put(numBytes);
 
     final WriteOutFunction writer = (value) -> writeOutValue(buffer, numBytes, value);
 
@@ -143,6 +163,21 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
       buffer.put((byte) 0);
     }
     buffer.flip();
+  }
+
+  @Override
+  public void encodeCompressionMetadata(
+      WriteOutBytes valuesOut, int[] values, int numValues, IntFormMetrics metrics
+  ) throws IOException
+  {
+    final byte numBytes = getNumBytesForMax(metrics.getMaxValue(), metrics.getLongestRun());
+    valuesOut.write(new byte[]{numBytes});
+  }
+
+  @Override
+  public int getMetadataSize()
+  {
+    return 1;
   }
 
   @Override
@@ -214,8 +249,8 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
   {
     final byte numBytes = getNumBytesForMax(metadata.getMaxValue(), metadata.getLongestRun());
     int projectedSize = numBytes * metadata.getNumValues();
-    projectedSize -= numBytes * metadata.getNumRunValues();
-    projectedSize += 2 * numBytes * metadata.getNumDistinctRuns();
+    projectedSize -= (numBytes * metadata.getNumRunValues());
+    projectedSize += (2 * numBytes * metadata.getNumDistinctRuns());
 
     return projectedSize;
   }

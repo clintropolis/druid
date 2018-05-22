@@ -27,6 +27,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+/**
+ * Generic compression encoder that can wrap {@link CompressibleFormEncoder} to provide any of the compression
+ * available in {@link CompressionStrategy}
+ *
+ * @param <TChunk>
+ * @param <TChunkMetrics>
+ */
 public class CompressedFormEncoder<TChunk, TChunkMetrics extends FormMetrics>
     extends BaseFormEncoder<TChunk, TChunkMetrics>
 {
@@ -35,6 +42,7 @@ public class CompressedFormEncoder<TChunk, TChunkMetrics extends FormMetrics>
   private final CompressionStrategy.Compressor compressor;
   private final ByteBuffer uncompressedDataBuffer;
   private final ByteBuffer compressedDataBuffer;
+  private ByteBuffer compressed;
 
   public CompressedFormEncoder(
       byte logValuesPerChunk,
@@ -64,12 +72,13 @@ public class CompressedFormEncoder<TChunk, TChunkMetrics extends FormMetrics>
       return Integer.MAX_VALUE;
     }
 
+    metrics.setCompressionBufferHolder(formEncoder.getHeader());
     uncompressedDataBuffer.clear();
-    uncompressedDataBuffer.put(formEncoder.getHeader());
     compressedDataBuffer.clear();
     formEncoder.encodeToBuffer(uncompressedDataBuffer, values, numValues, metrics);
-    ByteBuffer buff = compressor.compress(uncompressedDataBuffer, compressedDataBuffer);
-    return 1 + buff.remaining();
+    compressed = compressor.compress(uncompressedDataBuffer, compressedDataBuffer);
+    // header | compressionId | inner encoding header | inner encoding metadata | compressed values
+    return 1 + 1 + 1 + formEncoder.getMetadataSize() + compressed.remaining();
   }
 
   @Override
@@ -80,12 +89,18 @@ public class CompressedFormEncoder<TChunk, TChunkMetrics extends FormMetrics>
       TChunkMetrics metrics
   ) throws IOException
   {
-    uncompressedDataBuffer.clear();
-    uncompressedDataBuffer.put(formEncoder.getHeader());
-    compressedDataBuffer.clear();
-    formEncoder.encodeToBuffer(uncompressedDataBuffer, values, numValues, metrics);
-    valuesOut.write(new byte[]{compressionStrategy.getId()});
-    valuesOut.write(compressor.compress(uncompressedDataBuffer, compressedDataBuffer));
+    if (metrics.getCompressionBufferHolder() == formEncoder.getHeader()) {
+      valuesOut.write(new byte[]{compressionStrategy.getId(), formEncoder.getHeader()});
+      formEncoder.encodeCompressionMetadata(valuesOut, values, numValues, metrics);
+      valuesOut.write(compressedDataBuffer);
+    } else {
+      uncompressedDataBuffer.clear();
+      compressedDataBuffer.clear();
+      formEncoder.encodeToBuffer(uncompressedDataBuffer, values, numValues, metrics);
+      valuesOut.write(new byte[]{compressionStrategy.getId(), formEncoder.getHeader()});
+      formEncoder.encodeCompressionMetadata(valuesOut, values, numValues, metrics);
+      valuesOut.write(compressor.compress(uncompressedDataBuffer, compressedDataBuffer));
+    }
   }
 
   @Override

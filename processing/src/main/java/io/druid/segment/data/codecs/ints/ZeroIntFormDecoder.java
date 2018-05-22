@@ -26,6 +26,12 @@ import io.druid.segment.data.codecs.DirectFormDecoder;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 
+/**
+ * Decoder used if all values are the same within a chunk are zero.
+ *
+ * layout:
+ * | header: IntCodecs.ZERO (byte) |
+ */
 public final class ZeroIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
     implements DirectFormDecoder<ShapeShiftingColumnarInts>
 {
@@ -34,6 +40,14 @@ public final class ZeroIntFormDecoder extends BaseFormDecoder<ShapeShiftingColum
     super(logValuesPerChunk, byteOrder);
   }
 
+  /**
+   * Fill shapeshifting int column chunk values array with zeros
+   *
+   * @param columnarInts
+   * @param startOffset
+   * @param endOffset
+   * @param numValues
+   */
   @Override
   public void transform(
       ShapeShiftingColumnarInts columnarInts,
@@ -45,6 +59,14 @@ public final class ZeroIntFormDecoder extends BaseFormDecoder<ShapeShiftingColum
     Arrays.fill(columnarInts.getDecodedValues(), 0);
   }
 
+  /**
+   * Set shapeshifting int column bytes per value and current constant to zero for magic 'constant' mode
+   *
+   * @param columnarInts
+   * @param startOffset
+   * @param endOffset
+   * @param numValues
+   */
   @Override
   public void transformBuffer(
       ShapeShiftingColumnarInts columnarInts,
@@ -57,6 +79,14 @@ public final class ZeroIntFormDecoder extends BaseFormDecoder<ShapeShiftingColum
     columnarInts.setCurrentConstant(0);
   }
 
+  /**
+   * Set shapeshifting int column bytes per value and current constant to zero for magic 'constant' mode
+   *
+   * @param columnarInts
+   * @param startOffset
+   * @param endOffset
+   * @param numValues
+   */
   @Override
   public void transformUnsafe(
       ShapeShiftingColumnarInts columnarInts,

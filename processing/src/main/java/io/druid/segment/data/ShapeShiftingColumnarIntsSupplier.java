@@ -53,7 +53,7 @@ public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<Colum
   )
   {
     ShapeShiftingColumnData columnData =
-        new ShapeShiftingColumnData(buffer, byteOrder, overrideDecodeStrategy, true);
+        new ShapeShiftingColumnData(buffer, byteOrder, overrideDecodeStrategy, false);
 
     return new ShapeShiftingColumnarIntsSupplier(columnData);
   }

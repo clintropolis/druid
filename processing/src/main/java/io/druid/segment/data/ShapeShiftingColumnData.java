@@ -23,6 +23,10 @@ import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+/**
+ * Materialized version of outer buffer contents of a {@link ShapeShiftingColumn}, providing all header information
+ * as well as a buffer prepared for use
+ */
 public class ShapeShiftingColumnData
 {
   private final int numChunks;
@@ -59,7 +63,7 @@ public class ShapeShiftingColumnData
 
     ourBuffer.limit(
         ShapeShiftingColumnarIntsSerializer.HEADER_BYTES + offsetsSize +
-        ourBuffer.getInt(ShapeShiftingColumnarIntsSerializer.HEADER_BYTES + numChunks * Integer.BYTES)
+        ourBuffer.getInt(ShapeShiftingColumnarIntsSerializer.HEADER_BYTES + (numChunks * Integer.BYTES))
     );
 
     if (moveSourceBufferPosition) {

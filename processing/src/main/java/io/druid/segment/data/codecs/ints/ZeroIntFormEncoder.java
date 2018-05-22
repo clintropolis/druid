@@ -23,6 +23,13 @@ import io.druid.segment.writeout.WriteOutBytes;
 
 import java.nio.ByteOrder;
 
+/**
+ * Encoding optimization used if all values are the same within a chunk are zero, using 1 byte total, including
+ * the header.
+ *
+ * layout:
+ * | header: IntCodecs.ZERO (byte) |
+ */
 public class ZeroIntFormEncoder extends BaseIntFormEncoder
 {
   public ZeroIntFormEncoder(byte logValuesPerChunk, ByteOrder byteOrder)

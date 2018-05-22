@@ -21,14 +21,34 @@ package io.druid.segment.data.codecs;
 
 import io.druid.segment.data.ShapeShiftingColumn;
 
+/**
+ * Interface describing value decoders for {@link ShapeShiftingColumn} implmentations. {@link ShapeShiftingColumn}
+ * operate on principle of being mutated by {@link FormDecoder} to load a chunk of values, preparing it to be able to
+ * read row values for indexes that fall within that chunk.
+ *
+ * @param <TColumn>
+ */
 public interface FormDecoder<TColumn extends ShapeShiftingColumn>
 {
+  /**
+   * Transform {@link ShapeShiftingColumn} to be able to read values for this decoder.
+   *
+   * @param column
+   * @param startOffset
+   * @param endOffset
+   * @param numValues
+   */
   void transform(
       TColumn column,
       int startOffset,
       int endOffset,
       int numValues
   );
+
+  default int getMetadataSize()
+  {
+    return 0;
+  }
 
   byte getHeader();
 }

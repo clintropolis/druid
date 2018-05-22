@@ -22,6 +22,15 @@ package io.druid.segment.data.codecs.ints;
 import io.druid.segment.IndexSpec;
 import io.druid.segment.data.codecs.FormMetrics;
 
+/**
+ * Aggregates statistics about blocks of integer values, such as total number of values processed, minimum and maximum
+ * values encountered, if the chunk is constant or all zeros, and various facts about data which is repeated more than
+ * twice ('runs') including number of distinct runs, longest run length, and total number of runs. This information is
+ * collected by {@link io.druid.segment.data.ShapeShiftingColumnarIntsSerializer} which processing row values, and is
+ * provided to {@link IntFormEncoder} implementations to do anything from estimate encoded size to influencing how
+ * {@link io.druid.segment.data.ShapeShiftingColumnarIntsSerializer} decides whether or not to employ that particular
+ * encoding.
+ */
 public class IntFormMetrics extends FormMetrics
 {
   private int minValue = Integer.MAX_VALUE;
@@ -33,12 +42,19 @@ public class IntFormMetrics extends FormMetrics
   private int previousValue;
   private int numValues = 0;
   private boolean isFirstValue = true;
+  private byte tmpEncodedValuesHolder;
 
   public IntFormMetrics(IndexSpec.ShapeShiftOptimizationTarget target)
   {
     super(target);
   }
 
+  /**
+   * This method is called for every {@link io.druid.segment.data.ShapeShiftingColumnarIntsSerializer#addValue(int)} to
+   * aggregate details about a chunk of values.
+   *
+   * @param val row value
+   */
   public void processNextRow(int val)
   {
     if (isFirstValue) {
@@ -79,38 +95,83 @@ public class IntFormMetrics extends FormMetrics
     return numValues;
   }
 
+  /**
+   * Minimum integer value encountered
+   *
+   * @return
+   */
   public int getMinValue()
   {
     return minValue;
   }
 
+  /**
+   * Maximum integer value encountered
+   *
+   * @return
+   */
   public int getMaxValue()
   {
     return maxValue;
   }
 
+  /**
+   * Total number of values which are part of a 'run', or a repitition of a value 3 or more times
+   *
+   * @return
+   */
   public int getNumRunValues()
   {
     return numRunValues;
   }
 
+  /**
+   * Distinct number of 'runs', or values which are repeated more than 2 times
+   *
+   * @return
+   */
   public int getNumDistinctRuns()
   {
     return numDistinctRuns;
   }
 
+  /**
+   * Longest number of repeated values
+   *
+   * @return
+   */
   public int getLongestRun()
   {
     return longestRun;
   }
 
+  /**
+   * All values are a constant
+   *
+   * @return
+   */
   public boolean isConstant()
   {
     return minValue == maxValue;
   }
 
+  /**
+   * All values are zero
+   *
+   * @return
+   */
   public boolean isZero()
   {
     return minValue == 0 && minValue == maxValue;
+  }
+
+  public byte getTmpEncodedValuesHolder()
+  {
+    return tmpEncodedValuesHolder;
+  }
+
+  public void setTmpEncodedValuesHolder(byte encoding)
+  {
+    tmpEncodedValuesHolder = encoding;
   }
 }

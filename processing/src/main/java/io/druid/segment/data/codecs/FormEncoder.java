@@ -19,12 +19,30 @@
 
 package io.druid.segment.data.codecs;
 
+import io.druid.segment.data.ShapeShiftingColumn;
 import io.druid.segment.writeout.WriteOutBytes;
 
 import java.io.IOException;
 
+/**
+ * Interface describing value encoders for use with {@link io.druid.segment.data.ShapeShiftingColumnSerializer}
+ *
+ * @param <TChunk>        Type of value chunk, i.e. {@code int[]}, {@code long[]}, etc.
+ * @param <TChunkMetrics> Type of {@link FormMetrics} that the encoder cosumes
+ */
 public interface FormEncoder<TChunk, TChunkMetrics extends FormMetrics>
 {
+  /**
+   * Get size in bytes if the values were encoded with this encoder
+   *
+   * @param values
+   * @param numValues
+   * @param metrics
+   *
+   * @return
+   *
+   * @throws IOException
+   */
   int getEncodedSize(
       TChunk values,
       int numValues,
@@ -32,6 +50,16 @@ public interface FormEncoder<TChunk, TChunkMetrics extends FormMetrics>
   ) throws IOException;
 
 
+  /**
+   * Encode the values to the supplied {@link WriteOutBytes}
+   *
+   * @param valuesOut
+   * @param values
+   * @param numValues
+   * @param metrics
+   *
+   * @throws IOException
+   */
   void encode(
       WriteOutBytes valuesOut,
       TChunk values,
@@ -39,20 +67,53 @@ public interface FormEncoder<TChunk, TChunkMetrics extends FormMetrics>
       TChunkMetrics metrics
   ) throws IOException;
 
+  /**
+   * Byte value to write as first byte to indicate the type of encoder used for this chunk. This value must be distinct
+   * for all encoding/decoding strategies tied to a specific implementation of
+   * {@link io.druid.segment.data.ShapeShiftingColumnSerializer} and {@link ShapeShiftingColumn}
+   *
+   * @return
+   */
   byte getHeader();
 
+  /**
+   * Get friendly name of this encoder
+   *
+   * @return
+   */
   String getName();
 
+  /**
+   * @param metrics
+   *
+   * @return
+   */
   default double getSpeedModifier(TChunkMetrics metrics)
   {
     return 1.0;
   }
 
+  /**
+   * Values decoded with this encoding may be accessed directly by {@link ShapeShiftingColumn}
+   * from either {@link ShapeShiftingColumn#buffer} or {@link ShapeShiftingColumn#decompressedDataBuffer}, used by
+   * {@link io.druid.segment.data.ShapeShiftingColumnSerializer} to set
+   * {@link io.druid.segment.data.ShapeShiftingColumnSerializer.DecodeStrategy}.
+   *
+   * @return
+   */
   default boolean hasDirectAccessSupport()
   {
     return false;
   }
 
+  /**
+   * Prefer that decoded values are accessed directly from {@link ShapeShiftingColumn#buffer} or
+   * {@link ShapeShiftingColumn#decompressedDataBuffer}, used by
+   * {@link io.druid.segment.data.ShapeShiftingColumnSerializer} to set
+   * {@link io.druid.segment.data.ShapeShiftingColumnSerializer.DecodeStrategy}.
+   *
+   * @return
+   */
   default boolean preferDirectAccess()
   {
     return false;

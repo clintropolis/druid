@@ -19,6 +19,7 @@
 
 package io.druid.benchmark;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import com.google.common.io.Files;
 import io.druid.segment.data.ColumnarInts;
@@ -76,14 +77,14 @@ public class ColumnarIntsSelectRowsFromSegmentDataBenchmark extends BaseColumnar
 
     // uncomment me to load some encoding files to cross reference values for sanity check
     //CHECKSTYLE.OFF: Regexp
-//    ImmutableList<String> all = ImmutableList.of("compressed-vsize-byte", "shapeshift");
-//    for (String _enc : all) {
-//      if (!_enc.equals(encoding)) {
-//        setupFromFile(_enc);
-//      }
-//    }
+    ImmutableList<String> all = ImmutableList.of("compressed-vsize-byte", "shapeshift-12");
+    for (String _enc : all) {
+      if (!_enc.equals(encoding)) {
+        setupFromFile(_enc);
+      }
+    }
 //
-//    checkSanity(encoders, all, rows);
+    checkSanity(encoders, all, rows);
 //    checkVectorSanity(encoders, all, rows, 1024);
 //    checkVectorSanity2(encoders, all, rows, 1024);
     //CHECKSTYLE.ON: Regexp

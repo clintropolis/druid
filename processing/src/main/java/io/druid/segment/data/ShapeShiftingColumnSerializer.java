@@ -37,6 +37,10 @@ import java.nio.ByteOrder;
 import java.nio.channels.WritableByteChannel;
 import java.util.Map;
 
+/**
+ * @param <TChunk>
+ * @param <TChunkMetrics>
+ */
 public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extends FormMetrics> implements Serializer
 {
   /**
@@ -128,14 +132,6 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
           preferRandomAccess
       ));
       //todo: buffer/unsafe optimized version?
-//    } else if (numChunksWithRandomAccess == numChunks) {
-//      decodeStrategy = DecodeStrategy.BUFFER;
-//      System.out.println(String.format(
-//          "Using random access optimized strategy, %d:%d have random access, %d prefer random access",
-//          numChunksWithRandomAccess,
-//          numChunks,
-//          preferDirectAccess
-//      ));
     } else {
       System.out.println(String.format(
           "Using mixed access strategy, %d:%d have random access, %d prefer random access",
@@ -179,7 +175,7 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
         // todo: configurable to not only prefer smallest, maybe thresholds or uh.. something... if i knew it would be done already.
         int theSize = codec.getEncodedSize(currentChunk, currentChunkPos, chunkMetrics);
         if (theSize < bestSize) {
-          double modified = (double)theSize * codec.getSpeedModifier(chunkMetrics);
+          double modified = (double) theSize * codec.getSpeedModifier(chunkMetrics);
           if (modified < bestSize) {
             bestCodec = codec;
             bestSize = (int) modified;

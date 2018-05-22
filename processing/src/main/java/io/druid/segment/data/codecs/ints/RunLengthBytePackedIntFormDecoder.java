@@ -28,6 +28,10 @@ import sun.nio.ch.DirectBuffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+/**
+ * layout:
+ * | header: IntCodecs.RLE_BYTEPACK (byte) | numBytes (byte) | encoded values ((2 * numDistinctRuns * numBytes) + (numSingleValues * numBytes)) |
+ */
 public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
 {
   static final int mask1 = 0x7F;
@@ -69,11 +73,13 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
   )
   {
     final ByteBuffer buffer = columnarInts.getCurrentReadBuffer();
+    final ByteBuffer metaBuffer = columnarInts.getCurrentMetadataBuffer();
+    final int metaOffset = columnarInts.getCurrentMetadataOffset();
+    final byte numBytes = metaBuffer.get(metaOffset);
     final int[] decodedChunk = columnarInts.getDecodedValues();
-    final byte numBytes = buffer.get(startOffset);
 
     if (buffer.isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
-      long addr = ((DirectBuffer) buffer).address() + startOffset + 1;
+      long addr = ((DirectBuffer) buffer).address() + startOffset;
       switch (numBytes) {
         case 1:
           decodeByteSizedIntsUnsafe(addr, numValues, decodedChunk);
@@ -91,16 +97,16 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
     } else {
       switch (numBytes) {
         case 1:
-          decodeByteSizedInts(buffer, startOffset + 1, numValues, decodedChunk);
+          decodeByteSizedInts(buffer, startOffset, numValues, decodedChunk);
           break;
         case 2:
-          decodeShortSizedInts(buffer, startOffset + 1, numValues, decodedChunk);
+          decodeShortSizedInts(buffer, startOffset, numValues, decodedChunk);
           break;
         case 3:
-          oddFunction.decode(buffer, startOffset + 1, numValues, decodedChunk);
+          oddFunction.decode(buffer, startOffset, numValues, decodedChunk);
           break;
         case 4:
-          decodeIntSizedInts(buffer, startOffset + 1, numValues, decodedChunk);
+          decodeIntSizedInts(buffer, startOffset, numValues, decodedChunk);
           break;
       }
     }
@@ -112,6 +118,11 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
     return IntCodecs.RLE_BYTEPACK;
   }
 
+  @Override
+  public int getMetadataSize()
+  {
+    return 1;
+  }
 
   private static void decodeByteSizedIntsUnsafe(
       long addr,
