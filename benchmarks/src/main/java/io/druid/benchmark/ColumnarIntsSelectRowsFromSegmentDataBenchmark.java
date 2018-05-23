@@ -77,7 +77,7 @@ public class ColumnarIntsSelectRowsFromSegmentDataBenchmark extends BaseColumnar
 
     // uncomment me to load some encoding files to cross reference values for sanity check
     //CHECKSTYLE.OFF: Regexp
-    ImmutableList<String> all = ImmutableList.of("compressed-vsize-byte", "shapeshift-12");
+    ImmutableList<String> all = ImmutableList.of("compressed-vsize-byte", "shapeshift");
     for (String _enc : all) {
       if (!_enc.equals(encoding)) {
         setupFromFile(_enc);

@@ -65,18 +65,16 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
   }
 
   @Override
-  public void transform(
-      ShapeShiftingColumnarInts columnarInts,
-      int startOffset,
-      int endOffset,
-      int numValues
-  )
+  public void transform(ShapeShiftingColumnarInts columnarInts)
   {
-    final ByteBuffer buffer = columnarInts.getCurrentReadBuffer();
-    final ByteBuffer metaBuffer = columnarInts.getCurrentMetadataBuffer();
-    final int metaOffset = columnarInts.getCurrentMetadataOffset();
+    final ByteBuffer buffer = columnarInts.getCurrentValueBuffer();
+    // metadata is always in base buffer at current chunk start offset
+    final ByteBuffer metaBuffer = columnarInts.getBuffer();
+    final int metaOffset = columnarInts.getCurrentChunkStartOffset();
     final byte numBytes = metaBuffer.get(metaOffset);
     final int[] decodedChunk = columnarInts.getDecodedValues();
+    final int numValues = columnarInts.getCurrentChunkNumValues();
+    final int startOffset = columnarInts.getCurrentValuesStartOffset();
 
     if (buffer.isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
       long addr = ((DirectBuffer) buffer).address() + startOffset;

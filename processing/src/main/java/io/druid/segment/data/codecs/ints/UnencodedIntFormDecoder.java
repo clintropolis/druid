@@ -42,14 +42,11 @@ public final class UnencodedIntFormDecoder extends BaseFormDecoder<ShapeShifting
   }
 
   @Override
-  public void transform(
-      ShapeShiftingColumnarInts columnarInts,
-      int startOffset,
-      int endOffset,
-      int numValues
-  )
+  public void transform(ShapeShiftingColumnarInts columnarInts)
   {
-    final ByteBuffer buffer = columnarInts.getCurrentReadBuffer();
+    final int numValues = columnarInts.getCurrentChunkNumValues();
+    final int startOffset = columnarInts.getCurrentValuesStartOffset();
+    final ByteBuffer buffer = columnarInts.getCurrentValueBuffer();
     final int[] decodedChunk = columnarInts.getDecodedValues();
     // todo: call out to bytepack decoder?
     for (int i = 0, pos = startOffset; i < numValues; i++, pos += Integer.BYTES) {
@@ -58,28 +55,20 @@ public final class UnencodedIntFormDecoder extends BaseFormDecoder<ShapeShifting
   }
 
   @Override
-  public void transformBuffer(
-      ShapeShiftingColumnarInts columnarInts,
-      int startOffset,
-      int endOffset,
-      int numValues
-  )
+  public void transformBuffer(ShapeShiftingColumnarInts columnarInts)
   {
+    final int startOffset = columnarInts.getCurrentValuesStartOffset();
     columnarInts.setCurrentBytesPerValue(Integer.BYTES);
-    columnarInts.setCurrentBufferOffset(startOffset);
+    columnarInts.setCurrentValuesStartOffset(startOffset);
   }
 
   @Override
-  public void transformUnsafe(
-      ShapeShiftingColumnarInts columnarInts,
-      int startOffset,
-      int endOffset,
-      int numValues
-  )
+  public void transformUnsafe(ShapeShiftingColumnarInts columnarInts)
   {
-    final ByteBuffer buffer = columnarInts.getCurrentReadBuffer();
+    final int startOffset = columnarInts.getCurrentValuesStartOffset();
+    final ByteBuffer buffer = columnarInts.getCurrentValueBuffer();
     columnarInts.setCurrentBytesPerValue(Integer.BYTES);
-    columnarInts.setCurrentBaseAddress(((DirectBuffer) buffer).address() + startOffset);
+    columnarInts.setCurrentValuesAddress(((DirectBuffer) buffer).address() + startOffset);
   }
 
   @Override

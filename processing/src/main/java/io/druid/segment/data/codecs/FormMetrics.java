@@ -67,7 +67,7 @@ public abstract class FormMetrics
   }
 
   /**
-   * Set encoder header as holder of
+   * Set encoder header as holder of compression buffers
    *
    * @param encoder
    */

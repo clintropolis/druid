@@ -19,6 +19,8 @@
 
 package io.druid.segment.data;
 
+import io.druid.segment.data.codecs.FormDecoder;
+
 public final class ShapeShiftingBlockColumnarInts extends ShapeShiftingColumnarInts
 {
   public ShapeShiftingBlockColumnarInts(ShapeShiftingColumnData sourceData)
@@ -92,10 +94,8 @@ public final class ShapeShiftingBlockColumnarInts extends ShapeShiftingColumnarI
   }
 
   @Override
-  protected void transform(byte chunkCodec, int chunkStartByte, int chunkEndByte, int chunkNumValues)
+  protected void transform(FormDecoder<ShapeShiftingColumnarInts> nextForm)
   {
-    decoders.get(chunkCodec)
-            .transform(this, chunkStartByte, chunkEndByte, chunkNumValues);
-    this.decodedValues = this.getDecodedValues();
+    nextForm.transform(this);
   }
 }

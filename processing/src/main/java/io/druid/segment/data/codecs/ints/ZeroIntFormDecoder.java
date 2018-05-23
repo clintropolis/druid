@@ -42,37 +42,23 @@ public final class ZeroIntFormDecoder extends BaseFormDecoder<ShapeShiftingColum
 
   /**
    * Fill shapeshifting int column chunk values array with zeros
+   *  @param columnarInts
    *
-   * @param columnarInts
-   * @param startOffset
-   * @param endOffset
-   * @param numValues
    */
   @Override
-  public void transform(
-      ShapeShiftingColumnarInts columnarInts,
-      int startOffset,
-      int endOffset,
-      int numValues
-  )
+  public void transform(ShapeShiftingColumnarInts columnarInts)
   {
     Arrays.fill(columnarInts.getDecodedValues(), 0);
   }
 
   /**
    * Set shapeshifting int column bytes per value and current constant to zero for magic 'constant' mode
+   *  @param columnarInts
    *
-   * @param columnarInts
-   * @param startOffset
-   * @param endOffset
-   * @param numValues
    */
   @Override
   public void transformBuffer(
-      ShapeShiftingColumnarInts columnarInts,
-      int startOffset,
-      int endOffset,
-      int numValues
+      ShapeShiftingColumnarInts columnarInts
   )
   {
     columnarInts.setCurrentBytesPerValue(0);
@@ -81,18 +67,12 @@ public final class ZeroIntFormDecoder extends BaseFormDecoder<ShapeShiftingColum
 
   /**
    * Set shapeshifting int column bytes per value and current constant to zero for magic 'constant' mode
+   *  @param columnarInts
    *
-   * @param columnarInts
-   * @param startOffset
-   * @param endOffset
-   * @param numValues
    */
   @Override
   public void transformUnsafe(
-      ShapeShiftingColumnarInts columnarInts,
-      int startOffset,
-      int endOffset,
-      int numValues
+      ShapeShiftingColumnarInts columnarInts
   )
   {
     columnarInts.setCurrentBytesPerValue(0);

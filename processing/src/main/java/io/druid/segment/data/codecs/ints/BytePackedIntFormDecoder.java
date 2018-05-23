@@ -59,25 +59,20 @@ public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftin
 
   /**
    * Eagerly decode all values into value array of shapeshifting int column
+   *  @param columnarInts
    *
-   * @param columnarInts
-   * @param startOffset
-   * @param endOffset
-   * @param numValues
    */
   @Override
-  public void transform(
-      ShapeShiftingColumnarInts columnarInts,
-      int startOffset,
-      int endOffset,
-      int numValues
-  )
+  public void transform(ShapeShiftingColumnarInts columnarInts)
   {
-    final ByteBuffer buffer = columnarInts.getCurrentReadBuffer();
-    final ByteBuffer metaBuffer = columnarInts.getCurrentMetadataBuffer();
-    final int metaOffset = columnarInts.getCurrentMetadataOffset();
+    final ByteBuffer buffer = columnarInts.getCurrentValueBuffer();
+    // metadata is always in base buffer
+    final ByteBuffer metaBuffer = columnarInts.getBuffer();
+    final int metaOffset = columnarInts.getCurrentChunkStartOffset();
     final byte numBytes = metaBuffer.get(metaOffset);
     final int[] decodedChunk = columnarInts.getDecodedValues();
+    final int numValues = columnarInts.getCurrentChunkNumValues();
+    final int startOffset = columnarInts.getCurrentValuesStartOffset();
 
     if (buffer.isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
       long addr = ((DirectBuffer) buffer).address() + startOffset;
@@ -115,49 +110,37 @@ public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftin
 
   /**
    * Set shapeshifting int column buffer offset and byte per value for direct buffer reads
+   *  @param columnarInts
    *
-   * @param columnarInts
-   * @param startOffset
-   * @param endOffset
-   * @param numValues
    */
   @Override
-  public void transformBuffer(
-      ShapeShiftingColumnarInts columnarInts,
-      int startOffset,
-      int endOffset,
-      int numValues
-  )
+  public void transformBuffer(ShapeShiftingColumnarInts columnarInts)
   {
-    final ByteBuffer metaBuffer = columnarInts.getCurrentMetadataBuffer();
-    final int metaOffset = columnarInts.getCurrentMetadataOffset();
+    final int startOffset = columnarInts.getCurrentValuesStartOffset();
+    // metadata is always in base buffer
+    final ByteBuffer metaBuffer = columnarInts.getBuffer();
+    final int metaOffset = columnarInts.getCurrentChunkStartOffset();
     final byte numBytes = metaBuffer.get(metaOffset);
     columnarInts.setCurrentBytesPerValue(numBytes);
-    columnarInts.setCurrentBufferOffset(startOffset);
+    columnarInts.setCurrentValuesStartOffset(startOffset);
   }
 
   /**
    * Set shapeshifting int column memory address and byte per value for direct unsafe reads
+   *  @param columnarInts
    *
-   * @param columnarInts
-   * @param startOffset
-   * @param endOffset
-   * @param numValues
    */
   @Override
-  public void transformUnsafe(
-      ShapeShiftingColumnarInts columnarInts,
-      int startOffset,
-      int endOffset,
-      int numValues
-  )
+  public void transformUnsafe(ShapeShiftingColumnarInts columnarInts)
   {
-    final ByteBuffer buffer = columnarInts.getCurrentReadBuffer();
-    final ByteBuffer metaBuffer = columnarInts.getCurrentMetadataBuffer();
-    final int metaOffset = columnarInts.getCurrentMetadataOffset();
+    final int startOffset = columnarInts.getCurrentValuesStartOffset();
+    final ByteBuffer buffer = columnarInts.getCurrentValueBuffer();
+    // metadata is always in base buffer at current chunk start offset
+    final ByteBuffer metaBuffer = columnarInts.getBuffer();
+    final int metaOffset = columnarInts.getCurrentChunkStartOffset();
     final byte numBytes = metaBuffer.get(metaOffset);
     columnarInts.setCurrentBytesPerValue(numBytes);
-    columnarInts.setCurrentBaseAddress(((DirectBuffer) buffer).address() + startOffset);
+    columnarInts.setCurrentValuesAddress(((DirectBuffer) buffer).address() + startOffset);
   }
 
   @Override

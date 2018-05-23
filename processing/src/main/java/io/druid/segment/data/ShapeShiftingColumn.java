@@ -37,7 +37,7 @@ import java.nio.ByteOrder;
 /**
  * Base type for reading 'shape shifting' columns, which divide row values into log 2 sized chunks with varying encoding
  */
-public abstract class ShapeShiftingColumn implements Closeable
+public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingColumn> implements Closeable
 {
   public static Unsafe getTheUnsafe()
   {
@@ -64,11 +64,13 @@ public abstract class ShapeShiftingColumn implements Closeable
   private final Supplier<ByteBuffer> decompressedDataBuffer;
 
   int currentChunk = -1;
-  protected ByteBuffer currentReadBuffer;
+  protected ByteBuffer currentValueBuffer;
   protected ByteBuffer currentMetadataBuffer;
-  protected long currentBaseAddress;
-  protected int currentBufferOffset;
-  protected int currentMetadataOffset;
+  protected long currentValuesAddress;
+  protected int currentValuesStartOffset;
+  protected int currentChunkStartOffset;
+  protected int currentChunkSize;
+  protected int currentChunkNumValues;
 
   public ShapeShiftingColumn(ShapeShiftingColumnData sourceData)
   {
@@ -113,33 +115,33 @@ public abstract class ShapeShiftingColumn implements Closeable
 //      );
     //CHECKSTYLE.ON: Regexp
 
-    currentReadBuffer = buffer;
+    currentValueBuffer = buffer;
     currentMetadataBuffer = buffer;
-    currentBaseAddress = -1;
-    currentBufferOffset = -1;
-    currentMetadataOffset = -1;
+    currentValuesAddress = -1;
+    currentValuesStartOffset = -1;
+    currentChunkStartOffset = -1;
     currentChunk = -1;
+    currentChunkSize = -1;
 
     final int headerSize = headerSize();
     // Determine chunk size.
     final int chunkStartReadFrom = headerSize + (Integer.BYTES * desiredChunk);
-    int chunkStartByte = buffer.getInt(chunkStartReadFrom) + headerSize + offsetsSize;
+    final int chunkStartByte = buffer.getInt(chunkStartReadFrom) + headerSize + offsetsSize;
     final int chunkEndByte = buffer.getInt(chunkStartReadFrom + Integer.BYTES) + headerSize + offsetsSize;
 
-    final int chunkNumValues;
-
     if (desiredChunk == numChunks - 1) {
-      chunkNumValues = (numValues - ((numChunks - 1) * valuesPerChunk));
+      currentChunkNumValues = (numValues - ((numChunks - 1) * valuesPerChunk));
     } else {
-      chunkNumValues = valuesPerChunk;
+      currentChunkNumValues = valuesPerChunk;
     }
 
-    final byte chunkCodec = buffer.get(chunkStartByte++);
-    FormDecoder decoder = getFormDecoder(chunkCodec);
-    currentMetadataOffset = chunkStartByte;
-    chunkStartByte += decoder.getMetadataSize();
-    currentBufferOffset = chunkStartByte;
-    transform(chunkCodec, chunkStartByte, chunkEndByte, chunkNumValues);
+    final byte chunkCodec = buffer.get(chunkStartByte);
+    FormDecoder<TShapeShiftImpl> nextForm = getFormDecoder(chunkCodec);
+
+    currentChunkStartOffset = chunkStartByte + 1;
+    currentChunkSize = chunkEndByte - currentChunkStartOffset;
+    currentValuesStartOffset = currentChunkStartOffset + nextForm.getMetadataSize();
+    transform(nextForm);
 
     currentChunk = desiredChunk;
   }
@@ -152,19 +154,15 @@ public abstract class ShapeShiftingColumn implements Closeable
 
   /**
    * Transform this shapeshifting column to be able to read row values for the specified chunk
-   *
-   * @param chunkCodec     byte value indicating which form decoder to use
-   * @param chunkStartByte start byte of chunk in {@link ShapeShiftingColumn#getCurrentReadBuffer()}
-   * @param chunkEndByte   end byte of chunk in {@link ShapeShiftingColumn#getCurrentReadBuffer()}}
-   * @param chunkNumValues number of values in chunk
+   * @param nextForm decoder for the form of the next chunk of values
    */
-  protected abstract void transform(byte chunkCodec, int chunkStartByte, int chunkEndByte, int chunkNumValues);
+  protected abstract void transform(FormDecoder<TShapeShiftImpl> nextForm);
 
   protected abstract int headerSize();
 
-  protected abstract FormDecoder<? extends ShapeShiftingColumn> getFormDecoder(byte header);
+  protected abstract FormDecoder<TShapeShiftImpl> getFormDecoder(byte header);
 
-  ByteBuffer getBuffer()
+  public ByteBuffer getBuffer()
   {
     return this.buffer;
   }
@@ -174,64 +172,72 @@ public abstract class ShapeShiftingColumn implements Closeable
     return this.decompressedDataBuffer.get();
   }
 
-  public final ByteBuffer getCurrentReadBuffer()
+  public final ByteBuffer getCurrentValueBuffer()
   {
-    return currentReadBuffer;
+    return currentValueBuffer;
   }
 
-  public void setCurrentReadBuffer(ByteBuffer currentReadBuffer)
+  public void setCurrentValueBuffer(ByteBuffer currentValueBuffer)
   {
-    this.currentReadBuffer = currentReadBuffer;
+    this.currentValueBuffer = currentValueBuffer;
   }
 
-  public final long getCurrentBaseAddress()
+  public final long getCurrentValuesAddress()
   {
-    return currentBaseAddress;
+    return currentValuesAddress;
   }
 
-  public final void setCurrentBaseAddress(long currentBaseAddress)
+  public final void setCurrentValuesAddress(long currentValuesAddress)
   {
-    this.currentBaseAddress = currentBaseAddress;
+    this.currentValuesAddress = currentValuesAddress;
   }
 
-  public final int getCurrentBufferOffset()
+  public final int getCurrentValuesStartOffset()
   {
-    return currentBufferOffset;
+    return currentValuesStartOffset;
   }
 
-  public final void setCurrentBufferOffset(int currentBufferOffset)
+  public final void setCurrentValuesStartOffset(int currentValuesStartOffset)
   {
-    this.currentBufferOffset = currentBufferOffset;
+    this.currentValuesStartOffset = currentValuesStartOffset;
   }
 
-  public ByteBuffer getCurrentMetadataBuffer()
+  public int getCurrentChunkStartOffset()
   {
-    return currentMetadataBuffer;
+    return currentChunkStartOffset;
   }
 
-  public void setCurrentMetadataBuffer(ByteBuffer currentMetadataBuffer)
+  public void setCurrentChunkStartOffset(int currentChunkStartOffset)
   {
-    this.currentMetadataBuffer = currentMetadataBuffer;
+    this.currentChunkStartOffset = currentChunkStartOffset;
   }
 
-  public int getCurrentMetadataOffset()
+  public int getCurrentChunkSize()
   {
-    return currentMetadataOffset;
+    return currentChunkSize;
   }
 
-  public void setCurrentMetadataOffset(int currentMetadataOffset)
+  public void setCurrentChunkSize(int currentChunkSize)
   {
-    this.currentMetadataOffset = currentMetadataOffset;
+    this.currentChunkSize = currentChunkSize;
   }
 
+  public int getCurrentChunkNumValues()
+  {
+    return currentChunkNumValues;
+  }
+
+  public void setCurrentChunkNumValues(int currentChunkNumValues)
+  {
+    this.currentChunkNumValues = currentChunkNumValues;
+  }
   /**
    * Generic Shapeshifting form decoder for chunks that are block compressed using any of {@link CompressionStrategy}.
    * Data is decompressed to 'decompressedDataBuffer' to be further decoded by another {@link BaseFormDecoder},
    * via calling 'transform' again on the decompressed chunk.
    *
-   * @param <TColumn>
    */
-  public final class CompressedFormDecoder<TColumn extends ShapeShiftingColumn> extends BaseFormDecoder<TColumn>
+  public final class CompressedFormDecoder extends BaseFormDecoder<TShapeShiftImpl>
   {
     private final byte header;
 
@@ -242,12 +248,12 @@ public abstract class ShapeShiftingColumn implements Closeable
     }
 
     @Override
-    public void transform(
-        TColumn shapeshiftingColumn, int startOffset, int endOffset, int numValues
-    )
+    public void transform(TShapeShiftImpl shapeshiftingColumn)
     {
       final ByteBuffer buffer = shapeshiftingColumn.getBuffer();
       final ByteBuffer decompressed = shapeshiftingColumn.getDecompressedDataBuffer();
+      int startOffset = shapeshiftingColumn.getCurrentChunkStartOffset();
+      int endOffset = startOffset + shapeshiftingColumn.getCurrentChunkSize();
       decompressed.clear();
 
       final CompressionStrategy.Decompressor decompressor =
@@ -256,17 +262,17 @@ public abstract class ShapeShiftingColumn implements Closeable
       // metadata for inner encoding is stored outside of the compressed values chunk, so set column metadata offsets
       // accordingly
       final byte chunkCodec = buffer.get(startOffset++);
-      shapeshiftingColumn.setCurrentMetadataBuffer(buffer);
-      shapeshiftingColumn.setCurrentMetadataOffset(startOffset);
-      final int metaSize = shapeshiftingColumn.getFormDecoder(chunkCodec).getMetadataSize();
-      startOffset += metaSize;
+      shapeshiftingColumn.setCurrentChunkStartOffset(startOffset);
+      FormDecoder<? extends ShapeShiftingColumn> innerForm = shapeshiftingColumn.getFormDecoder(chunkCodec);
+      startOffset += innerForm.getMetadataSize();
       final int size = endOffset - startOffset;
 
       decompressor.decompress(buffer, startOffset, size, decompressed);
-      shapeshiftingColumn.setCurrentReadBuffer(decompressed);
-      shapeshiftingColumn.setCurrentBufferOffset(0);
-      // transform again, against the the decompressed buffer which is now the columns read buffer
-      shapeshiftingColumn.transform(chunkCodec, 0, decompressed.limit(), numValues);
+      shapeshiftingColumn.setCurrentValueBuffer(decompressed);
+      shapeshiftingColumn.setCurrentValuesStartOffset(0);
+      shapeshiftingColumn.setCurrentChunkNumValues(numValues);
+      // transform again, this time using the inner form against the the decompressed buffer
+      shapeshiftingColumn.transform(innerForm);
     }
 
     @Override

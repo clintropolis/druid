@@ -96,7 +96,7 @@ public interface FormEncoder<TChunk, TChunkMetrics extends FormMetrics>
   /**
    * Values decoded with this encoding may be accessed directly by {@link ShapeShiftingColumn}
    * from either {@link ShapeShiftingColumn#buffer} or {@link ShapeShiftingColumn#decompressedDataBuffer}, used by
-   * {@link io.druid.segment.data.ShapeShiftingColumnSerializer} to set
+   * {@link io.druid.segment.data.ShapeShiftingColumnSerializer} to choose
    * {@link io.druid.segment.data.ShapeShiftingColumnSerializer.DecodeStrategy}.
    *
    * @return
@@ -109,7 +109,7 @@ public interface FormEncoder<TChunk, TChunkMetrics extends FormMetrics>
   /**
    * Prefer that decoded values are accessed directly from {@link ShapeShiftingColumn#buffer} or
    * {@link ShapeShiftingColumn#decompressedDataBuffer}, used by
-   * {@link io.druid.segment.data.ShapeShiftingColumnSerializer} to set
+   * {@link io.druid.segment.data.ShapeShiftingColumnSerializer} to choose
    * {@link io.druid.segment.data.ShapeShiftingColumnSerializer.DecodeStrategy}.
    *
    * @return

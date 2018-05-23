@@ -41,40 +41,27 @@ public final class ConstantIntFormDecoder extends BaseFormDecoder<ShapeShiftingC
   }
 
   @Override
-  public void transform(
-      ShapeShiftingColumnarInts columnarInts,
-      int startOffset,
-      int endOffset,
-      int numValues
-  )
+  public void transform(ShapeShiftingColumnarInts columnarInts)
   {
-
-    final int currentConstant = columnarInts.getCurrentReadBuffer().getInt(startOffset);
+    final int startOffset = columnarInts.getCurrentValuesStartOffset();
+    final int currentConstant = columnarInts.getCurrentValueBuffer().getInt(startOffset);
     Arrays.fill(columnarInts.getDecodedValues(), currentConstant);
   }
 
   @Override
-  public void transformBuffer(
-      ShapeShiftingColumnarInts columnarInts,
-      int startOffset,
-      int endOffset,
-      int numValues
-  )
+  public void transformBuffer(ShapeShiftingColumnarInts columnarInts)
   {
-    final int currentConstant = columnarInts.getCurrentReadBuffer().getInt(startOffset);
+    final int startOffset = columnarInts.getCurrentValuesStartOffset();
+    final int currentConstant = columnarInts.getCurrentValueBuffer().getInt(startOffset);
     columnarInts.setCurrentBytesPerValue(0);
     columnarInts.setCurrentConstant(currentConstant);
   }
 
   @Override
-  public void transformUnsafe(
-      ShapeShiftingColumnarInts columnarInts,
-      int startOffset,
-      int endOffset,
-      int numValues
-  )
+  public void transformUnsafe(ShapeShiftingColumnarInts columnarInts)
   {
-    final int currentConstant = columnarInts.getCurrentReadBuffer().getInt(startOffset);
+    final int startOffset = columnarInts.getCurrentValuesStartOffset();
+    final int currentConstant = columnarInts.getCurrentValueBuffer().getInt(startOffset);
     columnarInts.setCurrentBytesPerValue(0);
     columnarInts.setCurrentConstant(currentConstant);
   }

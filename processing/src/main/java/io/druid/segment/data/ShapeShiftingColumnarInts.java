@@ -43,9 +43,9 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Map;
 
-public class ShapeShiftingColumnarInts extends ShapeShiftingColumn implements ColumnarInts
+public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShiftingColumnarInts> implements ColumnarInts
 {
-  public static final byte VERSION = 0x4;
+  public static final byte VERSION = 0x4; // todo: idk..
 
   // Straight from the horse's mouth (https://github.com/lemire/JavaFastPFOR/blob/master/example.java).
   private static final int SHOULD_BE_ENOUGH = 1024;
@@ -70,14 +70,14 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn implements Co
     this.tmp = Suppliers.memoize(() -> new int[valuesPerChunk + SHOULD_BE_ENOUGH]);
     this.decodedValuesSupplier = Suppliers.memoize(() -> new int[valuesPerChunk]);
 
-    // todo: more better, this is fragile and burried
+    // todo: make more better, this is fragile and burried
     this.decoders = ImmutableMap.<Byte, FormDecoder<ShapeShiftingColumnarInts>>builder()
         .put(IntCodecs.ZERO, new ZeroIntFormDecoder(logValuesPerChunk, byteOrder))
         .put(IntCodecs.CONSTANT, new ConstantIntFormDecoder(logValuesPerChunk, byteOrder))
         .put(IntCodecs.UNENCODED, new UnencodedIntFormDecoder(logValuesPerChunk, byteOrder))
         .put(IntCodecs.BYTEPACK, new BytePackedIntFormDecoder(logValuesPerChunk, byteOrder))
         .put(IntCodecs.RLE_BYTEPACK, new RunLengthBytePackedIntFormDecoder(logValuesPerChunk, byteOrder))
-        .put(IntCodecs.COMPRESSED, new CompressedFormDecoder<>(logValuesPerChunk, byteOrder, IntCodecs.COMPRESSED))
+        .put(IntCodecs.COMPRESSED, new CompressedFormDecoder(logValuesPerChunk, byteOrder, IntCodecs.COMPRESSED))
         .put(IntCodecs.FASTPFOR, new LemireIntFormDecoder(logValuesPerChunk, IntCodecs.FASTPFOR, fastPforCodec))
         .build();
     oddSizeValueGet = byteOrder.equals(ByteOrder.LITTLE_ENDIAN)
@@ -121,7 +121,7 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn implements Co
   }
 
   @Override
-  protected FormDecoder<? extends ShapeShiftingColumn> getFormDecoder(byte header)
+  protected FormDecoder<ShapeShiftingColumnarInts> getFormDecoder(byte header)
   {
     return decoders.get(header);
   }
@@ -204,42 +204,28 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn implements Co
    * Transform {@link ShapeShiftingColumnarInts} to the form of the requested chunk, which may either be eagerly
    * decoded entirely to {@link ShapeShiftingColumnarInts#decodedValuesSupplier} with values retrieved by
    * {@link ShapeShiftingColumnarInts#decodeBlockForm(int)}, or randomly accessible, which may set
-   * {@link ShapeShiftingColumnarInts#currentBaseAddress}, {@link ShapeShiftingColumnarInts#currentBufferOffset},
+   * {@link ShapeShiftingColumnarInts#currentValuesAddress}, {@link ShapeShiftingColumnarInts#currentValuesStartOffset},
    * {@link ShapeShiftingColumnarInts#currentBytesPerValue}, {@link ShapeShiftingColumnarInts#currentConstant} and be
    * decoded by {@link ShapeShiftingColumnarInts#decodeBufferForm(int)}.
    *
-   * @param chunkCodec     byte indicating encoded form this block of values
-   * @param chunkStartByte start offset of base buffer for this block of values
-   * @param chunkEndByte   end offset of base buffer for this block of values
-   * @param chunkNumValues
+   * @param nextForm
    */
   @Override
-  protected void transform(byte chunkCodec, int chunkStartByte, int chunkEndByte, int chunkNumValues)
+  protected void transform(FormDecoder<ShapeShiftingColumnarInts> nextForm)
   {
     currentBytesPerValue = 4;
     currentConstant = 0;
-    FormDecoder<ShapeShiftingColumnarInts> nextForm = decoders.get(chunkCodec);
     if (nextForm instanceof DirectFormDecoder) {
-      if (getCurrentReadBuffer().isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
+      if (getCurrentValueBuffer().isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
         currentForm = this::decodeUnsafeForm;
-        ((DirectFormDecoder<ShapeShiftingColumnarInts>) nextForm).transformUnsafe(
-            this,
-            chunkStartByte,
-            chunkEndByte,
-            numValues
-        );
+        ((DirectFormDecoder<ShapeShiftingColumnarInts>) nextForm).transformUnsafe(this);
       } else {
         currentForm = this::decodeBufferForm;
-        ((DirectFormDecoder<ShapeShiftingColumnarInts>) nextForm).transformBuffer(
-            this,
-            chunkStartByte,
-            chunkEndByte,
-            numValues
-        );
+        ((DirectFormDecoder<ShapeShiftingColumnarInts>) nextForm).transformBuffer(this);
       }
     } else {
       currentForm = this::decodeBlockForm;
-      nextForm.transform(this, chunkStartByte, chunkEndByte, chunkNumValues);
+      nextForm.transform(this);
     }
   }
 
@@ -264,7 +250,7 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn implements Co
    */
   private int decodeUnsafeForm(int index)
   {
-    final long pos = currentBaseAddress + (index * currentBytesPerValue);
+    final long pos = currentValuesAddress + (index * currentBytesPerValue);
     switch (currentBytesPerValue) {
       case 1:
         return unsafe.getByte(pos) & 0xFF;
@@ -288,8 +274,8 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn implements Co
    */
   private int decodeBufferForm(int index)
   {
-    final int pos = getCurrentBufferOffset() + (index * currentBytesPerValue);
-    final ByteBuffer buffer = getCurrentReadBuffer();
+    final int pos = getCurrentValuesStartOffset() + (index * currentBytesPerValue);
+    final ByteBuffer buffer = getCurrentValueBuffer();
     switch (currentBytesPerValue) {
       case 1:
         return buffer.get(pos) & 0xFF;

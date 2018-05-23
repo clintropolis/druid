@@ -58,26 +58,20 @@ public final class LemireIntFormDecoder extends BaseFormDecoder<ShapeShiftingCol
 
   /**
    * Eagerly decode all values into value array of shapeshifting int column
+   *  @param columnarInts
    *
-   * @param columnarInts
-   * @param startOffset
-   * @param endOffset
-   * @param numValues
    */
   @Override
-  public void transform(
-      ShapeShiftingColumnarInts columnarInts,
-      int startOffset,
-      int endOffset,
-      int numValues
-  )
+  public void transform(ShapeShiftingColumnarInts columnarInts)
   {
-    final ByteBuffer buffer = columnarInts.getCurrentReadBuffer();
+    final int numValues = columnarInts.getCurrentChunkNumValues();
+    final int startOffset = columnarInts.getCurrentValuesStartOffset();
+    final int endOffset = startOffset + columnarInts.getCurrentChunkSize();
+    final ByteBuffer buffer = columnarInts.getCurrentValueBuffer();
     final int[] tmp = columnarInts.getTmp();
     final int[] decodedChunk = columnarInts.getDecodedValues();
 
     final int chunkSizeBytes = endOffset - startOffset;
-
 
     // todo: needed?
     //CHECKSTYLE.OFF: Regexp

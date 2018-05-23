@@ -23,17 +23,7 @@ import io.druid.segment.data.ShapeShiftingColumn;
 
 public interface DirectFormDecoder<TColumn extends ShapeShiftingColumn> extends FormDecoder<TColumn>
 {
-  void transformBuffer(
-      TColumn column,
-      int startOffset,
-      int endOffset,
-      int numValues
-  );
+  void transformBuffer(TColumn column);
 
-  void transformUnsafe(
-      TColumn column,
-      int startOffset,
-      int endOffset,
-      int numValues
-  );
+  void transformUnsafe(TColumn column);
 }
