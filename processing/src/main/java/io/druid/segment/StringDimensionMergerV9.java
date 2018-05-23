@@ -272,7 +272,7 @@ public class StringDimensionMergerV9 implements DimensionMergerV9
                 blockSize,
                 byteOrder,
                 compressionStrategy,
-                bytepack,
+                rle,
                 compressedDataBuffer,
                 uncompressedDataBuffer
             ),
@@ -280,7 +280,7 @@ public class StringDimensionMergerV9 implements DimensionMergerV9
                 blockSize,
                 byteOrder,
                 compressionStrategy,
-                rle,
+                bytepack,
                 compressedDataBuffer,
                 uncompressedDataBuffer
             ),

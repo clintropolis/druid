@@ -302,7 +302,7 @@ public class BaseColumnarIntsBenchmark
                 blockSize,
                 ByteOrder.LITTLE_ENDIAN,
                 CompressionStrategy.LZ4,
-                bytepack,
+                rle,
                 compressedDataBuffer,
                 uncompressedDataBuffer
             ),
@@ -310,7 +310,7 @@ public class BaseColumnarIntsBenchmark
                 blockSize,
                 ByteOrder.LITTLE_ENDIAN,
                 CompressionStrategy.LZ4,
-                rle,
+                bytepack,
                 compressedDataBuffer,
                 uncompressedDataBuffer
             ),
@@ -573,7 +573,7 @@ public class BaseColumnarIntsBenchmark
 
 
   //@Param({"shapeshift-bytepack", "shapeshift-rle-bytepack", "shapeshift-fastpfor", "shapeshift-lz4-bytepack", "shapeshift-lz4-rle-bytepack", "compressed-vsize-byte"})
-  @Param({"shapeshift", "compressed-vsize-byte"})
+  @Param({"shapeshift", "fastpfor", "compressed-vsize-byte"})
   String encoding;
 
   Random rand = new Random(0);
