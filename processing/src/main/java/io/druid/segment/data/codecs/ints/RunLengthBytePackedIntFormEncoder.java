@@ -20,6 +20,7 @@
 package io.druid.segment.data.codecs.ints;
 
 import io.druid.java.util.common.IAE;
+import io.druid.segment.IndexSpec;
 import io.druid.segment.writeout.WriteOutBytes;
 
 import java.io.IOException;
@@ -185,7 +186,8 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
   {
     // if not very many runs, cheese it out of here since i am expensive-ish
     // todo: this is totally scientific. 100%. If we don't have at least 3/4 runs, then bail on trying compression since expensive
-    if (hints.getNumRunValues() < (3 * (hints.getNumValues() / 4))) {
+    if ((hints.getOptimizationTarget() != IndexSpec.ShapeShiftOptimizationTarget.SMALLER) &&
+        (hints.getNumRunValues() < (3 * (hints.getNumValues() / 4)))) {
       return false;
     }
 

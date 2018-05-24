@@ -573,7 +573,7 @@ public class BaseColumnarIntsBenchmark
 
 
   //@Param({"shapeshift-bytepack", "shapeshift-rle-bytepack", "shapeshift-fastpfor", "shapeshift-lz4-bytepack", "shapeshift-lz4-rle-bytepack", "compressed-vsize-byte"})
-  @Param({"shapeshift", "fastpfor", "compressed-vsize-byte"})
+  @Param({"shapeshift", "shapeshift-smaller", "compressed-vsize-byte"})
   String encoding;
 
   Random rand = new Random(0);

@@ -21,8 +21,10 @@ package io.druid.segment;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
+import io.druid.java.util.common.StringUtils;
 import io.druid.segment.data.BitmapSerde;
 import io.druid.segment.data.BitmapSerdeFactory;
 import io.druid.segment.data.CompressionFactory;
@@ -264,7 +266,21 @@ public class IndexSpec
   public enum EncodingStrategy
   {
     COMPRESSION,
-    SHAPESHIFT
+    SHAPESHIFT;
+
+
+    @JsonValue
+    @Override
+    public String toString()
+    {
+      return StringUtils.toLowerCase(this.name());
+    }
+
+    @JsonCreator
+    public static EncodingStrategy fromString(String name)
+    {
+      return valueOf(StringUtils.toUpperCase(name));
+    }
   }
 
   /**
@@ -302,12 +318,39 @@ public class IndexSpec
     {
       return (byte) this.logBlockSize;
     }
+
+
+    @JsonValue
+    @Override
+    public String toString()
+    {
+      return StringUtils.toLowerCase(this.name());
+    }
+
+    @JsonCreator
+    public static ShapeShiftAggressionLevel fromString(String name)
+    {
+      return valueOf(StringUtils.toUpperCase(name));
+    }
   }
 
   public enum ShapeShiftOptimizationTarget
   {
     SMALLER,
     FASTBUTSMALLISH,
-    FASTER
+    FASTER;
+
+    @JsonValue
+    @Override
+    public String toString()
+    {
+      return StringUtils.toLowerCase(this.name());
+    }
+
+    @JsonCreator
+    public static ShapeShiftOptimizationTarget fromString(String name)
+    {
+      return valueOf(StringUtils.toUpperCase(name));
+    }
   }
 }
