@@ -271,7 +271,6 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
       decompressor.decompress(buffer, startOffset, size, decompressed);
       shapeshiftingColumn.setCurrentValueBuffer(decompressed);
       shapeshiftingColumn.setCurrentValuesStartOffset(0);
-      shapeshiftingColumn.setCurrentChunkNumValues(numValues);
       // transform again, this time using the inner form against the the decompressed buffer
       shapeshiftingColumn.transform(innerForm);
     }

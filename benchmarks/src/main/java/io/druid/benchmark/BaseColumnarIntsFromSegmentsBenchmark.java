@@ -35,17 +35,17 @@ import java.util.ArrayList;
 public class BaseColumnarIntsFromSegmentsBenchmark extends BaseColumnarIntsBenchmark
 {
   //CHECKSTYLE.OFF: Regexp
-//  @Param({
-//      "batch-twitter-values-int-geo.txt",
-////      "batch-twitter-values-int-hashtags.txt", multivalue?
-//      "batch-twitter-values-int-lang.txt",
-//      "batch-twitter-values-int-retweet.txt",
-//      "batch-twitter-values-int-screen_name.txt",
-//      "batch-twitter-values-int-source.txt",
-//      "batch-twitter-values-int-text.txt",
-//      "batch-twitter-values-int-utc_offset.txt",
-//      "batch-twitter-values-int-verified.txt"
-//  })
+  @Param({
+      "batch-twitter-values-int-geo.txt",
+//      "batch-twitter-values-int-hashtags.txt", multivalue?
+      "batch-twitter-values-int-lang.txt",
+      "batch-twitter-values-int-retweet.txt",
+      "batch-twitter-values-int-screen_name.txt",
+      "batch-twitter-values-int-source.txt",
+      "batch-twitter-values-int-text.txt",
+      "batch-twitter-values-int-utc_offset.txt",
+      "batch-twitter-values-int-verified.txt"
+  })
 
 //  @Param({
 //      "batch-wiki-values-int-channel.txt",
@@ -70,50 +70,50 @@ public class BaseColumnarIntsFromSegmentsBenchmark extends BaseColumnarIntsBench
 //      "batch-wiki-values-int-user.txt"
 //  })
 
-  @Param({
-      "compacted-clarity-values-int-bufferpoolName.txt",
-      "compacted-clarity-values-int-clarityTopic.txt",
-      "compacted-clarity-values-int-clarityUser.txt",
-      "compacted-clarity-values-int-context.txt",
-      "compacted-clarity-values-int-dataSource.txt",
-      "compacted-clarity-values-int-description.txt",
-      "compacted-clarity-values-int-dimension.txt",
-      "compacted-clarity-values-int-duration.txt",
-      "compacted-clarity-values-int-feed.txt",
-      "compacted-clarity-values-int-gcGen.txt",
-      "compacted-clarity-values-int-gcGenSpaceName.txt",
-      "compacted-clarity-values-int-gcName.txt",
-      "compacted-clarity-values-int-hasFilters.txt",
-      "compacted-clarity-values-int-host.txt",
-      "compacted-clarity-values-int-id.txt",
-      "compacted-clarity-values-int-identity.txt",
-      "compacted-clarity-values-int-implyCluster.txt",
-      "compacted-clarity-values-int-implyDruidVersion.txt",
-      "compacted-clarity-values-int-implyNodeType.txt",
-      "compacted-clarity-values-int-implyVersion.txt",
-      "compacted-clarity-values-int-memKind.txt",
-      "compacted-clarity-values-int-memcached metric.txt",
-      "compacted-clarity-values-int-metric.txt",
-      "compacted-clarity-values-int-numComplexMetrics.txt",
-      "compacted-clarity-values-int-numDimensions.txt",
-      "compacted-clarity-values-int-numMetrics.txt",
-      "compacted-clarity-values-int-poolKind.txt",
-      "compacted-clarity-values-int-poolName.txt",
-      "compacted-clarity-values-int-priority.txt",
-      "compacted-clarity-values-int-remoteAddr.txt",
-      "compacted-clarity-values-int-remoteAddress.txt",
-      "compacted-clarity-values-int-server.txt",
-      "compacted-clarity-values-int-service.txt",
-      "compacted-clarity-values-int-severity.txt",
-      "compacted-clarity-values-int-success.txt",
-      "compacted-clarity-values-int-taskId.txt",
-      "compacted-clarity-values-int-taskStatus.txt",
-      "compacted-clarity-values-int-taskType.txt",
-      "compacted-clarity-values-int-threshold.txt",
-      "compacted-clarity-values-int-tier.txt",
-      "compacted-clarity-values-int-type.txt",
-      "compacted-clarity-values-int-version.txt"
-  })
+//  @Param({
+//      "compacted-clarity-values-int-bufferpoolName.txt",
+//      "compacted-clarity-values-int-clarityTopic.txt",
+//      "compacted-clarity-values-int-clarityUser.txt",
+//      "compacted-clarity-values-int-context.txt",
+//      "compacted-clarity-values-int-dataSource.txt",
+//      "compacted-clarity-values-int-description.txt",
+//      "compacted-clarity-values-int-dimension.txt",
+//      "compacted-clarity-values-int-duration.txt",
+//      "compacted-clarity-values-int-feed.txt",
+//      "compacted-clarity-values-int-gcGen.txt",
+//      "compacted-clarity-values-int-gcGenSpaceName.txt",
+//      "compacted-clarity-values-int-gcName.txt",
+//      "compacted-clarity-values-int-hasFilters.txt",
+//      "compacted-clarity-values-int-host.txt",
+//      "compacted-clarity-values-int-id.txt",
+//      "compacted-clarity-values-int-identity.txt",
+//      "compacted-clarity-values-int-implyCluster.txt",
+//      "compacted-clarity-values-int-implyDruidVersion.txt",
+//      "compacted-clarity-values-int-implyNodeType.txt",
+//      "compacted-clarity-values-int-implyVersion.txt",
+//      "compacted-clarity-values-int-memKind.txt",
+//      "compacted-clarity-values-int-memcached metric.txt",
+//      "compacted-clarity-values-int-metric.txt",
+//      "compacted-clarity-values-int-numComplexMetrics.txt",
+//      "compacted-clarity-values-int-numDimensions.txt",
+//      "compacted-clarity-values-int-numMetrics.txt",
+//      "compacted-clarity-values-int-poolKind.txt",
+//      "compacted-clarity-values-int-poolName.txt",
+//      "compacted-clarity-values-int-priority.txt",
+//      "compacted-clarity-values-int-remoteAddr.txt",
+//      "compacted-clarity-values-int-remoteAddress.txt",
+//      "compacted-clarity-values-int-server.txt",
+//      "compacted-clarity-values-int-service.txt",
+//      "compacted-clarity-values-int-severity.txt",
+//      "compacted-clarity-values-int-success.txt",
+//      "compacted-clarity-values-int-taskId.txt",
+//      "compacted-clarity-values-int-taskStatus.txt",
+//      "compacted-clarity-values-int-taskType.txt",
+//      "compacted-clarity-values-int-threshold.txt",
+//      "compacted-clarity-values-int-tier.txt",
+//      "compacted-clarity-values-int-type.txt",
+//      "compacted-clarity-values-int-version.txt"
+//  })
 
 
 //  @Param({
@@ -132,9 +132,9 @@ public class BaseColumnarIntsFromSegmentsBenchmark extends BaseColumnarIntsBench
 
   String fileName;
 
-//  @Param({"3259585"})       // twitter
+  @Param({"3259585"})       // twitter
 //  @Param({"533652"})        // wiki
-  @Param({"3783642"})       // clarity
+//  @Param({"3783642"})       // clarity
 //  @Param({"6001215"})         // tpch-lineitem-1g
   int rows;
 
