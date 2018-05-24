@@ -35,7 +35,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 /**
- * Base type for reading 'shape shifting' columns, which divide row values into log 2 sized chunks with varying encoding
+ * todo: write stuff
+ * Base type for reading 'shape shifting' columns, which divide row values into chunks sized to a power of 2
  */
 public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingColumn> implements Closeable
 {

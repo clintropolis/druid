@@ -245,7 +245,7 @@ public class StringDimensionMergerV9 implements DimensionMergerV9
       } else {
         //todo: this is super lame, maybe put in a factory somewhere?
         final ByteOrder byteOrder = IndexIO.BYTE_ORDER;
-        final byte blockSize = indexSpec.getAggressionLevel().getBlockSize();
+        final byte blockSize = (byte) (indexSpec.getAggressionLevel().getLogBlockSize() - 2);
         final ByteBuffer uncompressedDataBuffer =
             compressionStrategy.getCompressor()
                                .allocateInBuffer(

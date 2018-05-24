@@ -21,6 +21,12 @@ package io.druid.segment.data;
 
 import io.druid.segment.data.codecs.FormDecoder;
 
+/**
+ * Variant of {@link ShapeShiftingColumnarInts} that is optimized for eagerly decoding all column values, allowing
+ * {@link ShapeShiftingColumnarInts#get(int)} to be implemented directly as a masked array access.
+ * This optimization will be produced by {@link ShapeShiftingColumnarIntsSupplier} if
+ * {@link ShapeShiftingColumnData#decodeStrategy} is set to {@link ShapeShiftingColumnSerializer.DecodeStrategy#BLOCK}
+ */
 public final class ShapeShiftingBlockColumnarInts extends ShapeShiftingColumnarInts
 {
   public ShapeShiftingBlockColumnarInts(ShapeShiftingColumnData sourceData)

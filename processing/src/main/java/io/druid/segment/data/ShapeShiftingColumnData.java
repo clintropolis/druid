@@ -24,8 +24,11 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 /**
- * Materialized version of outer buffer contents of a {@link ShapeShiftingColumn}, providing all header information
- * as well as a buffer prepared for use
+ * Materialized version of outer buffer contents of a {@link ShapeShiftingColumn}, extracting all header information
+ * as well as a sliced buffer, prepared for reading
+ *
+ * layout:
+ * | version (byte) | numChunks (int) | numValues (int) | logValuesPerChunk (byte) | decodeStrategy (byte) | offsetsSize (int) | offsets | values |
  */
 public class ShapeShiftingColumnData
 {
@@ -50,7 +53,7 @@ public class ShapeShiftingColumnData
   public ShapeShiftingColumnData(
       ByteBuffer buffer,
       ByteOrder byteOrder,
-      @Nullable Byte override,
+      @Nullable Byte overrideDecodingStrategy,
       boolean moveSourceBufferPosition
   )
   {
@@ -58,7 +61,7 @@ public class ShapeShiftingColumnData
     this.numChunks = ourBuffer.getInt(1);
     this.numValues = ourBuffer.getInt(1 + Integer.BYTES);
     this.logValuesPerChunk = ourBuffer.get(1 + 2 * Integer.BYTES);
-    this.decodeStrategy = override == null ? ourBuffer.get(1 + (2 * Integer.BYTES) + 1) : override;
+    this.decodeStrategy = overrideDecodingStrategy == null ? ourBuffer.get(1 + (2 * Integer.BYTES) + 1) : overrideDecodingStrategy;
     this.offsetsSize = ourBuffer.getInt(1 + (2 * Integer.BYTES) + 1 + 1);
 
     ourBuffer.limit(
@@ -75,36 +78,64 @@ public class ShapeShiftingColumnData
   }
 
 
+  /**
+   * Number of 'chunks' of values this column is divided into
+   * @return
+   */
   public int getNumChunks()
   {
     return numChunks;
   }
 
+  /**
+   * Total number of rows in this column
+   * @return
+   */
   public int getNumValues()
   {
     return numValues;
   }
 
+  /**
+   * log base 2 max number of values per chunk
+   * @return
+   */
   public byte getLogValuesPerChunk()
   {
     return logValuesPerChunk;
   }
 
+  /**
+   * Decoding strategy, to allow optimizing for particular chunk forms
+   * @return
+   */
   public byte getDecodeStrategy()
   {
     return decodeStrategy;
   }
 
+  /**
+   * Size in bytes of chunk offset data
+   * @return
+   */
   public int getOffsetsSize()
   {
     return offsetsSize;
   }
 
+  /**
+   * {@link ByteBuffer} View of column data, sliced from underlying mapped segment smoosh buffer.
+   * @return
+   */
   public ByteBuffer getBaseBuffer()
   {
     return baseBuffer;
   }
 
+  /**
+   * Column byte order
+   * @return
+   */
   public ByteOrder getByteOrder()
   {
     return byteOrder;

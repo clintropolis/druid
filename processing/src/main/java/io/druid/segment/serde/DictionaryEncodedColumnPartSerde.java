@@ -208,6 +208,7 @@ public class DictionaryEncodedColumnPartSerde implements ColumnPartSerde
         }
       } else {
         if (shapeshift) {
+          System.out.println("encoding with shapeshift");
           this.version = VERSION.SHAPESHIFT;
         } else if (compressed) {
           this.version = VERSION.COMPRESSED;

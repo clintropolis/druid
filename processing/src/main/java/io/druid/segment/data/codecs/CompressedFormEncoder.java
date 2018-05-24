@@ -29,7 +29,7 @@ import java.nio.ByteOrder;
 
 /**
  * Generic compression encoder that can wrap {@link CompressibleFormEncoder} to provide any of the compression
- * available in {@link CompressionStrategy}
+ * algorithms available in {@link CompressionStrategy}
  *
  * @param <TChunk>
  * @param <TChunkMetrics>

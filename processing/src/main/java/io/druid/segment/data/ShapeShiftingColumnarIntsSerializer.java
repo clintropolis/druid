@@ -40,7 +40,7 @@ public class ShapeShiftingColumnarIntsSerializer
       @Nullable final ByteOrder overrideByteOrder
   )
   {
-    super(segmentWriteOutMedium, codecs, optimizationTarget, aggroLevel, overrideByteOrder);
+    super(segmentWriteOutMedium, codecs, optimizationTarget, aggroLevel, 2, overrideByteOrder);
   }
 
   @Override
@@ -53,7 +53,6 @@ public class ShapeShiftingColumnarIntsSerializer
   public void resetChunkCollector()
   {
     chunkMetrics = new IntFormMetrics(optimizationTarget);
-    currentChunkPos = 0;
   }
 
   @Override

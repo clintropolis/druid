@@ -38,13 +38,36 @@ import java.nio.channels.WritableByteChannel;
 import java.util.Map;
 
 /**
+ * Base serializer for {@link ShapeShiftingColumn} implementations, providing most common functionality such as headers,
+ * value-chunking, encoder selection, and writing out values.
+ *
+ * Encoding Selection:
+ * The intention of this base structure is that implementors of this class will analyze incoming values and aggregate
+ * facts about the data which matching {@link FormEncoder} implementations might find interesting, while storing raw,
+ * unencoded values in {@link ShapeShiftingColumnSerializer#currentChunk}. When the threshold of
+ * {@link ShapeShiftingColumnSerializer#valuesPerChunk} is reached, {@link ShapeShiftingColumnSerializer} will attempt
+ * to find the "best" encoding by first computing the encoded size with
+ * {@link FormEncoder#getEncodedSize} and then applying a modifier to scale this value in order to influence behavior
+ * when sizes are relatively close according to the chosen {@link IndexSpec.ShapeShiftOptimizationTarget}. This
+ * effectively sways the decision towards using encodings with faster decoding speed or smaller encoded size as
+ * appropriate. Note that very often the best encoding is unambiguous and these settings don't matter, the nuanced
+ * differences of behavior of {@link IndexSpec.ShapeShiftOptimizationTarget} mainly come into play when things are
+ * close.
+ *
+ * Implementors need only supply an initialize method to allocate storage for {@code <TChunk>}, an add value method to
+ * populate {@code <TChunk>}, a reset method to prepare {@code <TChunkMetrics>} for the next chunk after a flush, and
+ * matching {@link FormEncoder} to perform actual value encoding.
+ *
+ * layout:
+ * | version (byte) | numChunks (int) | numValues (int) | logValuesPerChunk (byte) | decodeStrategy (byte) | offsetsOutSize (int) | offsets | values |
+ *
  * @param <TChunk>
  * @param <TChunkMetrics>
  */
 public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extends FormMetrics> implements Serializer
 {
   /**
-   * | version (byte) | numChunks (int) | numValues (int) | logValuesPerChunk (byte) | decodeStrategy (byte) | offsetsOutSize (int) | offsets | values |
+   * | version (byte) | numChunks (int) | numValues (int) | logValuesPerChunk (byte) | decodeStrategy (byte) | offsetsOutSize (int) |
    */
   static final int HEADER_BYTES = 1 + (2 * Integer.BYTES) + 1 + 1 + Integer.BYTES;
 
@@ -71,12 +94,13 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
       final FormEncoder<TChunk, TChunkMetrics>[] codecs,
       final IndexSpec.ShapeShiftOptimizationTarget optimizationTarget,
       final IndexSpec.ShapeShiftAggressionLevel aggroLevel,
+      final int logBytesPerValue,
       @Nullable final ByteOrder overrideByteOrder
   )
   {
     Preconditions.checkArgument(codecs.length > 0, "must have at least one encoder");
     this.segmentWriteOutMedium = Preconditions.checkNotNull(segmentWriteOutMedium, "segmentWriteOutMedium");
-    this.logValuesPerChunk = aggroLevel.getBlockSize();
+    this.logValuesPerChunk = (byte) (aggroLevel.getLogBlockSize() - logBytesPerValue);
     this.valuesPerChunk = 1 << logValuesPerChunk;
     this.codecs = codecs;
     this.optimizationTarget = optimizationTarget;
@@ -92,10 +116,17 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
     resetChunkCollector();
   }
 
+  /**
+   * Initialize/allocate {@link ShapeShiftingColumnSerializer#currentChunk} to hold unencoded chunk values until
+   * {@link ShapeShiftingColumnSerializer#flushCurrentChunk()} is performed.
+   */
   public abstract void initializeChunk();
 
+  /**
+   * Reset {@link ShapeShiftingColumnSerializer#chunkMetrics} to prepare for analyzing the next incoming chunk of data
+   * after performing {@link ShapeShiftingColumnSerializer#flushCurrentChunk()}
+   */
   public abstract void resetChunkCollector();
-
 
   @Override
   public long getSerializedSize() throws IOException
@@ -159,6 +190,14 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
     //CHECKSTYLE.ON: Regexp
   }
 
+  /**
+   * Encode values of {@link ShapeShiftingColumnSerializer#currentChunk} with the 'best' available {@link FormEncoder}
+   * given the information collected in {@link ShapeShiftingColumnSerializer#chunkMetrics}. The best is chosen by
+   * computing the smallest 'modified' size, where {@link FormEncoder#getSpeedModifier(FormMetrics)}} is tuned based
+   * on decoding speed for each encoding in relation to all other available encodings.
+   *
+   * @throws IOException
+   */
   protected void flushCurrentChunk() throws IOException
   {
     Preconditions.checkState(!wroteFinalOffset, "!wroteFinalOffset");
@@ -202,6 +241,12 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
     bestCodec.encode(valuesOut, currentChunk, currentChunkPos, chunkMetrics);
 
     numChunks++;
+    resetChunk();
+  }
+
+  private void resetChunk()
+  {
+    currentChunkPos = 0;
     resetChunkCollector();
   }
 
@@ -220,9 +265,18 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
     return intToBytesHelperBuffer;
   }
 
+  /**
+   * Metadata about the composition of types of value chunks, to enable decoder optimizations
+   */
   public enum DecodeStrategy
   {
+    /**
+     * Default decoding strategy
+     */
     MIXED((byte) 0),
+    /**
+     * Prefer eagerly decoding all chunks into arrays of primite values
+     */
     BLOCK((byte) 1);
 
     byte byteValue;

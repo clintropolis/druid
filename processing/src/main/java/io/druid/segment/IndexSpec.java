@@ -273,34 +273,34 @@ public class IndexSpec
   public enum ShapeShiftAggressionLevel
   {
     /**
-     * Shapeshift will encode blocks of 2^14 integers. This puts the most memory pressure at indexing and query time in
+     * Shapeshift will encode blocks of 2^16 bytes. This puts the most memory pressure at indexing and query time in
      * exchange for the potential to reduce encoded size. Approximate footprint is 64k off heap for decompression buffer
-     * and 129k on heap for integer arrays
+     * and 129k on heap for value arrays
      */
-    AGGRO(14),
+    AGGRO(16),
     /**
-     * Shapeshift will encode blocks of 2^13 integers. Approximate footprint is 32k off heap for decompression buffer
-     * and 65k on heap for integer arrays
+     * Shapeshift will encode blocks of 2^15 bytes. Approximate footprint is 32k off heap for decompression buffer
+     * and 65k on heap for value arrays
      */
-    MIDDLE(13),
+    MIDDLE(15),
     /**
-     * Shapeshift will encode blocks of 2^12 integers. This approach is very conservative and uses less overall memory
+     * Shapeshift will encode blocks of 2^14 bytes. This approach is very conservative and uses less overall memory
      * than {@link IndexSpec.EncodingStrategy#COMPRESSION} in exchange for increased encoding size overhead and
      * potentially smaller gains in overall encoded size. Approximate footprint is 16k off heap for decompression buffer
-     * and 33k on heap for integer arrays.
+     * and 33k on heap for value arrays.
      */
-    TIMID(12);
+    TIMID(14);
 
-    int blockSize;
+    int logBlockSize;
 
     ShapeShiftAggressionLevel(int blockSize)
     {
-      this.blockSize = blockSize;
+      this.logBlockSize = blockSize;
     }
 
-    public byte getBlockSize()
+    public byte getLogBlockSize()
     {
-      return (byte) this.blockSize;
+      return (byte) this.logBlockSize;
     }
   }
 

@@ -82,7 +82,7 @@ public class BaseColumnarIntsBenchmark
                                                 : encoding.endsWith("-12")
                                                   ? IndexSpec.ShapeShiftAggressionLevel.TIMID
                                                   : IndexSpec.ShapeShiftAggressionLevel.AGGRO;
-    byte blockSize = aggro.getBlockSize();
+    byte blockSize = (byte) (aggro.getLogBlockSize() - 2);
     IndexSpec.ShapeShiftOptimizationTarget optimizationTarget =
         IndexSpec.ShapeShiftOptimizationTarget.FASTBUTSMALLISH;
 
