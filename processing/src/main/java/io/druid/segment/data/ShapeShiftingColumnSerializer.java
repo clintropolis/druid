@@ -23,6 +23,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.google.common.primitives.Ints;
 import io.druid.java.util.common.io.smoosh.FileSmoosher;
+import io.druid.java.util.common.logger.Logger;
 import io.druid.segment.IndexSpec;
 import io.druid.segment.data.codecs.FormEncoder;
 import io.druid.segment.data.codecs.FormMetrics;
@@ -70,6 +71,8 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
    * | version (byte) | numChunks (int) | numValues (int) | logValuesPerChunk (byte) | decodeStrategy (byte) | offsetsOutSize (int) |
    */
   static final int HEADER_BYTES = 1 + (2 * Integer.BYTES) + 1 + 1 + Integer.BYTES;
+
+  private static Logger log = new Logger(ShapeShiftingColumnSerializer.class);
 
   protected final SegmentWriteOutMedium segmentWriteOutMedium;
   protected final FormEncoder<TChunk, TChunkMetrics>[] codecs;
@@ -156,20 +159,20 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
     //CHECKSTYLE.OFF: Regexp
     if (preferRandomAccess < numChunks / 3) { //todo: legit? if less than 1/4 are randomly accessible, block optimize?
       decodeStrategy = DecodeStrategy.BLOCK;
-      System.out.println(String.format(
+      log.info(
           "Using block optimized strategy, %d:%d have random access, %d prefer random access",
           numChunksWithRandomAccess,
           numChunks,
           preferRandomAccess
-      ));
+      );
       //todo: buffer/unsafe optimized version?
     } else {
-      System.out.println(String.format(
+      log.info(
           "Using mixed access strategy, %d:%d have random access, %d prefer random access",
           numChunksWithRandomAccess,
           numChunks,
           preferRandomAccess
-      ));
+      );
     }
 
     channel.write(ByteBuffer.wrap(new byte[]{ShapeShiftingColumnarInts.VERSION}));
@@ -185,7 +188,7 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
     valuesOut.writeTo(channel);
 
     for (Map.Entry<String, Integer> item : usage.entrySet()) {
-      System.out.println(item.getKey() + ": " + item.getValue());
+      log.info(item.getKey() + ": " + item.getValue());
     }
     //CHECKSTYLE.ON: Regexp
   }
