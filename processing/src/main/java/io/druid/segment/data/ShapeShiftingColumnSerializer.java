@@ -156,7 +156,6 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
     writeFinalOffset();
 
     DecodeStrategy decodeStrategy = DecodeStrategy.MIXED;
-    //CHECKSTYLE.OFF: Regexp
     if (preferRandomAccess < numChunks / 3) { //todo: legit? if less than 1/4 are randomly accessible, block optimize?
       decodeStrategy = DecodeStrategy.BLOCK;
       log.info(
@@ -190,7 +189,6 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
     for (Map.Entry<String, Integer> item : usage.entrySet()) {
       log.info(item.getKey() + ": " + item.getValue());
     }
-    //CHECKSTYLE.ON: Regexp
   }
 
   /**

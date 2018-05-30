@@ -25,7 +25,8 @@ import java.nio.ByteOrder;
 
 /**
  * Materialized version of outer buffer contents of a {@link ShapeShiftingColumn}, extracting all header information
- * as well as a sliced buffer, prepared for reading
+ * as well as a sliced buffer, prepared for reading, allowing suppliers a tidy structure to instantiate
+ * {@link ShapeShiftingColumn} objects.
  *
  * layout:
  * | version (byte) | numChunks (int) | numValues (int) | logValuesPerChunk (byte) | decodeStrategy (byte) | offsetsSize (int) | offsets | values |

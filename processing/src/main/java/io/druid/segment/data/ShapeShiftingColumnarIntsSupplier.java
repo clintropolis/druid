@@ -19,6 +19,7 @@
 
 package io.druid.segment.data;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.druid.java.util.common.io.smoosh.FileSmoosher;
 
 import javax.annotation.Nullable;
@@ -27,6 +28,9 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.WritableByteChannel;
 
+/**
+ * Reads mapped buffer contents into {@link ShapeShiftingColumnData} to supply {@link ShapeShiftingColumnarInts}
+ */
 public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<ColumnarInts>
 {
   private final ShapeShiftingColumnData columnData;
@@ -38,6 +42,13 @@ public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<Colum
     this.columnData = columnData;
   }
 
+  /**
+   * Create a new instance from a {@link ByteBuffer} with position set to the start of a
+   * {@link ShapeShiftingColumnarInts}
+   * @param buffer
+   * @param byteOrder
+   * @return
+   */
   public static ShapeShiftingColumnarIntsSupplier fromByteBuffer(
       final ByteBuffer buffer,
       final ByteOrder byteOrder
@@ -46,6 +57,15 @@ public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<Colum
     return fromByteBuffer(buffer, byteOrder, null);
   }
 
+  /**
+   * Create from a {@link ByteBuffer} with position set to the start of a {@link ShapeShiftingColumnarInts}, optionally
+   * overriding the {@link ShapeShiftingColumnSerializer.DecodeStrategy} for testing, etc.
+   * @param buffer
+   * @param byteOrder
+   * @param overrideDecodeStrategy
+   * @return
+   */
+  @VisibleForTesting
   public static ShapeShiftingColumnarIntsSupplier fromByteBuffer(
       final ByteBuffer buffer,
       final ByteOrder byteOrder,
@@ -58,6 +78,10 @@ public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<Colum
     return new ShapeShiftingColumnarIntsSupplier(columnData);
   }
 
+  /**
+   * Supply a {@link ShapeShiftingColumnarInts}
+   * @return
+   */
   @Override
   public ColumnarInts get()
   {

@@ -88,11 +88,6 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
                             : (pos) -> unsafe.getInt(pos) >>> BytePackedIntFormDecoder.bigEndianShift3;
   }
 
-  /**
-   * Number of rows in column
-   *
-   * @return
-   */
   @Override
   public int size()
   {

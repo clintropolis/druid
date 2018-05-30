@@ -28,6 +28,11 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.nio.ByteOrder;
 
+/**
+ * {@link ShapeShiftingColumnSerializer} implementation for {@link ShapeShiftingColumnarInts}, using
+ * {@link IntFormEncoder} to encode values and {@link IntFormMetrics} to analyze them and assist with decisions of how
+ * the value chunks will be encoded when 'flushed' to the {@link SegmentWriteOutMedium}.
+ */
 public class ShapeShiftingColumnarIntsSerializer
     extends ShapeShiftingColumnSerializer<int[], IntFormMetrics>
     implements SingleValueColumnarIntsSerializer
@@ -55,6 +60,12 @@ public class ShapeShiftingColumnarIntsSerializer
     chunkMetrics = new IntFormMetrics(optimizationTarget);
   }
 
+  /**
+   * Adds a value to the current chunk of ints, stored in an array, analyzing values with {@link IntFormMetrics}, and
+   * flushing to the {@link SegmentWriteOutMedium} if the current chunk is full.
+   * @param val
+   * @throws IOException
+   */
   @Override
   public void addValue(final int val) throws IOException
   {
