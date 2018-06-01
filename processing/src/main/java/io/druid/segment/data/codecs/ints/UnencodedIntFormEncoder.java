@@ -70,6 +70,7 @@ public class UnencodedIntFormEncoder extends CompressibleIntFormEncoder
   {
     WriteOutFunction writer = (value) -> buffer.putInt(value);
     encodeValues(writer, values, numValues);
+    buffer.flip();
   }
 
   @Override

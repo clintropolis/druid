@@ -37,6 +37,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.WritableByteChannel;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Base serializer for {@link ShapeShiftingColumn} implementations, providing most common functionality such as headers,
@@ -76,6 +77,7 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
 
   protected final SegmentWriteOutMedium segmentWriteOutMedium;
   protected final FormEncoder<TChunk, TChunkMetrics>[] codecs;
+  protected final byte version;
   protected final byte logValuesPerChunk;
   protected final int valuesPerChunk;
   protected final ByteBuffer intToBytesHelperBuffer;
@@ -98,12 +100,17 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
       final IndexSpec.ShapeShiftOptimizationTarget optimizationTarget,
       final IndexSpec.ShapeShiftAggressionLevel aggroLevel,
       final int logBytesPerValue,
-      @Nullable final ByteOrder overrideByteOrder
+      final byte version,
+      @Nullable final ByteOrder overrideByteOrder,
+      @Nullable final Byte overrideLogValuesPerChunk
   )
   {
     Preconditions.checkArgument(codecs.length > 0, "must have at least one encoder");
     this.segmentWriteOutMedium = Preconditions.checkNotNull(segmentWriteOutMedium, "segmentWriteOutMedium");
-    this.logValuesPerChunk = (byte) (aggroLevel.getLogBlockSize() - logBytesPerValue);
+    this.version = version;
+    this.logValuesPerChunk = overrideLogValuesPerChunk != null
+                             ? overrideLogValuesPerChunk
+                             : (byte) (aggroLevel.getLogBlockSize() - logBytesPerValue);
     this.valuesPerChunk = 1 << logValuesPerChunk;
     this.codecs = codecs;
     this.optimizationTarget = optimizationTarget;
@@ -156,7 +163,7 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
     writeFinalOffset();
 
     DecodeStrategy decodeStrategy = DecodeStrategy.MIXED;
-    if (preferRandomAccess < numChunks / 3) { //todo: legit? if less than 1/4 are randomly accessible, block optimize?
+    if (preferRandomAccess < numChunks / 10) { //todo: legit? if less than 1/n are randomly accessible, block optimize?
       decodeStrategy = DecodeStrategy.BLOCK;
       log.info(
           "Using block optimized strategy, %d:%d have random access, %d prefer random access",
@@ -174,21 +181,49 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
       );
     }
 
-    channel.write(ByteBuffer.wrap(new byte[]{ShapeShiftingColumnarInts.VERSION}));
-    channel.write(toBytes(numChunks));
-    channel.write(toBytes(numValues));
-    channel.write(ByteBuffer.wrap(new byte[]{
-        logValuesPerChunk,
-        decodeStrategy.byteValue
-    }));
-    channel.write(toBytes(Ints.checkedCast(offsetsOut.size())));
 
+    writeShapeShiftHeader(
+        channel,
+        intToBytesHelperBuffer,
+        version,
+        numChunks,
+        numValues,
+        logValuesPerChunk,
+        decodeStrategy.byteValue,
+        Ints.checkedCast(offsetsOut.size())
+    );
     offsetsOut.writeTo(channel);
     valuesOut.writeTo(channel);
 
     for (Map.Entry<String, Integer> item : usage.entrySet()) {
       log.info(item.getKey() + ": " + item.getValue());
     }
+  }
+
+  static void writeShapeShiftHeader(
+      WritableByteChannel channel,
+      ByteBuffer tmpBuffer,
+      byte version,
+      int numChunks,
+      int numValues,
+      byte logValuesPerChunk,
+      byte decodeStrategy,
+      int offsetsSize
+  ) throws IOException
+  {
+    Function<Integer, ByteBuffer> toBytes = (n) -> {
+      tmpBuffer.putInt(0, n);
+      tmpBuffer.rewind();
+      return tmpBuffer;
+    };
+    channel.write(ByteBuffer.wrap(new byte[]{version}));
+    channel.write(toBytes.apply(numChunks));
+    channel.write(toBytes.apply(numValues));
+    channel.write(ByteBuffer.wrap(new byte[]{
+        logValuesPerChunk,
+        decodeStrategy
+    }));
+    channel.write(toBytes.apply(offsetsSize));
   }
 
   /**
@@ -278,9 +313,25 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
     /**
      * Prefer eagerly decoding all chunks into arrays of primite values
      */
-    BLOCK((byte) 1);
+    BLOCK((byte) 1),
+    /**
+     * Prefer directly decoding values from buffer
+     */
+    DIRECT((byte) 2);
 
-    byte byteValue;
+    final byte byteValue;
+
+    static final Map<Byte, DecodeStrategy> byteMap = Maps.newHashMap();
+
+    static {
+      for (DecodeStrategy strategy : DecodeStrategy.values()) {
+        byteMap.put(strategy.byteValue, strategy);
+      }
+    }
+    public static DecodeStrategy forByteValue(byte byteValue)
+    {
+      return byteMap.get(byteValue);
+    }
 
     DecodeStrategy(byte value)
     {

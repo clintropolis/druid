@@ -22,6 +22,7 @@ package io.druid.benchmark;
 import com.google.common.collect.ImmutableList;
 import io.druid.benchmark.datagen.BenchmarkColumnSchema;
 import io.druid.benchmark.datagen.BenchmarkColumnValueGenerator;
+import io.druid.java.util.common.StringUtils;
 import io.druid.segment.column.ValueType;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
@@ -301,8 +302,6 @@ public class BaseColumnarIntsFromGeneratorBenchmark extends BaseColumnarIntsBenc
   @Param({"nullp95zipfHi"})
       String distribution;
 
-  // only applicable to zipf and uniform so they don't fucking suck and take forever before exploding with oom
-  // also used by sequential-skip with larger values to divide bound/cardinality to set skip size
   @Param("150000000")
   int cardinality;
 
@@ -310,13 +309,8 @@ public class BaseColumnarIntsFromGeneratorBenchmark extends BaseColumnarIntsBenc
 
   void initializeValues() throws IOException
   {
-    final String filename = "values-" + distribution + "-" + cardinality + "-" + bits + "-" + rows + ".bin";
-    final String tmpPath = "tmp/";
-    final String dirPath = "tmp/intCompress/";
-    File tmp = new File(tmpPath);
-    tmp.mkdir();
-    File dir = new File(dirPath);
-    dir.mkdir();
+    final String filename = getGeneratorValueFilename(distribution, cardinality, bits, rows);
+    File dir = getTmpDir();
     File dataFile = new File(dir, filename);
 
     vals = new int[rows];
@@ -383,4 +377,23 @@ public class BaseColumnarIntsFromGeneratorBenchmark extends BaseColumnarIntsBenc
       }
     }
   }
+
+  static String getGeneratorValueFilename(String distribution, int cardinality, int bits, int rows)
+  {
+    return "values-" + distribution + "-" + cardinality + "-" + bits + "-" + rows + ".bin";
+  }
+
+  static String getGeneratorEncodedFilename(String encoding, int bits, String distribution, int rows, int cardinality)
+  {
+    return encoding + "-" + bits + "-" + distribution + "-" + rows + "-" + cardinality + ".bin";
+  }
+
+  static File getTmpDir()
+  {
+    final String dirPath = "tmp/encoding/ints/";
+    File dir = new File(dirPath);
+    dir.mkdirs();
+    return dir;
+  }
+
 }

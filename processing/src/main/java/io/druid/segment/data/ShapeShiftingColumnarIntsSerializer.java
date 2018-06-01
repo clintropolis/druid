@@ -19,6 +19,7 @@
 
 package io.druid.segment.data;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.druid.segment.IndexSpec;
 import io.druid.segment.data.codecs.ints.IntFormEncoder;
 import io.druid.segment.data.codecs.ints.IntFormMetrics;
@@ -45,9 +46,36 @@ public class ShapeShiftingColumnarIntsSerializer
       @Nullable final ByteOrder overrideByteOrder
   )
   {
-    super(segmentWriteOutMedium, codecs, optimizationTarget, aggroLevel, 2, overrideByteOrder);
+    this(
+        segmentWriteOutMedium,
+        codecs,
+        optimizationTarget,
+        aggroLevel,
+        overrideByteOrder,
+        null
+    );
   }
 
+  @VisibleForTesting
+  public ShapeShiftingColumnarIntsSerializer(
+      final SegmentWriteOutMedium segmentWriteOutMedium,
+      final IntFormEncoder[] codecs,
+      final IndexSpec.ShapeShiftOptimizationTarget optimizationTarget,
+      final IndexSpec.ShapeShiftAggressionLevel aggroLevel,
+      @Nullable final ByteOrder overrideByteOrder,
+      @Nullable final Byte overrideLogValuesPerChunk
+  )
+  {
+    super(
+        segmentWriteOutMedium,
+        codecs, optimizationTarget,
+        aggroLevel,
+        2,
+        ShapeShiftingColumnarInts.VERSION,
+        overrideByteOrder,
+        overrideLogValuesPerChunk
+    );
+  }
   @Override
   public void initializeChunk()
   {

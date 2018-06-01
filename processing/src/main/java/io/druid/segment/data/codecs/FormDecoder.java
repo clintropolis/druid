@@ -37,6 +37,11 @@ public interface FormDecoder<TColumn extends ShapeShiftingColumn>
    */
   void transform(TColumn column);
 
+  /**
+   * Size of any chunk specific metadata stored at the start of a chunk, to calculate offset of values from chunk start
+   * in underlying buffer
+   * @return
+   */
   default int getMetadataSize()
   {
     return 0;

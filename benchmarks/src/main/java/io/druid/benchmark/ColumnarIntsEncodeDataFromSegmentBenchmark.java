@@ -45,8 +45,8 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Benchmark)
 @Fork(value = 1)
 @Warmup(iterations = 1)
-@Measurement(iterations = 1)
-public class ColumnarIntsEncodeDataBenchmark extends BaseColumnarIntsFromGeneratorBenchmark
+@Measurement(iterations = 3)
+public class ColumnarIntsEncodeDataFromSegmentBenchmark extends BaseColumnarIntsFromSegmentsBenchmark
 {
   @Setup
   public void setup() throws Exception
@@ -59,19 +59,13 @@ public class ColumnarIntsEncodeDataBenchmark extends BaseColumnarIntsFromGenerat
   @OutputTimeUnit(TimeUnit.MICROSECONDS)
   public void encodeColumn(Blackhole blackhole) throws IOException
   {
-    final String filename = encoding + "-" + bits + "-" + distribution + "-" + rows + "-" + cardinality + ".bin";
-    final String tmpPath = "tmp/";
-    final String dirPath = "tmp/intCompress/";
-    File tmp = new File(tmpPath);
-    tmp.mkdir();
-    File dir = new File(dirPath);
-    dir.mkdir();
-    File columnDataFile = new File(dir, filename);
+    File dir = getTmpDir();
+    File columnDataFile = new File(dir, getColumnEncodedFileName(encoding, segmentName, columnName));
     columnDataFile.delete();
     FileChannel output =
         FileChannel.open(columnDataFile.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 
-    int size = encodeToFile(vals, minValue, maxValue, encoding, output);
+    int size = BaseColumnarIntsBenchmark.encodeToFile(vals, minValue, maxValue, encoding, output);
     EncodingSizeProfiler.encodedSize = size;
     blackhole.consume(size);
     output.close();
@@ -81,12 +75,13 @@ public class ColumnarIntsEncodeDataBenchmark extends BaseColumnarIntsFromGenerat
   {
     System.out.println("main happened");
     Options opt = new OptionsBuilder()
-        .include(ColumnarIntsEncodeDataBenchmark.class.getSimpleName())
+        .include(ColumnarIntsEncodeDataFromSegmentBenchmark.class.getSimpleName())
         .addProfiler(EncodingSizeProfiler.class)
         .resultFormat(ResultFormatType.CSV)
-        .result("column-ints-encode-speed.csv")
+        .result("column-ints-encode-speed-segments.csv")
         .build();
 
     new Runner(opt).run();
   }
 }
+

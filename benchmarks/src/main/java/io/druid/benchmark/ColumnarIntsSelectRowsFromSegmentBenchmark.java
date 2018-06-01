@@ -54,7 +54,7 @@ import java.util.concurrent.TimeUnit;
 @Fork(value = 1)
 @Warmup(iterations = 5)
 @Measurement(iterations = 5)
-public class ColumnarIntsSelectRowsFromSegmentDataBenchmark extends BaseColumnarIntsFromSegmentsBenchmark
+public class ColumnarIntsSelectRowsFromSegmentBenchmark extends BaseColumnarIntsFromSegmentsBenchmark
 {
   private Map<String, ColumnarInts> encoders;
   private Map<String, Integer> encodedSize;
@@ -100,9 +100,8 @@ public class ColumnarIntsSelectRowsFromSegmentDataBenchmark extends BaseColumnar
 
   private void setupFromFile(String encoding) throws IOException
   {
-    String dirPath = "tmp/segCompress";
-    File dir = new File(dirPath);
-    File compFile = new File(dir, encoding + "-" + fileName.substring(0, fileName.indexOf('.')) + ".bin");
+    File dir = getTmpDir();
+    File compFile = new File(dir, getColumnEncodedFileName(encoding, segmentName, columnName));
     ByteBuffer buffer = Files.map(compFile);
 
     int size = (int) compFile.length();
@@ -186,7 +185,7 @@ public class ColumnarIntsSelectRowsFromSegmentDataBenchmark extends BaseColumnar
   {
     System.out.println("main happened");
     Options opt = new OptionsBuilder()
-        .include(ColumnarIntsSelectRowsFromSegmentDataBenchmark.class.getSimpleName())
+        .include(ColumnarIntsSelectRowsFromSegmentBenchmark.class.getSimpleName())
         .addProfiler(EncodingSizeProfiler.class)
         .resultFormat(ResultFormatType.CSV)
         .result("column-ints-select-speed-segments.csv")

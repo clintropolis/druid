@@ -52,7 +52,7 @@ import java.util.concurrent.TimeUnit;
 @Fork(value = 1)
 @Warmup(iterations = 5)
 @Measurement(iterations = 5)
-public class ColumnarIntsSelectRowsBenchmark extends BaseColumnarIntsFromGeneratorBenchmark
+public class ColumnarIntsSelectRowsFromGeneratorBenchmark extends BaseColumnarIntsFromGeneratorBenchmark
 {
   private Map<String, ColumnarInts> encoders;
   private Map<String, Integer> encodedSize;
@@ -93,9 +93,8 @@ public class ColumnarIntsSelectRowsBenchmark extends BaseColumnarIntsFromGenerat
 
   private void setupFromFile(String encoding) throws IOException
   {
-    final String dirPath = "tmp/intCompress";
-    File dir = new File(dirPath);
-    File compFile = new File(dir, encoding + "-" + bits + "-" + distribution + "-" + rows + "-" + cardinality + ".bin");
+    File dir = getTmpDir();
+    File compFile = new File(dir, getGeneratorEncodedFilename(encoding, bits, distribution, rows, cardinality));
     ByteBuffer buffer = Files.map(compFile);
 
     int size = (int) compFile.length();
@@ -103,7 +102,6 @@ public class ColumnarIntsSelectRowsBenchmark extends BaseColumnarIntsFromGenerat
     ColumnarInts data = createIndexedInts(encoding, buffer, size);
     encoders.put(encoding, data);
   }
-
 
   @Benchmark
   @BenchmarkMode(Mode.AverageTime)
@@ -179,7 +177,7 @@ public class ColumnarIntsSelectRowsBenchmark extends BaseColumnarIntsFromGenerat
   {
     System.out.println("main happened");
     Options opt = new OptionsBuilder()
-        .include(ColumnarIntsSelectRowsBenchmark.class.getSimpleName())
+        .include(ColumnarIntsSelectRowsFromGeneratorBenchmark.class.getSimpleName())
         .addProfiler(EncodingSizeProfiler.class)
         .resultFormat(ResultFormatType.CSV)
         .result("column-ints-select-speed.csv")

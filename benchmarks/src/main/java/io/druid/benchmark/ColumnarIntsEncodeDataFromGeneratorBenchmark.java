@@ -45,8 +45,8 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Benchmark)
 @Fork(value = 1)
 @Warmup(iterations = 1)
-@Measurement(iterations = 3)
-public class ColumnarDoublesEncodeDataFromSegmentsBenchmark extends BaseColumnarDoublesFromSegmentsBenchmark
+@Measurement(iterations = 1)
+public class ColumnarIntsEncodeDataFromGeneratorBenchmark extends BaseColumnarIntsFromGeneratorBenchmark
 {
   @Setup
   public void setup() throws Exception
@@ -59,24 +59,13 @@ public class ColumnarDoublesEncodeDataFromSegmentsBenchmark extends BaseColumnar
   @OutputTimeUnit(TimeUnit.MICROSECONDS)
   public void encodeColumn(Blackhole blackhole) throws IOException
   {
-    final String outputFileName = encoding + "-" + fileName.substring(0, fileName.indexOf('.')) + ".bin";
-    final String tmpPath = "tmp/";
-    final String dirPath = "tmp/segCompress/";
-    File tmp = new File(tmpPath);
-    tmp.mkdir();
-    File dir = new File(dirPath);
-    dir.mkdir();
-    File columnDataFile = new File(dir, outputFileName);
+    File dir = getTmpDir();
+    File columnDataFile = new File(dir, getGeneratorEncodedFilename(encoding, bits, distribution, rows, cardinality));
     columnDataFile.delete();
     FileChannel output =
         FileChannel.open(columnDataFile.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 
-    int size = -1;
-    if (fileName.contains("float")) {
-      size = BaseColumnarDoublesBenchmark.encodeFloatToFile(floatVals, encoding, output);
-    } else {
-      size = BaseColumnarDoublesBenchmark.encodeDoubleToFile(doubleVals, encoding, output);
-    }
+    int size = encodeToFile(vals, minValue, maxValue, encoding, output);
     EncodingSizeProfiler.encodedSize = size;
     blackhole.consume(size);
     output.close();
@@ -86,10 +75,10 @@ public class ColumnarDoublesEncodeDataFromSegmentsBenchmark extends BaseColumnar
   {
     System.out.println("main happened");
     Options opt = new OptionsBuilder()
-        .include(ColumnarDoublesEncodeDataFromSegmentsBenchmark.class.getSimpleName())
+        .include(ColumnarIntsEncodeDataFromGeneratorBenchmark.class.getSimpleName())
         .addProfiler(EncodingSizeProfiler.class)
         .resultFormat(ResultFormatType.CSV)
-        .result("column-doubles-encode-speed-segments.csv")
+        .result("column-ints-encode-speed.csv")
         .build();
 
     new Runner(opt).run();

@@ -20,6 +20,7 @@
 package io.druid.segment.data;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.primitives.Ints;
 import io.druid.java.util.common.io.smoosh.FileSmoosher;
 
 import javax.annotation.Nullable;
@@ -27,6 +28,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.WritableByteChannel;
+import java.util.function.Function;
+import java.util.function.IntUnaryOperator;
+import java.util.function.UnaryOperator;
 
 /**
  * Reads mapped buffer contents into {@link ShapeShiftingColumnData} to supply {@link ShapeShiftingColumnarInts}
@@ -85,10 +89,14 @@ public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<Colum
   @Override
   public ColumnarInts get()
   {
-    if (columnData.getDecodeStrategy() == ShapeShiftingColumnSerializer.DecodeStrategy.BLOCK.byteValue) {
-      return new ShapeShiftingBlockColumnarInts(columnData);
+    switch (ShapeShiftingColumnSerializer.DecodeStrategy.forByteValue(columnData.getDecodeStrategy())) {
+      case BLOCK:
+        return new ShapeShiftingBlockColumnarInts(columnData);
+      case DIRECT:
+      case MIXED:
+      default:
+        return new ShapeShiftingColumnarInts(columnData);
     }
-    return new ShapeShiftingColumnarInts(columnData);
   }
 
   @Override
@@ -103,6 +111,18 @@ public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<Colum
       final FileSmoosher smoosher
   ) throws IOException
   {
-    throw new UnsupportedOperationException();
+    ByteBuffer intToBytesHelperBuffer = ByteBuffer.allocate(Integer.BYTES).order(columnData.getByteOrder());
+
+    ShapeShiftingColumnSerializer.writeShapeShiftHeader(
+        channel,
+        intToBytesHelperBuffer,
+        ShapeShiftingColumnarInts.VERSION,
+        columnData.getNumChunks(),
+        columnData.getNumValues(),
+        columnData.getLogValuesPerChunk(),
+        columnData.getDecodeStrategy(),
+        columnData.getOffsetsSize()
+    );
+    channel.write(columnData.getBaseBuffer());
   }
 }
