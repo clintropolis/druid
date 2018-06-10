@@ -100,12 +100,10 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
 
     // todo: meh side effects...
     this.decompressedDataBuffer = Suppliers.memoize(() -> {
-      // todo: lame af, use enum
-      this.bufHolder = logValuesPerChunk == 14 ?
-                       CompressedPools.getByteBuf(byteOrder) :
-                       logValuesPerChunk == 13 ?
-                       CompressedPools.getSmallerByteBuf(byteOrder) :
-                       CompressedPools.getSmallestByteBuf(byteOrder);
+      this.bufHolder = CompressedPools.getShapeshiftDecodedValuesBuffer(
+          logValuesPerChunk + sourceData.getLogBytesPerValue(),
+          byteOrder
+      );
       return this.bufHolder.get();
     });
   }

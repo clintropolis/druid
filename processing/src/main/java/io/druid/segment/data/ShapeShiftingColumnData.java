@@ -36,33 +36,43 @@ public class ShapeShiftingColumnData
   private final int numChunks;
   private final int numValues;
   private final byte logValuesPerChunk;
+  private final byte logBytesPerValue;
   private final byte decodeStrategy;
   private final int offsetsSize;
   private final ByteBuffer baseBuffer;
   private final ByteOrder byteOrder;
 
-  public ShapeShiftingColumnData(ByteBuffer buffer, ByteOrder byteOrder)
+  public ShapeShiftingColumnData(ByteBuffer buffer, byte logBytesPerValue, ByteOrder byteOrder)
   {
-    this(buffer, byteOrder, null, false);
-  }
-
-  public ShapeShiftingColumnData(ByteBuffer buffer, ByteOrder byteOrder, boolean moveSourceBufferPosition)
-  {
-    this(buffer, byteOrder, null, moveSourceBufferPosition);
+    this(buffer, logBytesPerValue, byteOrder, null, false);
   }
 
   public ShapeShiftingColumnData(
       ByteBuffer buffer,
+      byte logBytesPerValue,
+      ByteOrder byteOrder,
+      boolean moveSourceBufferPosition
+  )
+  {
+    this(buffer, logBytesPerValue, byteOrder, null, moveSourceBufferPosition);
+  }
+
+  public ShapeShiftingColumnData(
+      ByteBuffer buffer,
+      byte logBytesPerValue,
       ByteOrder byteOrder,
       @Nullable Byte overrideDecodingStrategy,
       boolean moveSourceBufferPosition
   )
   {
+    this.logBytesPerValue = logBytesPerValue;
     ByteBuffer ourBuffer = buffer.slice().order(byteOrder);
     this.numChunks = ourBuffer.getInt(1);
     this.numValues = ourBuffer.getInt(1 + Integer.BYTES);
     this.logValuesPerChunk = ourBuffer.get(1 + 2 * Integer.BYTES);
-    this.decodeStrategy = overrideDecodingStrategy == null ? ourBuffer.get(1 + (2 * Integer.BYTES) + 1) : overrideDecodingStrategy;
+    this.decodeStrategy = overrideDecodingStrategy == null
+                          ? ourBuffer.get(1 + (2 * Integer.BYTES) + 1)
+                          : overrideDecodingStrategy;
     this.offsetsSize = ourBuffer.getInt(1 + (2 * Integer.BYTES) + 1 + 1);
 
     ourBuffer.limit(
@@ -104,6 +114,15 @@ public class ShapeShiftingColumnData
   public byte getLogValuesPerChunk()
   {
     return logValuesPerChunk;
+  }
+
+  /**
+   * log base 2 number of bytes per value
+   * @return
+   */
+  public byte getLogBytesPerValue()
+  {
+    return logBytesPerValue;
   }
 
   /**

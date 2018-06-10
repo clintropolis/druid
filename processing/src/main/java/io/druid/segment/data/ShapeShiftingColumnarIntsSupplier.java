@@ -20,7 +20,6 @@
 package io.druid.segment.data;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.primitives.Ints;
 import io.druid.java.util.common.io.smoosh.FileSmoosher;
 
 import javax.annotation.Nullable;
@@ -28,9 +27,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.WritableByteChannel;
-import java.util.function.Function;
-import java.util.function.IntUnaryOperator;
-import java.util.function.UnaryOperator;
 
 /**
  * Reads mapped buffer contents into {@link ShapeShiftingColumnData} to supply {@link ShapeShiftingColumnarInts}
@@ -77,7 +73,7 @@ public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<Colum
   )
   {
     ShapeShiftingColumnData columnData =
-        new ShapeShiftingColumnData(buffer, byteOrder, overrideDecodeStrategy, true);
+        new ShapeShiftingColumnData(buffer, (byte) 2, byteOrder, overrideDecodeStrategy, true);
 
     return new ShapeShiftingColumnarIntsSupplier(columnData);
   }

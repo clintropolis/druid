@@ -84,7 +84,7 @@ public final class LemireIntFormEncoder extends BaseIntFormEncoder
       numOutputInts = doEncode(values, numValues);
     }
 
-    for (int i = 0; i < this.numOutputInts; i++) {
+    for (int i = 0; i < numOutputInts; i++) {
       valuesOut.write(toBytes(encodedValuesTmp[i]));
     }
   }

@@ -58,7 +58,10 @@ import java.util.function.Function;
  *
  * Implementors need only supply an initialize method to allocate storage for {@code <TChunk>}, an add value method to
  * populate {@code <TChunk>}, a reset method to prepare {@code <TChunkMetrics>} for the next chunk after a flush, and
- * matching {@link FormEncoder} to perform actual value encoding.
+ * of course, matching {@link FormEncoder} implementations to perform actual value encoding. Generic compression is
+ * available to {@link FormEncoder} implementations by implementing
+ * {@link io.druid.segment.data.codecs.CompressibleFormEncoder} and wrapping in a
+ * {@link io.druid.segment.data.codecs.CompressedFormEncoder} in the codec list passed to the serializer.
  *
  * layout:
  * | version (byte) | numChunks (int) | numValues (int) | logValuesPerChunk (byte) | decodeStrategy (byte) | offsetsOutSize (int) | offsets | values |

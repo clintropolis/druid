@@ -45,34 +45,32 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Set;
 
-import static io.druid.segment.column.ValueType.STRING;
-
 @State(Scope.Benchmark)
 public class BaseColumnarIntsFromSegmentsBenchmark extends BaseColumnarIntsBenchmark
 {
   //CHECKSTYLE.OFF: Regexp
   // wiki columns
   @Param({
-    "channel",
-    "cityName",
-    "comment",
-    "commentLength",
-    "countryIsoCode",
-    "countryName",
-    "deltaBucket",
-    "diffUrl",
-    "flags",
-    "isAnonymous",
-    "isMinor",
-    "isNew",
-    "isRobot",
-    "isUnpatrolled",
-    "metroCode",
-    "namespace",
-    "page",
-    "regionIsoCode",
-    "regionName",
-    "user"
+      "channel",
+      "cityName",
+      "comment",
+      "commentLength",
+      "countryIsoCode",
+      "countryName",
+      "deltaBucket",
+      "diffUrl",
+      "flags",
+      "isAnonymous",
+      "isMinor",
+      "isNew",
+      "isRobot",
+      "isUnpatrolled",
+      "metroCode",
+      "namespace",
+      "page",
+      "regionIsoCode",
+      "regionName",
+      "user"
   })
 
   // twitter columns
@@ -164,7 +162,7 @@ public class BaseColumnarIntsFromSegmentsBenchmark extends BaseColumnarIntsBench
 
   @Param({"wikiticker"})
 //  @Param({"twitter"})
-//  @Param({"metrics"})
+//  @Param({"clarity"})
 //  @Param({"tpch-lineitem"})
   String segmentName;
 
@@ -182,7 +180,6 @@ public class BaseColumnarIntsFromSegmentsBenchmark extends BaseColumnarIntsBench
   {
     initializeSegmentValueIntermediaryFile();
     File dir = getTmpDir();
-//    File dataFile = new File(dir, fileName);
     File dataFile = new File(dir, getColumnDataFileName(segmentName, columnName));
 
     ArrayList<Integer> values = Lists.newArrayList();
@@ -246,7 +243,7 @@ public class BaseColumnarIntsFromSegmentsBenchmark extends BaseColumnarIntsBench
         final ColumnCapabilities capabilities = column.getCapabilities();
         final ValueType columnType = capabilities.getType();
         try (Writer writer = Files.newBufferedWriter(dataFile.toPath(), StandardCharsets.UTF_8)) {
-          if (columnType != STRING) {
+          if (columnType != ValueType.STRING) {
             throw new RuntimeException("Invalid column type, expected 'String'");
           }
           DictionaryEncodedColumn<String> theColumn = column.getDictionaryEncoding();

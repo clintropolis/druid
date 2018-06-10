@@ -22,7 +22,6 @@ package io.druid.benchmark;
 import com.google.common.collect.ImmutableList;
 import io.druid.benchmark.datagen.BenchmarkColumnSchema;
 import io.druid.benchmark.datagen.BenchmarkColumnValueGenerator;
-import io.druid.java.util.common.StringUtils;
 import io.druid.segment.column.ValueType;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;

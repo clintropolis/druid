@@ -22,7 +22,9 @@ package io.druid.segment.data;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableMap;
+import io.druid.collections.ResourceHolder;
 import io.druid.query.monomorphicprocessing.RuntimeShapeInspector;
+import io.druid.segment.CompressedPools;
 import io.druid.segment.data.codecs.DirectFormDecoder;
 import io.druid.segment.data.codecs.FormDecoder;
 import io.druid.segment.data.codecs.ints.BytePackedIntFormDecoder;
@@ -47,17 +49,19 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
 {
   public static final byte VERSION = 0x4; // todo: idk..
 
-  // Straight from the horse's mouth (https://github.com/lemire/JavaFastPFOR/blob/master/example.java).
-  private static final int SHOULD_BE_ENOUGH = 1024;
   protected static final Unsafe unsafe = getTheUnsafe();
 
   private final SkippableIntegerCODEC fastPforCodec = new SkippableComposition(new FastPFOR(), new VariableByte());
   protected final GetIntBuffer oddSizeValueGet;
   protected final GetIntUnsafe oddSizeValueGetUnsafe;
   final Map<Byte, FormDecoder<ShapeShiftingColumnarInts>> decoders;
-  private final Supplier<int[]> tmp;
+  ResourceHolder<int[]> decodedValuesHolder;
+  ResourceHolder<int[]> tmpValuesHolder;
+
+  private final Supplier<int[]> tmpSupplier;
   private final Supplier<int[]> decodedValuesSupplier;
 
+  protected int[] tmp;
   protected int[] decodedValues;
   protected DecodeIndex currentForm;
   protected int currentBytesPerValue = 4;
@@ -67,8 +71,14 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
   {
     super(sourceData);
 
-    this.tmp = Suppliers.memoize(() -> new int[valuesPerChunk + SHOULD_BE_ENOUGH]);
-    this.decodedValuesSupplier = Suppliers.memoize(() -> new int[valuesPerChunk]);
+    this.tmpSupplier = Suppliers.memoize(() -> {
+      tmpValuesHolder = CompressedPools.getShapeshiftIntsEncodedValuesArray(logValuesPerChunk);
+      return tmpValuesHolder.get();
+    });
+    this.decodedValuesSupplier = Suppliers.memoize(() -> {
+      decodedValuesHolder = CompressedPools.getShapeshiftIntsDecodedValuesArray(logValuesPerChunk);
+      return decodedValuesHolder.get();
+    });
 
     // todo: make more better, this is fragile and burried
     this.decoders = ImmutableMap.<Byte, FormDecoder<ShapeShiftingColumnarInts>>builder()
@@ -107,6 +117,12 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
   public void close() throws IOException
   {
     super.close();
+    if (tmpValuesHolder != null) {
+      tmpValuesHolder.close();
+    }
+    if (decodedValuesHolder != null) {
+      decodedValuesHolder.close();
+    }
   }
 
   @Override
@@ -141,7 +157,7 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
    */
   public final int[] getTmp()
   {
-    return tmp.get();
+    return tmpSupplier.get();
   }
 
   /**
