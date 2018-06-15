@@ -284,7 +284,7 @@ public class StringDimensionMergerV9 implements DimensionMergerV9
                 compressedDataBuffer,
                 uncompressedDataBuffer
             ),
-            new LemireIntFormEncoder(blockSize, IntCodecs.FASTPFOR, "fastpfor", sscodec)
+            new LemireIntFormEncoder(blockSize, IntCodecs.FASTPFOR, "fastpfor", byteOrder)
         };
         encodedValueSerializer =
             new ShapeShiftingColumnarIntsSerializer(

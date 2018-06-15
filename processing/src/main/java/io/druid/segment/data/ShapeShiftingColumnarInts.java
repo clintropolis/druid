@@ -88,7 +88,7 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
         .put(IntCodecs.BYTEPACK, new BytePackedIntFormDecoder(logValuesPerChunk, byteOrder))
         .put(IntCodecs.RLE_BYTEPACK, new RunLengthBytePackedIntFormDecoder(logValuesPerChunk, byteOrder))
         .put(IntCodecs.COMPRESSED, new CompressedFormDecoder(logValuesPerChunk, byteOrder, IntCodecs.COMPRESSED))
-        .put(IntCodecs.FASTPFOR, new LemireIntFormDecoder(logValuesPerChunk, IntCodecs.FASTPFOR, fastPforCodec))
+        .put(IntCodecs.FASTPFOR, new LemireIntFormDecoder(logValuesPerChunk, IntCodecs.FASTPFOR, byteOrder))
         .build();
     oddSizeValueGet = byteOrder.equals(ByteOrder.LITTLE_ENDIAN)
                       ? (_buffer, pos) -> _buffer.getInt(pos) & BytePackedIntFormDecoder.littleEndianMask3

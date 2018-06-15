@@ -292,14 +292,14 @@ public class BaseColumnarIntsFromGeneratorBenchmark extends BaseColumnarIntsBenc
 
   //@Param({"3", "9", "18", "27"})
   @Param({"27"})
-      int bits;
+  int bits;
 
   @Param({"3000000"})
   int rows;
 
   //@Param({"lazyZipfLow", "lazyZipfHi", "nullp50zipfLow", "nullp75zipfLow", "nullp90zipfLow", "nullp95zipfLow", "nullp99zipfLow", "lazyUniform", "random"})
   @Param({"nullp95zipfHi"})
-      String distribution;
+  String distribution;
 
   @Param("150000000")
   int cardinality;
@@ -352,7 +352,7 @@ public class BaseColumnarIntsFromGeneratorBenchmark extends BaseColumnarIntsBenc
           BenchmarkColumnValueGenerator valueGenerator = makeGenerator(distribution, bits, bound, cardinality, rows);
 
           for (int i = 0; i < vals.length; ++i) {
-            int value = -1;
+            int value;
             Object rowValue = valueGenerator.generateRowValue();
             value = rowValue != null ? (int) rowValue : 0;
             if (i == atLeastOneMustBeAsLargeAsBound) {
@@ -394,5 +394,4 @@ public class BaseColumnarIntsFromGeneratorBenchmark extends BaseColumnarIntsBenc
     dir.mkdirs();
     return dir;
   }
-
 }

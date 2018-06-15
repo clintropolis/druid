@@ -20,11 +20,17 @@
 package io.druid.segment;
 
 import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.ning.compress.BufferRecycler;
 import io.druid.collections.NonBlockingPool;
 import io.druid.collections.ResourceHolder;
 import io.druid.collections.StupidPool;
 import io.druid.java.util.common.logger.Logger;
+import io.druid.segment.data.codecs.ints.IntCodecs;
+import me.lemire.integercompression.FastPFOR;
+import me.lemire.integercompression.SkippableComposition;
+import me.lemire.integercompression.SkippableIntegerCODEC;
+import me.lemire.integercompression.VariableByte;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -48,6 +54,12 @@ public class CompressedPools
   // todo: i have no idea what this should legitimately be, this is only 32.25MiB which cannot be reclaimed by gc...
   // ...but maybe convservative if there is a lot of load, perhaps this is configurable?
   private static final int INT_ARRAY_POOL_MAX_CACHE = 256;
+
+
+  // todo: see ^ re: sizing.. these are currently ~1mb on heap + ~200kb direct buffer. Heap could be ~1/4 of the size
+  // with minor changes to fastpfor lib to allow passing page size (our max is 2^14 but codec allocates for 2^16)
+  // current sizing put it in around 32MiB that cannot be reclaimed
+  private static final int LEMIRE_FASTPFOR_CODEC_POOL_MAX_CACHE = 28;
 
   private static final NonBlockingPool<BufferRecycler> bufferRecyclerPool = new StupidPool<>(
       "bufferRecyclerPool",
@@ -127,6 +139,40 @@ public class CompressedPools
     );
   }
 
+  private static NonBlockingPool<SkippableIntegerCODEC> makeFastpforPool(String name, int size)
+  {
+    return new StupidPool<>(
+        name,
+        new Supplier<SkippableIntegerCODEC>()
+        {
+          private final AtomicLong counter = new AtomicLong(0);
+
+          @Override
+          public SkippableIntegerCODEC get()
+          {
+            log.info("Allocating new %s[%,d]", name, counter.incrementAndGet());
+
+            Supplier<ByteBuffer> compressionBufferSupplier =
+                Suppliers.memoize(() -> ByteBuffer.allocateDirect(1 << 14));
+            return new SkippableComposition(
+                new FastPFOR(),
+                new VariableByte() {
+                  // VariableByte allocates a buffer in compress method instead of in constructor like fastpfor
+                  // so override to re-use instead (and only allocate if indexing)
+                  @Override
+                  protected ByteBuffer makeBuffer(int sizeInBytes)
+                  {
+                    return compressionBufferSupplier.get();
+                  }
+                }
+              );
+          }
+        },
+        0,
+        LEMIRE_FASTPFOR_CODEC_POOL_MAX_CACHE
+    );
+  }
+
   private static final NonBlockingPool<ByteBuffer> bigEndByteBufPool =
       makeBufferPool("bigEndByteBufPool", BUFFER_SIZE, ByteOrder.BIG_ENDIAN);
 
@@ -179,6 +225,13 @@ public class CompressedPools
       makeIntArrayPool(
           "shapeshiftSmallestIntsEncodedValuesArrayPool",
           SMALLEST_INT_ARRAY_SIZE + ENCODED_INTS_SHOULD_BE_ENOUGH
+      );
+
+
+  private static final NonBlockingPool<SkippableIntegerCODEC> shapeshiftFastPforPool =
+      makeFastpforPool(
+          "shapeshiftFastPforCodecPool",
+          INT_ARRAY_SIZE
       );
 
 
@@ -259,6 +312,26 @@ public class CompressedPools
       case 14:
       default:
         return shapeshiftIntsEncodedValuesArrayPool.take();
+    }
+  }
+
+  public static NonBlockingPool<SkippableIntegerCODEC> getShapeshiftFastPforPool(int logValuesPerChunk)
+  {
+    switch (logValuesPerChunk) {
+      case 12:
+      case 13:
+      case 14:
+      default:
+        return shapeshiftFastPforPool;
+    }
+  }
+
+  public static NonBlockingPool<SkippableIntegerCODEC> getShapeshiftLemirePool(byte header, int logValuesPerChunk)
+  {
+    switch (header) {
+      case IntCodecs.FASTPFOR:
+      default:
+        return getShapeshiftFastPforPool(logValuesPerChunk);
     }
   }
 }

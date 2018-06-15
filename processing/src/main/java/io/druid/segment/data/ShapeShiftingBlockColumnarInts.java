@@ -48,58 +48,6 @@ public final class ShapeShiftingBlockColumnarInts extends ShapeShiftingColumnarI
   }
 
   @Override
-  public void get(int[] out, int startIndex, int length)
-  {
-    final int endIndex = startIndex + length;
-    final int startChunk = startIndex >> logValuesPerChunk;
-    final int endChunk = (endIndex - 1) >> logValuesPerChunk;
-
-    if (startChunk != currentChunk) {
-      loadChunk(startChunk);
-    }
-    if (startChunk == endChunk) {
-      final int endPos = (endIndex - startIndex);
-      for (int outPos = 0, index = startIndex; outPos < endPos; outPos++, index++) {
-        out[outPos] = decodedValues[index & chunkIndexMask];
-      }
-    } else {
-      // find split index
-      // todo: maybe handle more than 1 split in the event vector size > block size
-      int splitIndex = startIndex;
-      while ((++splitIndex >> logValuesPerChunk) == startChunk) {
-      }
-
-      final int splitPos = (splitIndex - startIndex);
-      for (int outPos = 0, index = startIndex; outPos < splitPos; outPos++, index++) {
-        out[outPos] = decodedValues[index & chunkIndexMask];
-      }
-      loadChunk(endChunk);
-      final int endPos = splitPos + (endIndex - splitIndex);
-      for (int outPos = splitPos, index = splitIndex; outPos < endPos; outPos++, index++) {
-        out[outPos] = decodedValues[index & chunkIndexMask];
-      }
-    }
-  }
-
-  @Override
-  public void get(int[] out, int[] indices, int length)
-  {
-    int desiredChunk = indices[0] >> logValuesPerChunk;
-
-    if (desiredChunk != currentChunk) {
-      loadChunk(desiredChunk);
-    }
-
-    for (int i = 0; i < length; ) {
-      while (i < length && (desiredChunk = (indices[i] >> logValuesPerChunk)) == currentChunk) {
-        out[i] = decodedValues[indices[i] & chunkIndexMask];
-        i++;
-      }
-      loadChunk(desiredChunk);
-    }
-  }
-
-  @Override
   protected void transform(FormDecoder<ShapeShiftingColumnarInts> nextForm)
   {
     nextForm.transform(this);

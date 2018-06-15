@@ -20,8 +20,6 @@
 package io.druid.benchmark;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import io.druid.java.util.common.Pair;
 import io.druid.java.util.common.io.Closer;
 import io.druid.segment.IndexSpec;
 import io.druid.segment.data.ColumnarInts;
@@ -60,14 +58,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
-import java.util.Arrays;
 import java.util.BitSet;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.function.IntUnaryOperator;
 
 @State(Scope.Benchmark)
 public class BaseColumnarIntsBenchmark
@@ -254,13 +247,14 @@ public class BaseColumnarIntsBenchmark
         sslzrleSerializer.writeTo(output, null);
         return (int) sslzrleSerializer.getSerializedSize();
       case "shapeshift-fastpfor":
-        final SkippableIntegerCODEC ssfastPforcodec = new SkippableComposition(new FastPFOR(), new VariableByte());
-        final IntFormEncoder[] dfastcodecs = new IntFormEncoder[]{new LemireIntFormEncoder(
-            blockSize,
-            IntCodecs.FASTPFOR,
-            "fastpfor",
-            ssfastPforcodec
-        )};
+        final IntFormEncoder[] dfastcodecs = new IntFormEncoder[]{
+            new LemireIntFormEncoder(
+                blockSize,
+                IntCodecs.FASTPFOR,
+                "fastpfor",
+                ByteOrder.LITTLE_ENDIAN
+            )
+        };
         final ShapeShiftingColumnarIntsSerializer ssfastPforSerializer =
             new ShapeShiftingColumnarIntsSerializer(
                 writeOutMedium,
@@ -286,7 +280,6 @@ public class BaseColumnarIntsBenchmark
       case "shapeshift-smaller":
       case "shapeshift-smaller-13":
       case "shapeshift-smaller-12":
-        final SkippableIntegerCODEC sscodec = new SkippableComposition(new FastPFOR(), new VariableByte());
         final CompressibleIntFormEncoder rle = new RunLengthBytePackedIntFormEncoder(
             blockSize,
             ByteOrder.LITTLE_ENDIAN
@@ -314,7 +307,12 @@ public class BaseColumnarIntsBenchmark
                 compressedDataBuffer,
                 uncompressedDataBuffer
             ),
-            new LemireIntFormEncoder(blockSize, IntCodecs.FASTPFOR, "fastpfor", sscodec)
+            new LemireIntFormEncoder(
+                blockSize,
+                IntCodecs.FASTPFOR,
+                "fastpfor",
+                ByteOrder.LITTLE_ENDIAN
+            )
         };
         final ShapeShiftingColumnarIntsSerializer ssSerializer =
             new ShapeShiftingColumnarIntsSerializer(
@@ -453,125 +451,6 @@ public class BaseColumnarIntsBenchmark
     }
   }
 
-
-  // for debugging: validate that all encoders read the same values
-  static void checkVectorSanity(
-      Map<String, ColumnarInts> encoders,
-      ImmutableList<String> encodings,
-      int rows,
-      int vectorSize
-  ) throws Exception
-  {
-    for (int i = 0; i < rows; i++) {
-      checkRowSanity(encoders, encodings, i);
-    }
-
-    final int[] vector = new int[vectorSize];
-    for (int i = 0; i < rows; ) {
-      final int endPos = Math.min(rows, i + vectorSize);
-      checkVectorRowsSanity(encoders, encodings, vector, i, endPos);
-      i = endPos;
-    }
-  }
-
-  static void checkVectorRowsSanity(
-      Map<String, ColumnarInts> encoders,
-      ImmutableList<String> encodings,
-      int[] vector,
-      int row,
-      int endPos
-  ) throws Exception
-  {
-    int[] vCurrent;
-    if (encodings.size() > 1) {
-      for (int i = 0; i < encodings.size() - 1; i++) {
-        String currentKey = encodings.get(i);
-        String nextKey = encodings.get(i + 1);
-        IndexedInts current = encoders.get(currentKey);
-        IndexedInts next = encoders.get(nextKey);
-        current.get(vector, row, endPos);
-        vCurrent = Arrays.copyOf(vector, endPos);
-        next.get(vector, row, endPos);
-        for (int j = 0; j < vCurrent.length; j++) {
-          if (vCurrent[j] != vector[j]) {
-            throw new Exception("values do not match at row "
-                                + row
-                                + " - "
-                                + currentKey
-                                + ":"
-                                + vCurrent[j]
-                                + " "
-                                + nextKey
-                                + ":"
-                                + vector[j]);
-          }
-        }
-      }
-    }
-  }
-
-
-  // for debugging: validate that all encoders read the same values
-  static void checkVectorSanity2(
-      Map<String, ColumnarInts> encoders,
-      ImmutableList<String> encodings,
-      int rows,
-      int vectorSize
-  ) throws Exception
-  {
-    for (int i = 0; i < rows; i++) {
-      checkRowSanity(encoders, encodings, i);
-    }
-
-    final int[] vector = new int[vectorSize];
-    for (int i = 0; i < rows; ) {
-      final int endPos = Math.min(rows, i + vectorSize);
-      checkVectorRowsSanity2(encoders, encodings, vector, i, endPos);
-      i = endPos;
-    }
-  }
-
-  static void checkVectorRowsSanity2(
-      Map<String, ColumnarInts> encoders,
-      ImmutableList<String> encodings,
-      int[] vector,
-      int row,
-      int endPos
-  ) throws Exception
-  {
-    int vCurrent[];
-    if (encodings.size() > 1) {
-      final int[] indices = new int[endPos - row];
-      for (int i = 0, rowIndex = row; rowIndex < endPos; i++, rowIndex++) {
-        indices[i] = rowIndex;
-      }
-      for (int i = 0; i < encodings.size() - 1; i++) {
-        String currentKey = encodings.get(i);
-        String nextKey = encodings.get(i + 1);
-        IndexedInts current = encoders.get(currentKey);
-        IndexedInts next = encoders.get(nextKey);
-        current.get(vector, indices, indices.length);
-        vCurrent = Arrays.copyOf(vector, indices.length);
-        next.get(vector, indices, indices.length);
-        for (int j = 0; j < vCurrent.length; j++) {
-          if (vCurrent[j] != vector[j]) {
-            throw new Exception("values do not match at row "
-                                + row
-                                + " - "
-                                + currentKey
-                                + ":"
-                                + vCurrent[j]
-                                + " "
-                                + nextKey
-                                + ":"
-                                + vector[j]);
-          }
-        }
-      }
-    }
-  }
-
-
   //@Param({"shapeshift-bytepack", "shapeshift-rle-bytepack", "shapeshift-fastpfor", "shapeshift-lz4-bytepack", "shapeshift-lz4-rle-bytepack", "compressed-vsize-byte"})
   @Param({"shapeshift", "compressed-vsize-byte"})
   String encoding;
@@ -583,11 +462,8 @@ public class BaseColumnarIntsBenchmark
   int minValue;
   int maxValue;
   BitSet filter;
-  //  int[] filterIndexes;
-  List<Pair<Integer, Integer>> vectorRangeFilters;
-  int[][] vectorIndexFilters;
 
-  void setupFilters(int rows, double filteredRowCountPercetnage, int vectorSize)
+  void setupFilters(int rows, double filteredRowCountPercetnage)
   {
     // todo: save and read from file for stable filter set..
     // todo: also maybe filter set distributions to simulate different select patterns?
@@ -605,44 +481,6 @@ public class BaseColumnarIntsBenchmark
           rowToAccess = (rowToAccess + 1) % rows;
         }
         filter.set(rowToAccess);
-      }
-
-
-      // setup vector range filter
-      int rangeAccumulator = 0;
-      BitSet alreadyCovered = new BitSet();
-      vectorRangeFilters = Lists.newArrayList();
-
-      IntUnaryOperator covered = (index) -> alreadyCovered.get(index) ? 1 : -1;
-      while (rangeAccumulator < filteredRowCount) {
-        int nextVectorRangeSize = rand.nextInt(vectorSize);
-        while (nextVectorRangeSize < 5) { // todo: ..5?
-          nextVectorRangeSize = rand.nextInt(vectorSize);
-        }
-        int nextPosition = rand.nextInt(rows - nextVectorRangeSize);
-        while (covered.applyAsInt(nextPosition) > 0) {
-          nextPosition = rand.nextInt(rows - nextVectorRangeSize);
-        }
-        alreadyCovered.set(nextPosition, nextPosition + nextVectorRangeSize - 1);
-        vectorRangeFilters.add(new Pair(nextPosition, nextPosition + nextVectorRangeSize));
-        rangeAccumulator += nextVectorRangeSize;
-      }
-      Collections.sort(vectorRangeFilters, Comparator.comparing(r -> r.lhs));
-
-      // setup vector index filter from bitset filter
-      vectorIndexFilters = new int[(int) Math.ceil(filteredRowCount / vectorSize) + 1][];
-      int currentFilter = 0;
-      List<Integer> buffer = Lists.newArrayList();
-      for (int i = filter.nextSetBit(0); i >= 0; i = filter.nextSetBit(i + 1)) {
-        if (buffer.size() == vectorSize) {
-          vectorIndexFilters[currentFilter++] = buffer.stream().mapToInt(x -> x).toArray();
-          buffer.clear();
-        }
-        buffer.add(i);
-      }
-      // clear remaining
-      if (buffer.size() > 0) {
-        vectorIndexFilters[currentFilter] = buffer.stream().mapToInt(x -> x).toArray();
       }
     }
   }

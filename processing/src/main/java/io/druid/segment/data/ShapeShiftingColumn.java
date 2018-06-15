@@ -119,6 +119,7 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
   /**
    * This method loads and decodes a chunk of values, and should be called in column 'get' methods to change the current
    * chunk
+   *
    * @param desiredChunk
    */
   final void loadChunk(int desiredChunk)
@@ -172,26 +173,40 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
 
   /**
    * Transform this shapeshifting column to be able to read row values for the specified chunk
+   *
    * @param nextForm decoder for the form of the next chunk of values
    */
   protected abstract void transform(FormDecoder<TShapeShiftImpl> nextForm);
 
   /**
    * Get header size, used to correctly calculate chunk and offset locations in underlying bytebuffer.
+   *
    * @return
    */
   protected abstract int headerSize();
 
+  /**
+   * Get form decoder mapped to chunk header, used to transform this column to prepare for value reading
+   *
+   * @param header
+   *
+   * @return
+   */
   protected abstract FormDecoder<TShapeShiftImpl> getFormDecoder(byte header);
 
+  /**
+   * Get underlying column buffer sliced from mapped smoosh
+   *
+   * @return
+   */
   public ByteBuffer getBuffer()
   {
     return this.buffer;
   }
 
-
   /**
    * Get shared temporary bytebuffer for decompression
+   *
    * @return
    */
   ByteBuffer getDecompressedDataBuffer()
@@ -201,6 +216,7 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
 
   /**
    * Get current {@link ByteBuffer} to read row values from
+   *
    * @return
    */
   public final ByteBuffer getCurrentValueBuffer()
@@ -210,6 +226,7 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
 
   /**
    * Set bytebuffer to read row values from
+   *
    * @param currentValueBuffer
    */
   public void setCurrentValueBuffer(ByteBuffer currentValueBuffer)
@@ -219,6 +236,7 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
 
   /**
    * Get 'unsafe' memory address of current value chunk direct buffer
+   *
    * @return
    */
   public final long getCurrentValuesAddress()
@@ -228,6 +246,7 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
 
   /**
    * Set 'unsafe' memory address of current value chunk direct buffer
+   *
    * @param currentValuesAddress
    */
   public final void setCurrentValuesAddress(long currentValuesAddress)
@@ -238,6 +257,7 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
   /**
    * Get buffer offset of base column buffer for values of current chunk. If chunk has it's own encoding metadata, this
    * may be offset from the start of the chunk itself.
+   *
    * @return
    */
   public final int getCurrentValuesStartOffset()
@@ -256,6 +276,7 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
 
   /**
    * Get buffer offset of base column buffer for start of current chunk.
+   *
    * @return
    */
   public int getCurrentChunkStartOffset()
@@ -265,6 +286,7 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
 
   /**
    * Set buffer offset of base column buffer for current chunk.
+   *
    * @param currentChunkStartOffset
    */
   public void setCurrentChunkStartOffset(int currentChunkStartOffset)
@@ -274,6 +296,7 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
 
   /**
    * Get size in bytes of current chunk
+   *
    * @return
    */
   public int getCurrentChunkSize()
@@ -283,6 +306,7 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
 
   /**
    * Set size in bytes of current chunk
+   *
    * @param currentChunkSize
    */
   public void setCurrentChunkSize(int currentChunkSize)
@@ -292,6 +316,7 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
 
   /**
    * Get number of rows in current chunk
+   *
    * @return
    */
   public int getCurrentChunkNumValues()
@@ -301,6 +326,7 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
 
   /**
    * Set number of rows in current chunk
+   *
    * @param currentChunkNumValues
    */
   public void setCurrentChunkNumValues(int currentChunkNumValues)
@@ -312,7 +338,6 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
    * Generic Shapeshifting form decoder for chunks that are block compressed using any of {@link CompressionStrategy}.
    * Data is decompressed to 'decompressedDataBuffer' to be further decoded by another {@link BaseFormDecoder},
    * via calling 'transform' again on the decompressed chunk.
-   *
    */
   public final class CompressedFormDecoder extends BaseFormDecoder<TShapeShiftImpl>
   {

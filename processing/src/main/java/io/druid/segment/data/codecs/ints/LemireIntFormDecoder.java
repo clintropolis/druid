@@ -19,6 +19,9 @@
 
 package io.druid.segment.data.codecs.ints;
 
+import io.druid.collections.NonBlockingPool;
+import io.druid.collections.ResourceHolder;
+import io.druid.segment.CompressedPools;
 import io.druid.segment.data.ShapeShiftingColumn;
 import io.druid.segment.data.ShapeShiftingColumnarInts;
 import io.druid.segment.data.codecs.BaseFormDecoder;
@@ -42,24 +45,24 @@ import java.nio.ByteOrder;
 public final class LemireIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
 {
   private static final Unsafe unsafe = ShapeShiftingColumn.getTheUnsafe();
-  private final SkippableIntegerCODEC codec;
+  private final NonBlockingPool<SkippableIntegerCODEC> codecPool;
   private final byte header;
 
   public LemireIntFormDecoder(
       byte logValuesPerChunk,
       byte header,
-      SkippableIntegerCODEC codec
+      ByteOrder byteOrder
   )
   {
-    super(logValuesPerChunk, ByteOrder.LITTLE_ENDIAN);
+    super(logValuesPerChunk, byteOrder);
     this.header = header;
-    this.codec = codec;
+    this.codecPool = CompressedPools.getShapeshiftLemirePool(header, logValuesPerChunk);
   }
 
   /**
    * Eagerly decode all values into value array of shapeshifting int column
-   *  @param columnarInts
    *
+   * @param columnarInts
    */
   @Override
   public void transform(ShapeShiftingColumnarInts columnarInts)
@@ -103,14 +106,17 @@ public final class LemireIntFormDecoder extends BaseFormDecoder<ShapeShiftingCol
     final IntWrapper outPos = new IntWrapper(0);
 
     // this will unpack encodedValuesTmp to decodedValues
-    codec.headlessUncompress(
-        tmp,
-        inPos,
-        chunkSizeAsInts,
-        decodedChunk,
-        outPos,
-        numValues
-    );
+    try (ResourceHolder<SkippableIntegerCODEC> hodl = codecPool.take()) {
+      SkippableIntegerCODEC codec = hodl.get();
+      codec.headlessUncompress(
+          tmp,
+          inPos,
+          chunkSizeAsInts,
+          decodedChunk,
+          outPos,
+          numValues
+      );
+    }
 
     // todo: needed?
     // Sanity checks.

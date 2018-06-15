@@ -19,7 +19,10 @@
 
 package io.druid.segment.data.codecs.ints;
 
+import io.druid.collections.NonBlockingPool;
+import io.druid.collections.ResourceHolder;
 import io.druid.java.util.common.ISE;
+import io.druid.segment.CompressedPools;
 import io.druid.segment.writeout.WriteOutBytes;
 import me.lemire.integercompression.IntWrapper;
 import me.lemire.integercompression.SkippableIntegerCODEC;
@@ -39,7 +42,7 @@ public final class LemireIntFormEncoder extends BaseIntFormEncoder
 {
   // Straight from the horse's mouth (https://github.com/lemire/JavaFastPFOR/blob/master/example.java).
   private static final int SHOULD_BE_ENOUGH = 1024;
-  private final SkippableIntegerCODEC codec;
+  private final NonBlockingPool<SkippableIntegerCODEC> codecPool;
   private final int[] encodedValuesTmp;
   private final byte header;
   private final String name;
@@ -49,13 +52,13 @@ public final class LemireIntFormEncoder extends BaseIntFormEncoder
       byte logValuesPerChunk,
       byte header,
       String name,
-      SkippableIntegerCODEC codec
+      ByteOrder byteOrder
   )
   {
-    super(logValuesPerChunk, ByteOrder.LITTLE_ENDIAN);
+    super(logValuesPerChunk, byteOrder);
     this.header = header;
     this.name = name;
-    this.codec = codec;
+    this.codecPool = CompressedPools.getShapeshiftLemirePool(header, logValuesPerChunk);
     // todo: pass this in so we can share?
     this.encodedValuesTmp = new int[valuesPerChunk + SHOULD_BE_ENOUGH];
   }
@@ -106,7 +109,10 @@ public final class LemireIntFormEncoder extends BaseIntFormEncoder
     final IntWrapper inPos = new IntWrapper(0);
     final IntWrapper outPos = new IntWrapper(0);
 
-    codec.headlessCompress(values, inPos, numValues, encodedValuesTmp, outPos);
+    try (ResourceHolder<SkippableIntegerCODEC> hodl = codecPool.take()) {
+      SkippableIntegerCODEC codec = hodl.get();
+      codec.headlessCompress(values, inPos, numValues, encodedValuesTmp, outPos);
+    }
 
     if (inPos.get() != numValues) {
       throw new ISE("Expected to compress[%d] ints, but read[%d]", numValues, inPos.get());

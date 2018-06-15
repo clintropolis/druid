@@ -70,7 +70,7 @@ public class ColumnarIntsSelectRowsFromSegmentBenchmark extends BaseColumnarInts
   {
     encoders = Maps.newHashMap();
     encodedSize = Maps.newHashMap();
-    setupFilters(rows, filteredRowCountPercentage, 1024);
+    setupFilters(rows, filteredRowCountPercentage);
 
     setupFromFile(encoding);
 
@@ -83,10 +83,7 @@ public class ColumnarIntsSelectRowsFromSegmentBenchmark extends BaseColumnarInts
         setupFromFile(_enc);
       }
     }
-//
     checkSanity(encoders, all, rows);
-//    checkVectorSanity(encoders, all, rows, 1024);
-//    checkVectorSanity2(encoders, all, rows, 1024);
     //CHECKSTYLE.ON: Regexp
   }
 
@@ -128,58 +125,6 @@ public class ColumnarIntsSelectRowsFromSegmentBenchmark extends BaseColumnarInts
       }
     }
   }
-
-
-  //CHECKSTYLE.OFF: Regexp
-//  @Benchmark
-//  @BenchmarkMode(Mode.AverageTime)
-//  @OutputTimeUnit(TimeUnit.MICROSECONDS)
-//  public void selectRowsVectorizedIndices(Blackhole blackhole)
-//  {
-//    final int vectorSize = 1024;
-//    final int[] vector = new int[vectorSize];
-//    EncodingSizeProfiler.encodedSize = encodedSize.get(encoding);
-//    IndexedInts encoder = encoders.get(encoding);
-//    if (filter == null) {
-//      for (int i = 0; i < rows; ) {
-//        final int endPos = Math.min(rows, i + vectorSize);
-//        encoder.get(vector, i, endPos);
-//        blackhole.consume(vector);
-//        i = endPos;
-//      }
-//    } else {
-//      for (int[] vectorFilter : vectorIndexFilters) {
-//        encoder.get(vector, vectorFilter, vectorFilter.length);
-//        blackhole.consume(vector);
-//      }
-//    }
-//  }
-//
-//
-//  @Benchmark
-//  @BenchmarkMode(Mode.AverageTime)
-//  @OutputTimeUnit(TimeUnit.MICROSECONDS)
-//  public void selectRowsVectorizedRanges(Blackhole blackhole)
-//  {
-//    final int vectorSize = 1024;
-//    final int[] vector = new int[vectorSize];
-//    EncodingSizeProfiler.encodedSize = encodedSize.get(encoding);
-//    IndexedInts encoder = encoders.get(encoding);
-//    if (filter == null) {
-//      for (int i = 0; i < rows; ) {
-//        final int endPos = Math.min(rows, i + vectorSize);
-//        encoder.get(vector, i, endPos);
-//        blackhole.consume(vector);
-//        i = endPos;
-//      }
-//    } else {
-//      for (Pair<Integer, Integer> vectorFilter : vectorRangeFilters) {
-//        encoder.get(vector, vectorFilter.lhs, vectorFilter.rhs);
-//        blackhole.consume(vector);
-//      }
-//    }
-//  }
-  //CHECKSTYLE.ON: Regexp
 
   public static void main(String[] args) throws RunnerException
   {
