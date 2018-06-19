@@ -162,7 +162,9 @@ public class CompressedPools
                   @Override
                   protected ByteBuffer makeBuffer(int sizeInBytes)
                   {
-                    return compressionBufferSupplier.get();
+                    ByteBuffer theBuffer = compressionBufferSupplier.get();
+                    theBuffer.clear();
+                    return theBuffer;
                   }
                 }
               );
