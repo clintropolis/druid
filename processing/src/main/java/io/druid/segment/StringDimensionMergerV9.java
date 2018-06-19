@@ -69,10 +69,6 @@ import io.druid.segment.serde.DictionaryEncodedColumnPartSerde;
 import io.druid.segment.writeout.SegmentWriteOutMedium;
 import it.unimi.dsi.fastutil.ints.IntIterable;
 import it.unimi.dsi.fastutil.ints.IntIterator;
-import me.lemire.integercompression.FastPFOR;
-import me.lemire.integercompression.SkippableComposition;
-import me.lemire.integercompression.SkippableIntegerCODEC;
-import me.lemire.integercompression.VariableByte;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -259,7 +255,6 @@ public class StringDimensionMergerV9 implements DimensionMergerV9
                                    ((1 << blockSize) * Integer.BYTES) + 1024,
                                    segmentWriteOutMedium.getCloser()
                                );
-        final SkippableIntegerCODEC sscodec = new SkippableComposition(new FastPFOR(), new VariableByte());
         final CompressibleIntFormEncoder rle = new RunLengthBytePackedIntFormEncoder(blockSize, byteOrder);
         final CompressibleIntFormEncoder bytepack = new BytePackedIntFormEncoder(blockSize, byteOrder);
         final IntFormEncoder[] sscodecs = new IntFormEncoder[]{

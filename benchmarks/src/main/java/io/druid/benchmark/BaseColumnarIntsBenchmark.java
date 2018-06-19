@@ -80,293 +80,294 @@ public class BaseColumnarIntsBenchmark
         IndexSpec.ShapeShiftOptimizationTarget.FASTBUTSMALLISH;
 
 
-    SegmentWriteOutMedium writeOutMedium = new OnHeapMemorySegmentWriteOutMedium();
+    try (SegmentWriteOutMedium writeOutMedium = new OnHeapMemorySegmentWriteOutMedium()) {
 
-    ByteBuffer uncompressedDataBuffer =
-        CompressionStrategy.LZ4.getCompressor()
-                               .allocateInBuffer(8 + ((1 << blockSize) * Integer.BYTES), writeOutMedium.getCloser())
-                               .order(ByteOrder.LITTLE_ENDIAN);
-    ByteBuffer compressedDataBuffer =
-        CompressionStrategy.LZ4.getCompressor()
-                               .allocateOutBuffer(
-                                   ((1 << blockSize) * Integer.BYTES) + 1024,
-                                   writeOutMedium.getCloser()
-                               );
-    switch (encoding) {
-      case "vsize-byte":
-        final VSizeColumnarInts vsize = VSizeColumnarInts.fromArray(vals);
-        vsize.writeTo(output, null);
-        return (int) vsize.getSerializedSize();
-      case "compressed-vsize-byte":
-        final CompressedVSizeColumnarIntsSupplier compressed = CompressedVSizeColumnarIntsSupplier.fromList(
-            IntArrayList.wrap(vals),
-            Math.max(maxValue - 1, 1),
-            CompressedVSizeColumnarIntsSupplier.maxIntsInBufferForBytes(numBytes),
-            ByteOrder.nativeOrder(),
-            CompressionStrategy.LZ4,
-            Closer.create()
-        );
-        compressed.writeTo(output, null);
-        return (int) compressed.getSerializedSize();
-      case "compressed-vsize-big-endian":
-        final CompressedVSizeColumnarIntsSupplier compressedBigEndian = CompressedVSizeColumnarIntsSupplier.fromList(
-            IntArrayList.wrap(vals),
-            Math.max(maxValue - 1, 1),
-            CompressedVSizeColumnarIntsSupplier.maxIntsInBufferForBytes(numBytes),
-            ByteOrder.BIG_ENDIAN,
-            CompressionStrategy.LZ4,
-            Closer.create()
-        );
-        compressedBigEndian.writeTo(output, null);
-        return (int) compressedBigEndian.getSerializedSize();
-      case "fastpfor":
-        final SkippableIntegerCODEC fastPforcodec = new SkippableComposition(new FastPFOR(), new VariableByte());
-        final FastPforIntsSerializer fastPforSerializer =
-            new FastPforIntsSerializer(
-                writeOutMedium,
-                fastPforcodec,
-                blockSize
-            );
-        fastPforSerializer.open();
-        for (int val : vals) {
-          fastPforSerializer.addValue(val);
-        }
-        fastPforSerializer.writeTo(output, null);
-        return (int) fastPforSerializer.getSerializedSize();
-      case "shapeshift-unencoded":
-        final IntFormEncoder[] ssucodecs = new IntFormEncoder[]{
-            new UnencodedIntFormEncoder(
-                blockSize,
-                ByteOrder.LITTLE_ENDIAN
-            )
-        };
-        final ShapeShiftingColumnarIntsSerializer ssunencodedSerializer =
-            new ShapeShiftingColumnarIntsSerializer(
-                writeOutMedium,
-                ssucodecs,
-                optimizationTarget,
-                aggro,
-                ByteOrder.LITTLE_ENDIAN
-            );
-        ssunencodedSerializer.open();
-        for (int val : vals) {
-          ssunencodedSerializer.addValue(val);
-        }
-        ssunencodedSerializer.writeTo(output, null);
-        return (int) ssunencodedSerializer.getSerializedSize();
-      case "shapeshift-bytepack":
-        final IntFormEncoder[] ssbytepackcodecs = new IntFormEncoder[]{
-            new BytePackedIntFormEncoder(
-                blockSize,
-                ByteOrder.LITTLE_ENDIAN
-            )
-        };
-        final ShapeShiftingColumnarIntsSerializer ssbytepackSerializer =
-            new ShapeShiftingColumnarIntsSerializer(
-                writeOutMedium,
-                ssbytepackcodecs,
-                optimizationTarget,
-                aggro,
-                ByteOrder.LITTLE_ENDIAN
-            );
-        ssbytepackSerializer.open();
-        for (int val : vals) {
-          ssbytepackSerializer.addValue(val);
-        }
-        ssbytepackSerializer.writeTo(output, null);
-        return (int) ssbytepackSerializer.getSerializedSize();
-      case "shapeshift-rle-bytepack":
-        final IntFormEncoder[] ssrbytepackcodecs = new IntFormEncoder[]{
-            new RunLengthBytePackedIntFormEncoder(
-                blockSize,
-                ByteOrder.LITTLE_ENDIAN
-            )
-        };
-        final ShapeShiftingColumnarIntsSerializer ssrbytepackSerializer =
-            new ShapeShiftingColumnarIntsSerializer(
-                writeOutMedium,
-                ssrbytepackcodecs,
-                optimizationTarget,
-                aggro,
-                ByteOrder.LITTLE_ENDIAN
-            );
-        ssrbytepackSerializer.open();
-        for (int val : vals) {
-          ssrbytepackSerializer.addValue(val);
-        }
-        ssrbytepackSerializer.writeTo(output, null);
-        return (int) ssrbytepackSerializer.getSerializedSize();
-      case "shapeshift-lz4-bytepack":
-        final IntFormEncoder[] sslzcodecs = new IntFormEncoder[]{
-            new CompressedIntFormEncoder(
-                blockSize,
-                ByteOrder.LITTLE_ENDIAN,
-                CompressionStrategy.LZ4,
-                new BytePackedIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
-                compressedDataBuffer,
-                uncompressedDataBuffer
-            )
-        };
-        final ShapeShiftingColumnarIntsSerializer sslzSerializer =
-            new ShapeShiftingColumnarIntsSerializer(
-                writeOutMedium,
-                sslzcodecs,
-                optimizationTarget,
-                aggro,
-                ByteOrder.LITTLE_ENDIAN
-            );
-        sslzSerializer.open();
-        for (int val : vals) {
-          sslzSerializer.addValue(val);
-        }
-        sslzSerializer.writeTo(output, null);
-        return (int) sslzSerializer.getSerializedSize();
-      case "shapeshift-lz4-rle-bytepack":
-        final IntFormEncoder[] sslzrlecodecs = new IntFormEncoder[]{
-            new CompressedIntFormEncoder(
-                blockSize,
-                ByteOrder.LITTLE_ENDIAN,
-                CompressionStrategy.LZ4,
-                new RunLengthBytePackedIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
-                compressedDataBuffer,
-                uncompressedDataBuffer
-            )
-        };
-        final ShapeShiftingColumnarIntsSerializer sslzrleSerializer =
-            new ShapeShiftingColumnarIntsSerializer(
-                writeOutMedium,
-                sslzrlecodecs,
-                optimizationTarget,
-                aggro,
-                ByteOrder.LITTLE_ENDIAN
-            );
-        sslzrleSerializer.open();
-        for (int val : vals) {
-          sslzrleSerializer.addValue(val);
-        }
-        sslzrleSerializer.writeTo(output, null);
-        return (int) sslzrleSerializer.getSerializedSize();
-      case "shapeshift-fastpfor":
-        final IntFormEncoder[] dfastcodecs = new IntFormEncoder[]{
-            new LemireIntFormEncoder(
-                blockSize,
-                IntCodecs.FASTPFOR,
-                "fastpfor",
-                ByteOrder.LITTLE_ENDIAN
-            )
-        };
-        final ShapeShiftingColumnarIntsSerializer ssfastPforSerializer =
-            new ShapeShiftingColumnarIntsSerializer(
-                writeOutMedium,
-                dfastcodecs,
-                optimizationTarget,
-                aggro,
-                ByteOrder.LITTLE_ENDIAN
-            );
-        ssfastPforSerializer.open();
-        for (int val : vals) {
-          ssfastPforSerializer.addValue(val);
-        }
-        ssfastPforSerializer.writeTo(output, null);
-        return (int) ssfastPforSerializer.getSerializedSize();
-      case "shapeshift":
-      case "shapeshift-13":
-      case "shapeshift-12":
-      case "shapeshift-lazy":
-      case "shapeshift-eager":
-      case "shapeshift-faster":
-      case "shapeshift-faster-13":
-      case "shapeshift-faster-12":
-      case "shapeshift-smaller":
-      case "shapeshift-smaller-13":
-      case "shapeshift-smaller-12":
-        final CompressibleIntFormEncoder rle = new RunLengthBytePackedIntFormEncoder(
-            blockSize,
-            ByteOrder.LITTLE_ENDIAN
-        );
-        final CompressibleIntFormEncoder bytepack = new BytePackedIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN);
-        final IntFormEncoder[] sscodecs = new IntFormEncoder[]{
-            new ZeroIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
-            new ConstantIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
-            new UnencodedIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
-            rle,
-            bytepack,
-            new CompressedIntFormEncoder(
-                blockSize,
-                ByteOrder.LITTLE_ENDIAN,
-                CompressionStrategy.LZ4,
-                rle,
-                compressedDataBuffer,
-                uncompressedDataBuffer
-            ),
-            new CompressedIntFormEncoder(
-                blockSize,
-                ByteOrder.LITTLE_ENDIAN,
-                CompressionStrategy.LZ4,
-                bytepack,
-                compressedDataBuffer,
-                uncompressedDataBuffer
-            ),
-            new LemireIntFormEncoder(
-                blockSize,
-                IntCodecs.FASTPFOR,
-                "fastpfor",
-                ByteOrder.LITTLE_ENDIAN
-            )
-        };
-        final ShapeShiftingColumnarIntsSerializer ssSerializer =
-            new ShapeShiftingColumnarIntsSerializer(
-                writeOutMedium,
-                sscodecs,
-                encoding.contains("shapeshift-smaller")
-                ? IndexSpec.ShapeShiftOptimizationTarget.SMALLER
-                : encoding.contains("shapeshift-faster")
-                  ? IndexSpec.ShapeShiftOptimizationTarget.FASTER
-                  : optimizationTarget,
-                aggro,
-                ByteOrder.LITTLE_ENDIAN
-            );
-        ssSerializer.open();
-        for (int val : vals) {
-          ssSerializer.addValue(val);
-        }
-        ssSerializer.writeTo(output, null);
-        return (int) ssSerializer.getSerializedSize();
-      case "shapeshift-lz4-only":
-        final IntFormEncoder[] sslzNewcodecs = new IntFormEncoder[]{
-            new CompressedIntFormEncoder(
-                blockSize,
-                ByteOrder.LITTLE_ENDIAN,
-                CompressionStrategy.LZ4,
-                new RunLengthBytePackedIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
-                compressedDataBuffer,
-                uncompressedDataBuffer
-            ),
-            new CompressedIntFormEncoder(
-                blockSize,
-                ByteOrder.LITTLE_ENDIAN,
-                CompressionStrategy.LZ4,
-                new BytePackedIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
-                compressedDataBuffer,
-                uncompressedDataBuffer
-            ),
-            };
-        final ShapeShiftingColumnarIntsSerializer sslzNewSerializer =
-            new ShapeShiftingColumnarIntsSerializer(
-                writeOutMedium,
-                sslzNewcodecs,
-                optimizationTarget,
-                aggro,
-                ByteOrder.LITTLE_ENDIAN
-            );
-        sslzNewSerializer.open();
-        for (int val : vals) {
-          sslzNewSerializer.addValue(val);
-        }
-        sslzNewSerializer.writeTo(output, null);
-        return (int) sslzNewSerializer.getSerializedSize();
+      ByteBuffer uncompressedDataBuffer =
+          CompressionStrategy.LZ4.getCompressor()
+                                 .allocateInBuffer(8 + ((1 << blockSize) * Integer.BYTES), writeOutMedium.getCloser())
+                                 .order(ByteOrder.LITTLE_ENDIAN);
+      ByteBuffer compressedDataBuffer =
+          CompressionStrategy.LZ4.getCompressor()
+                                 .allocateOutBuffer(
+                                     ((1 << blockSize) * Integer.BYTES) + 1024,
+                                     writeOutMedium.getCloser()
+                                 );
+      switch (encoding) {
+        case "vsize-byte":
+          final VSizeColumnarInts vsize = VSizeColumnarInts.fromArray(vals);
+          vsize.writeTo(output, null);
+          return (int) vsize.getSerializedSize();
+        case "compressed-vsize-byte":
+          final CompressedVSizeColumnarIntsSupplier compressed = CompressedVSizeColumnarIntsSupplier.fromList(
+              IntArrayList.wrap(vals),
+              Math.max(maxValue - 1, 1),
+              CompressedVSizeColumnarIntsSupplier.maxIntsInBufferForBytes(numBytes),
+              ByteOrder.nativeOrder(),
+              CompressionStrategy.LZ4,
+              Closer.create()
+          );
+          compressed.writeTo(output, null);
+          return (int) compressed.getSerializedSize();
+        case "compressed-vsize-big-endian":
+          final CompressedVSizeColumnarIntsSupplier compressedBigEndian = CompressedVSizeColumnarIntsSupplier.fromList(
+              IntArrayList.wrap(vals),
+              Math.max(maxValue - 1, 1),
+              CompressedVSizeColumnarIntsSupplier.maxIntsInBufferForBytes(numBytes),
+              ByteOrder.BIG_ENDIAN,
+              CompressionStrategy.LZ4,
+              Closer.create()
+          );
+          compressedBigEndian.writeTo(output, null);
+          return (int) compressedBigEndian.getSerializedSize();
+        case "fastpfor":
+          final SkippableIntegerCODEC fastPforcodec = new SkippableComposition(new FastPFOR(), new VariableByte());
+          final FastPforIntsSerializer fastPforSerializer =
+              new FastPforIntsSerializer(
+                  writeOutMedium,
+                  fastPforcodec,
+                  blockSize
+              );
+          fastPforSerializer.open();
+          for (int val : vals) {
+            fastPforSerializer.addValue(val);
+          }
+          fastPforSerializer.writeTo(output, null);
+          return (int) fastPforSerializer.getSerializedSize();
+        case "shapeshift-unencoded":
+          final IntFormEncoder[] ssucodecs = new IntFormEncoder[]{
+              new UnencodedIntFormEncoder(
+                  blockSize,
+                  ByteOrder.LITTLE_ENDIAN
+              )
+          };
+          final ShapeShiftingColumnarIntsSerializer ssunencodedSerializer =
+              new ShapeShiftingColumnarIntsSerializer(
+                  writeOutMedium,
+                  ssucodecs,
+                  optimizationTarget,
+                  aggro,
+                  ByteOrder.LITTLE_ENDIAN
+              );
+          ssunencodedSerializer.open();
+          for (int val : vals) {
+            ssunencodedSerializer.addValue(val);
+          }
+          ssunencodedSerializer.writeTo(output, null);
+          return (int) ssunencodedSerializer.getSerializedSize();
+        case "shapeshift-bytepack":
+          final IntFormEncoder[] ssbytepackcodecs = new IntFormEncoder[]{
+              new BytePackedIntFormEncoder(
+                  blockSize,
+                  ByteOrder.LITTLE_ENDIAN
+              )
+          };
+          final ShapeShiftingColumnarIntsSerializer ssbytepackSerializer =
+              new ShapeShiftingColumnarIntsSerializer(
+                  writeOutMedium,
+                  ssbytepackcodecs,
+                  optimizationTarget,
+                  aggro,
+                  ByteOrder.LITTLE_ENDIAN
+              );
+          ssbytepackSerializer.open();
+          for (int val : vals) {
+            ssbytepackSerializer.addValue(val);
+          }
+          ssbytepackSerializer.writeTo(output, null);
+          return (int) ssbytepackSerializer.getSerializedSize();
+        case "shapeshift-rle-bytepack":
+          final IntFormEncoder[] ssrbytepackcodecs = new IntFormEncoder[]{
+              new RunLengthBytePackedIntFormEncoder(
+                  blockSize,
+                  ByteOrder.LITTLE_ENDIAN
+              )
+          };
+          final ShapeShiftingColumnarIntsSerializer ssrbytepackSerializer =
+              new ShapeShiftingColumnarIntsSerializer(
+                  writeOutMedium,
+                  ssrbytepackcodecs,
+                  optimizationTarget,
+                  aggro,
+                  ByteOrder.LITTLE_ENDIAN
+              );
+          ssrbytepackSerializer.open();
+          for (int val : vals) {
+            ssrbytepackSerializer.addValue(val);
+          }
+          ssrbytepackSerializer.writeTo(output, null);
+          return (int) ssrbytepackSerializer.getSerializedSize();
+        case "shapeshift-lz4-bytepack":
+          final IntFormEncoder[] sslzcodecs = new IntFormEncoder[]{
+              new CompressedIntFormEncoder(
+                  blockSize,
+                  ByteOrder.LITTLE_ENDIAN,
+                  CompressionStrategy.LZ4,
+                  new BytePackedIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
+                  compressedDataBuffer,
+                  uncompressedDataBuffer
+              )
+          };
+          final ShapeShiftingColumnarIntsSerializer sslzSerializer =
+              new ShapeShiftingColumnarIntsSerializer(
+                  writeOutMedium,
+                  sslzcodecs,
+                  optimizationTarget,
+                  aggro,
+                  ByteOrder.LITTLE_ENDIAN
+              );
+          sslzSerializer.open();
+          for (int val : vals) {
+            sslzSerializer.addValue(val);
+          }
+          sslzSerializer.writeTo(output, null);
+          return (int) sslzSerializer.getSerializedSize();
+        case "shapeshift-lz4-rle-bytepack":
+          final IntFormEncoder[] sslzrlecodecs = new IntFormEncoder[]{
+              new CompressedIntFormEncoder(
+                  blockSize,
+                  ByteOrder.LITTLE_ENDIAN,
+                  CompressionStrategy.LZ4,
+                  new RunLengthBytePackedIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
+                  compressedDataBuffer,
+                  uncompressedDataBuffer
+              )
+          };
+          final ShapeShiftingColumnarIntsSerializer sslzrleSerializer =
+              new ShapeShiftingColumnarIntsSerializer(
+                  writeOutMedium,
+                  sslzrlecodecs,
+                  optimizationTarget,
+                  aggro,
+                  ByteOrder.LITTLE_ENDIAN
+              );
+          sslzrleSerializer.open();
+          for (int val : vals) {
+            sslzrleSerializer.addValue(val);
+          }
+          sslzrleSerializer.writeTo(output, null);
+          return (int) sslzrleSerializer.getSerializedSize();
+        case "shapeshift-fastpfor":
+          final IntFormEncoder[] dfastcodecs = new IntFormEncoder[]{
+              new LemireIntFormEncoder(
+                  blockSize,
+                  IntCodecs.FASTPFOR,
+                  "fastpfor",
+                  ByteOrder.LITTLE_ENDIAN
+              )
+          };
+          final ShapeShiftingColumnarIntsSerializer ssfastPforSerializer =
+              new ShapeShiftingColumnarIntsSerializer(
+                  writeOutMedium,
+                  dfastcodecs,
+                  optimizationTarget,
+                  aggro,
+                  ByteOrder.LITTLE_ENDIAN
+              );
+          ssfastPforSerializer.open();
+          for (int val : vals) {
+            ssfastPforSerializer.addValue(val);
+          }
+          ssfastPforSerializer.writeTo(output, null);
+          return (int) ssfastPforSerializer.getSerializedSize();
+        case "shapeshift":
+        case "shapeshift-13":
+        case "shapeshift-12":
+        case "shapeshift-lazy":
+        case "shapeshift-eager":
+        case "shapeshift-faster":
+        case "shapeshift-faster-13":
+        case "shapeshift-faster-12":
+        case "shapeshift-smaller":
+        case "shapeshift-smaller-13":
+        case "shapeshift-smaller-12":
+          final CompressibleIntFormEncoder rle = new RunLengthBytePackedIntFormEncoder(
+              blockSize,
+              ByteOrder.LITTLE_ENDIAN
+          );
+          final CompressibleIntFormEncoder bytepack = new BytePackedIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN);
+          final IntFormEncoder[] sscodecs = new IntFormEncoder[]{
+              new ZeroIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
+              new ConstantIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
+              new UnencodedIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
+              rle,
+              bytepack,
+              new CompressedIntFormEncoder(
+                  blockSize,
+                  ByteOrder.LITTLE_ENDIAN,
+                  CompressionStrategy.LZ4,
+                  rle,
+                  compressedDataBuffer,
+                  uncompressedDataBuffer
+              ),
+              new CompressedIntFormEncoder(
+                  blockSize,
+                  ByteOrder.LITTLE_ENDIAN,
+                  CompressionStrategy.LZ4,
+                  bytepack,
+                  compressedDataBuffer,
+                  uncompressedDataBuffer
+              ),
+              new LemireIntFormEncoder(
+                  blockSize,
+                  IntCodecs.FASTPFOR,
+                  "fastpfor",
+                  ByteOrder.LITTLE_ENDIAN
+              )
+          };
+          final ShapeShiftingColumnarIntsSerializer ssSerializer =
+              new ShapeShiftingColumnarIntsSerializer(
+                  writeOutMedium,
+                  sscodecs,
+                  encoding.contains("shapeshift-smaller")
+                  ? IndexSpec.ShapeShiftOptimizationTarget.SMALLER
+                  : encoding.contains("shapeshift-faster")
+                    ? IndexSpec.ShapeShiftOptimizationTarget.FASTER
+                    : optimizationTarget,
+                  aggro,
+                  ByteOrder.LITTLE_ENDIAN
+              );
+          ssSerializer.open();
+          for (int val : vals) {
+            ssSerializer.addValue(val);
+          }
+          ssSerializer.writeTo(output, null);
+          return (int) ssSerializer.getSerializedSize();
+        case "shapeshift-lz4-only":
+          final IntFormEncoder[] sslzNewcodecs = new IntFormEncoder[]{
+              new CompressedIntFormEncoder(
+                  blockSize,
+                  ByteOrder.LITTLE_ENDIAN,
+                  CompressionStrategy.LZ4,
+                  new RunLengthBytePackedIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
+                  compressedDataBuffer,
+                  uncompressedDataBuffer
+              ),
+              new CompressedIntFormEncoder(
+                  blockSize,
+                  ByteOrder.LITTLE_ENDIAN,
+                  CompressionStrategy.LZ4,
+                  new BytePackedIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
+                  compressedDataBuffer,
+                  uncompressedDataBuffer
+              ),
+              };
+          final ShapeShiftingColumnarIntsSerializer sslzNewSerializer =
+              new ShapeShiftingColumnarIntsSerializer(
+                  writeOutMedium,
+                  sslzNewcodecs,
+                  optimizationTarget,
+                  aggro,
+                  ByteOrder.LITTLE_ENDIAN
+              );
+          sslzNewSerializer.open();
+          for (int val : vals) {
+            sslzNewSerializer.addValue(val);
+          }
+          sslzNewSerializer.writeTo(output, null);
+          return (int) sslzNewSerializer.getSerializedSize();
+      }
+      throw new IllegalArgumentException("unknown encoding");
     }
-    throw new IllegalArgumentException("unknown encoding");
   }
 
   static ColumnarInts createIndexedInts(String encoding, ByteBuffer buffer, int size)

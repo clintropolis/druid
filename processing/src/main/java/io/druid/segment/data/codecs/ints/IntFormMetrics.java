@@ -164,14 +164,4 @@ public class IntFormMetrics extends FormMetrics
   {
     return minValue == 0 && minValue == maxValue;
   }
-
-  public byte getTmpEncodedValuesHolder()
-  {
-    return tmpEncodedValuesHolder;
-  }
-
-  public void setTmpEncodedValuesHolder(byte encoding)
-  {
-    tmpEncodedValuesHolder = encoding;
-  }
 }

@@ -71,7 +71,6 @@ public final class LemireIntFormDecoder extends BaseFormDecoder<ShapeShiftingCol
     final int startOffset = columnarInts.getCurrentValuesStartOffset();
     final int endOffset = startOffset + columnarInts.getCurrentChunkSize();
     final ByteBuffer buffer = columnarInts.getCurrentValueBuffer();
-    final int[] tmp = columnarInts.getTmp();
     final int[] decodedChunk = columnarInts.getDecodedValues();
 
     final int chunkSizeBytes = endOffset - startOffset;
@@ -90,24 +89,29 @@ public final class LemireIntFormDecoder extends BaseFormDecoder<ShapeShiftingCol
     // Copy chunk into an int array.
     final int chunkSizeAsInts = chunkSizeBytes >> 2;
 
-    if (buffer.isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
-      long addr = ((DirectBuffer) buffer).address() + startOffset;
-      for (int i = 0; i < chunkSizeAsInts; i++, addr += Integer.BYTES) {
-        tmp[i] = unsafe.getInt(addr);
-      }
-    } else {
-      for (int i = 0, bufferPos = startOffset; i < chunkSizeAsInts; i += 1, bufferPos += Integer.BYTES) {
-        tmp[i] = buffer.getInt(bufferPos);
-      }
-    }
+    try (
+        ResourceHolder<int[]> tmpHolder = CompressedPools.getShapeshiftIntsEncodedValuesArray(logValuesPerChunk);
+        ResourceHolder<SkippableIntegerCODEC> codecHolder = codecPool.take()
+    ) {
+      final int[] tmp = tmpHolder.get();
+      final SkippableIntegerCODEC codec = codecHolder.get();
 
-    // Decompress the chunk.
-    final IntWrapper inPos = new IntWrapper(0);
-    final IntWrapper outPos = new IntWrapper(0);
+      if (buffer.isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
+        long addr = ((DirectBuffer) buffer).address() + startOffset;
+        for (int i = 0; i < chunkSizeAsInts; i++, addr += Integer.BYTES) {
+          tmp[i] = unsafe.getInt(addr);
+        }
+      } else {
+        for (int i = 0, bufferPos = startOffset; i < chunkSizeAsInts; i += 1, bufferPos += Integer.BYTES) {
+          tmp[i] = buffer.getInt(bufferPos);
+        }
+      }
 
-    // this will unpack encodedValuesTmp to decodedValues
-    try (ResourceHolder<SkippableIntegerCODEC> hodl = codecPool.take()) {
-      SkippableIntegerCODEC codec = hodl.get();
+      // Decompress the chunk.
+      final IntWrapper inPos = new IntWrapper(0);
+      final IntWrapper outPos = new IntWrapper(0);
+
+      // this will unpack encodedValuesTmp to decodedValues
       codec.headlessUncompress(
           tmp,
           inPos,

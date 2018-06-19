@@ -40,10 +40,7 @@ import java.nio.ByteOrder;
  */
 public final class LemireIntFormEncoder extends BaseIntFormEncoder
 {
-  // Straight from the horse's mouth (https://github.com/lemire/JavaFastPFOR/blob/master/example.java).
-  private static final int SHOULD_BE_ENOUGH = 1024;
   private final NonBlockingPool<SkippableIntegerCODEC> codecPool;
-  private final int[] encodedValuesTmp;
   private final byte header;
   private final String name;
   private int numOutputInts;
@@ -59,8 +56,6 @@ public final class LemireIntFormEncoder extends BaseIntFormEncoder
     this.header = header;
     this.name = name;
     this.codecPool = CompressedPools.getShapeshiftLemirePool(header, logValuesPerChunk);
-    // todo: pass this in so we can share?
-    this.encodedValuesTmp = new int[valuesPerChunk + SHOULD_BE_ENOUGH];
   }
 
   @Override
@@ -70,9 +65,11 @@ public final class LemireIntFormEncoder extends BaseIntFormEncoder
       IntFormMetrics metrics
   )
   {
-    metrics.setTmpEncodedValuesHolder(header);
-    numOutputInts = doEncode(values, numValues);
-    return numOutputInts * Integer.BYTES;
+    try (ResourceHolder<int[]> tmpHolder = CompressedPools.getShapeshiftIntsEncodedValuesArray(logValuesPerChunk)) {
+      final int[] encodedValuesTmp = tmpHolder.get();
+      numOutputInts = doEncode(values, encodedValuesTmp, numValues);
+      return numOutputInts * Integer.BYTES;
+    }
   }
 
   @Override
@@ -83,12 +80,12 @@ public final class LemireIntFormEncoder extends BaseIntFormEncoder
       IntFormMetrics metrics
   ) throws IOException
   {
-    if (metrics.getTmpEncodedValuesHolder() != header) {
-      numOutputInts = doEncode(values, numValues);
-    }
-
-    for (int i = 0; i < numOutputInts; i++) {
-      valuesOut.write(toBytes(encodedValuesTmp[i]));
+    try (ResourceHolder<int[]> tmpHolder = CompressedPools.getShapeshiftIntsEncodedValuesArray(logValuesPerChunk)) {
+      final int[] encodedValuesTmp = tmpHolder.get();
+      numOutputInts = doEncode(values, encodedValuesTmp, numValues);
+      for (int i = 0; i < numOutputInts; i++) {
+        valuesOut.write(toBytes(encodedValuesTmp[i]));
+      }
     }
   }
 
@@ -104,13 +101,13 @@ public final class LemireIntFormEncoder extends BaseIntFormEncoder
     return name;
   }
 
-  private int doEncode(int[] values, final int numValues)
+  private int doEncode(int[] values, int[] encodedValuesTmp, final int numValues)
   {
     final IntWrapper inPos = new IntWrapper(0);
     final IntWrapper outPos = new IntWrapper(0);
 
-    try (ResourceHolder<SkippableIntegerCODEC> hodl = codecPool.take()) {
-      SkippableIntegerCODEC codec = hodl.get();
+    try (ResourceHolder<SkippableIntegerCODEC> codecHolder = codecPool.take()) {
+      final SkippableIntegerCODEC codec = codecHolder.get();
       codec.headlessCompress(values, inPos, numValues, encodedValuesTmp, outPos);
     }
 

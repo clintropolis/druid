@@ -20,6 +20,9 @@
 package io.druid.segment.data;
 
 import com.google.common.annotations.VisibleForTesting;
+import io.druid.collections.ResourceHolder;
+import io.druid.java.util.common.io.Closer;
+import io.druid.segment.CompressedPools;
 import io.druid.segment.IndexSpec;
 import io.druid.segment.data.codecs.ints.IntFormEncoder;
 import io.druid.segment.data.codecs.ints.IntFormMetrics;
@@ -38,6 +41,8 @@ public class ShapeShiftingColumnarIntsSerializer
     extends ShapeShiftingColumnSerializer<int[], IntFormMetrics>
     implements SingleValueColumnarIntsSerializer
 {
+  private ResourceHolder<int[]> unencodedValuesHolder;
+
   public ShapeShiftingColumnarIntsSerializer(
       final SegmentWriteOutMedium segmentWriteOutMedium,
       final IntFormEncoder[] codecs,
@@ -75,11 +80,22 @@ public class ShapeShiftingColumnarIntsSerializer
         overrideByteOrder,
         overrideLogValuesPerChunk
     );
+
+    Closer closer = segmentWriteOutMedium.getCloser();
+    if (closer != null) {
+      closer.register(() -> {
+        if (unencodedValuesHolder != null) {
+          unencodedValuesHolder.close();
+        }
+      });
+    }
   }
+
   @Override
   public void initializeChunk()
   {
-    currentChunk = new int[valuesPerChunk];
+    unencodedValuesHolder = CompressedPools.getShapeshiftIntsDecodedValuesArray(logValuesPerChunk);
+    currentChunk = unencodedValuesHolder.get();
   }
 
   @Override

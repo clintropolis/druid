@@ -34,10 +34,6 @@ import io.druid.segment.data.codecs.ints.LemireIntFormDecoder;
 import io.druid.segment.data.codecs.ints.RunLengthBytePackedIntFormDecoder;
 import io.druid.segment.data.codecs.ints.UnencodedIntFormDecoder;
 import io.druid.segment.data.codecs.ints.ZeroIntFormDecoder;
-import me.lemire.integercompression.FastPFOR;
-import me.lemire.integercompression.SkippableComposition;
-import me.lemire.integercompression.SkippableIntegerCODEC;
-import me.lemire.integercompression.VariableByte;
 import sun.misc.Unsafe;
 
 import java.io.IOException;
@@ -51,14 +47,11 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
 
   protected static final Unsafe unsafe = getTheUnsafe();
 
-  private final SkippableIntegerCODEC fastPforCodec = new SkippableComposition(new FastPFOR(), new VariableByte());
   protected final GetIntBuffer oddSizeValueGet;
   protected final GetIntUnsafe oddSizeValueGetUnsafe;
   final Map<Byte, FormDecoder<ShapeShiftingColumnarInts>> decoders;
   ResourceHolder<int[]> decodedValuesHolder;
-  ResourceHolder<int[]> tmpValuesHolder;
 
-  private final Supplier<int[]> tmpSupplier;
   private final Supplier<int[]> decodedValuesSupplier;
 
   protected int[] tmp;
@@ -70,11 +63,6 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
   public ShapeShiftingColumnarInts(ShapeShiftingColumnData sourceData)
   {
     super(sourceData);
-
-    this.tmpSupplier = Suppliers.memoize(() -> {
-      tmpValuesHolder = CompressedPools.getShapeshiftIntsEncodedValuesArray(logValuesPerChunk);
-      return tmpValuesHolder.get();
-    });
     this.decodedValuesSupplier = Suppliers.memoize(() -> {
       decodedValuesHolder = CompressedPools.getShapeshiftIntsDecodedValuesArray(logValuesPerChunk);
       return decodedValuesHolder.get();
@@ -109,7 +97,6 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
   {
     // todo: idk
     super.inspectRuntimeShape(inspector);
-    inspector.visit("tmp", tmp);
     inspector.visit("decodedValues", decodedValuesSupplier);
   }
 
@@ -117,9 +104,6 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
   public void close() throws IOException
   {
     super.close();
-    if (tmpValuesHolder != null) {
-      tmpValuesHolder.close();
-    }
     if (decodedValuesHolder != null) {
       decodedValuesHolder.close();
     }
@@ -147,17 +131,6 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
     }
 
     return currentForm.decode(index & chunkIndexMask);
-  }
-
-  /**
-   * temporary working integer array sized to number of values + 1024, for use by transformations that
-   * require copying values to an int array before decoding
-   *
-   * @return
-   */
-  public final int[] getTmp()
-  {
-    return tmpSupplier.get();
   }
 
   /**

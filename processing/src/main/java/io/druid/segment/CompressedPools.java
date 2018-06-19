@@ -51,14 +51,15 @@ public class CompressedPools
   private static final int SMALLER_INT_ARRAY_SIZE = 1 << 13;
   private static final int SMALLEST_INT_ARRAY_SIZE = 1 << 12;
 
-  // todo: i have no idea what this should legitimately be, this is only 32.25MiB which cannot be reclaimed by gc...
+  // todo: i have no idea what these should legitimately be, this is only ~24.7M which cannot be reclaimed by gc...
   // ...but maybe convservative if there is a lot of load, perhaps this is configurable?
-  private static final int INT_ARRAY_POOL_MAX_CACHE = 256;
+  private static final int INT_DECODED_ARRAY_POOL_MAX_CACHE = 256;
+  private static final int INT_ENCODED_ARRAY_POOL_MAX_CACHE = 128;
 
 
-  // todo: see ^ re: sizing.. these are currently ~1mb on heap + ~200kb direct buffer. Heap could be ~1/4 of the size
+  // todo: see ^ re: sizing.. these are currently ~1M on heap + ~200K direct buffer. Heap could be ~1/4 of the size
   // with minor changes to fastpfor lib to allow passing page size (our max is 2^14 but codec allocates for 2^16)
-  // current sizing put it in around 32MiB that cannot be reclaimed
+  // current sizing put it in around 33.6M that cannot be reclaimed
   private static final int LEMIRE_FASTPFOR_CODEC_POOL_MAX_CACHE = 28;
 
   private static final NonBlockingPool<BufferRecycler> bufferRecyclerPool = new StupidPool<>(
@@ -119,7 +120,7 @@ public class CompressedPools
     );
   }
 
-  private static NonBlockingPool<int[]> makeIntArrayPool(String name, int size)
+  private static NonBlockingPool<int[]> makeIntArrayPool(String name, int size, int maxCache)
   {
     return new StupidPool<>(
         name,
@@ -135,7 +136,7 @@ public class CompressedPools
           }
         },
         0,
-        INT_ARRAY_POOL_MAX_CACHE
+        maxCache
     );
   }
 
@@ -196,37 +197,43 @@ public class CompressedPools
   private static final NonBlockingPool<int[]> shapeshiftIntsDecodedValuesArrayPool =
       makeIntArrayPool(
           "shapeshiftIntsDecodedValuesArrayPool",
-          INT_ARRAY_SIZE
+          INT_ARRAY_SIZE,
+          INT_DECODED_ARRAY_POOL_MAX_CACHE
       );
 
   private static final NonBlockingPool<int[]> shapeshiftIntsEncodedValuesArrayPool =
       makeIntArrayPool(
           "shapeshiftIntsEncodedValuesArrayPool",
-          INT_ARRAY_SIZE + ENCODED_INTS_SHOULD_BE_ENOUGH
+          INT_ARRAY_SIZE + ENCODED_INTS_SHOULD_BE_ENOUGH,
+          INT_ENCODED_ARRAY_POOL_MAX_CACHE
       );
 
   private static final NonBlockingPool<int[]> shapeshiftSmallerIntsDecodedValuesArrayPool =
       makeIntArrayPool(
           "shapeshiftSmallerIntsDecodedValuesArrayPool",
-          SMALLER_INT_ARRAY_SIZE
+          SMALLER_INT_ARRAY_SIZE,
+          INT_DECODED_ARRAY_POOL_MAX_CACHE
       );
 
   private static final NonBlockingPool<int[]> shapeshiftSmallerIntsEncodedValuesArrayPool =
       makeIntArrayPool(
           "shapeshiftSmallerIntsEncodedValuesArrayPool",
-          SMALLER_INT_ARRAY_SIZE + ENCODED_INTS_SHOULD_BE_ENOUGH
+          SMALLER_INT_ARRAY_SIZE + ENCODED_INTS_SHOULD_BE_ENOUGH,
+          INT_ENCODED_ARRAY_POOL_MAX_CACHE
       );
 
   private static final NonBlockingPool<int[]> shapeshiftSmallestIntsDecodedValuesArrayPool =
       makeIntArrayPool(
           "shapeshiftSmallestIntsDecodedValuesArrayPool",
-          SMALLEST_INT_ARRAY_SIZE
+          SMALLEST_INT_ARRAY_SIZE,
+          INT_DECODED_ARRAY_POOL_MAX_CACHE
       );
 
   private static final NonBlockingPool<int[]> shapeshiftSmallestIntsEncodedValuesArrayPool =
       makeIntArrayPool(
           "shapeshiftSmallestIntsEncodedValuesArrayPool",
-          SMALLEST_INT_ARRAY_SIZE + ENCODED_INTS_SHOULD_BE_ENOUGH
+          SMALLEST_INT_ARRAY_SIZE + ENCODED_INTS_SHOULD_BE_ENOUGH,
+          INT_ENCODED_ARRAY_POOL_MAX_CACHE
       );
 
 
