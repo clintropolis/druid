@@ -101,7 +101,7 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
       final SegmentWriteOutMedium segmentWriteOutMedium,
       final FormEncoder<TChunk, TChunkMetrics>[] codecs,
       final IndexSpec.ShapeShiftOptimizationTarget optimizationTarget,
-      final IndexSpec.ShapeShiftAggressionLevel aggroLevel,
+      final IndexSpec.ShapeShiftingBlockSize blockSize,
       final int logBytesPerValue,
       final byte version,
       @Nullable final ByteOrder overrideByteOrder,
@@ -113,7 +113,7 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
     this.version = version;
     this.logValuesPerChunk = overrideLogValuesPerChunk != null
                              ? overrideLogValuesPerChunk
-                             : (byte) (aggroLevel.getLogBlockSize() - logBytesPerValue);
+                             : (byte) (blockSize.getLogBlockSize() - logBytesPerValue);
     this.valuesPerChunk = 1 << logValuesPerChunk;
     this.codecs = codecs;
     this.optimizationTarget = optimizationTarget;

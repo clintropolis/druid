@@ -70,12 +70,12 @@ public class BaseColumnarIntsBenchmark
   {
     int numBytes = VSizeColumnarInts.getNumBytesForMax(maxValue);
 
-    IndexSpec.ShapeShiftAggressionLevel aggro = encoding.endsWith("-13")
-                                                ? IndexSpec.ShapeShiftAggressionLevel.MIDDLE
+    IndexSpec.ShapeShiftingBlockSize blockSizeEnum = encoding.endsWith("-13")
+                                                ? IndexSpec.ShapeShiftingBlockSize.MIDDLE
                                                 : encoding.endsWith("-12")
-                                                  ? IndexSpec.ShapeShiftAggressionLevel.TIMID
-                                                  : IndexSpec.ShapeShiftAggressionLevel.AGGRO;
-    byte blockSize = (byte) (aggro.getLogBlockSize() - 2);
+                                                  ? IndexSpec.ShapeShiftingBlockSize.SMALL
+                                                  : IndexSpec.ShapeShiftingBlockSize.LARGE;
+    byte blockSize = (byte) (blockSizeEnum.getLogBlockSize() - 2);
     IndexSpec.ShapeShiftOptimizationTarget optimizationTarget =
         IndexSpec.ShapeShiftOptimizationTarget.FASTBUTSMALLISH;
 
@@ -145,7 +145,7 @@ public class BaseColumnarIntsBenchmark
                   writeOutMedium,
                   ssucodecs,
                   optimizationTarget,
-                  aggro,
+                  blockSizeEnum,
                   ByteOrder.LITTLE_ENDIAN
               );
           ssunencodedSerializer.open();
@@ -166,7 +166,7 @@ public class BaseColumnarIntsBenchmark
                   writeOutMedium,
                   ssbytepackcodecs,
                   optimizationTarget,
-                  aggro,
+                  blockSizeEnum,
                   ByteOrder.LITTLE_ENDIAN
               );
           ssbytepackSerializer.open();
@@ -187,7 +187,7 @@ public class BaseColumnarIntsBenchmark
                   writeOutMedium,
                   ssrbytepackcodecs,
                   optimizationTarget,
-                  aggro,
+                  blockSizeEnum,
                   ByteOrder.LITTLE_ENDIAN
               );
           ssrbytepackSerializer.open();
@@ -212,7 +212,7 @@ public class BaseColumnarIntsBenchmark
                   writeOutMedium,
                   sslzcodecs,
                   optimizationTarget,
-                  aggro,
+                  blockSizeEnum,
                   ByteOrder.LITTLE_ENDIAN
               );
           sslzSerializer.open();
@@ -237,7 +237,7 @@ public class BaseColumnarIntsBenchmark
                   writeOutMedium,
                   sslzrlecodecs,
                   optimizationTarget,
-                  aggro,
+                  blockSizeEnum,
                   ByteOrder.LITTLE_ENDIAN
               );
           sslzrleSerializer.open();
@@ -260,7 +260,7 @@ public class BaseColumnarIntsBenchmark
                   writeOutMedium,
                   dfastcodecs,
                   optimizationTarget,
-                  aggro,
+                  blockSizeEnum,
                   ByteOrder.LITTLE_ENDIAN
               );
           ssfastPforSerializer.open();
@@ -323,7 +323,7 @@ public class BaseColumnarIntsBenchmark
                   : encoding.contains("shapeshift-faster")
                     ? IndexSpec.ShapeShiftOptimizationTarget.FASTER
                     : optimizationTarget,
-                  aggro,
+                  blockSizeEnum,
                   ByteOrder.LITTLE_ENDIAN
               );
           ssSerializer.open();
@@ -356,7 +356,7 @@ public class BaseColumnarIntsBenchmark
                   writeOutMedium,
                   sslzNewcodecs,
                   optimizationTarget,
-                  aggro,
+                  blockSizeEnum,
                   ByteOrder.LITTLE_ENDIAN
               );
           sslzNewSerializer.open();

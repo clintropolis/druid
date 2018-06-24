@@ -47,7 +47,7 @@ public class ShapeShiftingColumnarIntsSerializer
       final SegmentWriteOutMedium segmentWriteOutMedium,
       final IntFormEncoder[] codecs,
       final IndexSpec.ShapeShiftOptimizationTarget optimizationTarget,
-      final IndexSpec.ShapeShiftAggressionLevel aggroLevel,
+      final IndexSpec.ShapeShiftingBlockSize blockSize,
       @Nullable final ByteOrder overrideByteOrder
   )
   {
@@ -55,7 +55,7 @@ public class ShapeShiftingColumnarIntsSerializer
         segmentWriteOutMedium,
         codecs,
         optimizationTarget,
-        aggroLevel,
+        blockSize,
         overrideByteOrder,
         null
     );
@@ -66,7 +66,7 @@ public class ShapeShiftingColumnarIntsSerializer
       final SegmentWriteOutMedium segmentWriteOutMedium,
       final IntFormEncoder[] codecs,
       final IndexSpec.ShapeShiftOptimizationTarget optimizationTarget,
-      final IndexSpec.ShapeShiftAggressionLevel aggroLevel,
+      final IndexSpec.ShapeShiftingBlockSize blockSize,
       @Nullable final ByteOrder overrideByteOrder,
       @Nullable final Byte overrideLogValuesPerChunk
   )
@@ -74,7 +74,7 @@ public class ShapeShiftingColumnarIntsSerializer
     super(
         segmentWriteOutMedium,
         codecs, optimizationTarget,
-        aggroLevel,
+        blockSize,
         2,
         ShapeShiftingColumnarInts.VERSION,
         overrideByteOrder,
@@ -111,7 +111,7 @@ public class ShapeShiftingColumnarIntsSerializer
    * @throws IOException
    */
   @Override
-  public void addValue(final int val) throws IOException
+  public void addValue(int val) throws IOException
   {
     if (currentChunkPos == valuesPerChunk) {
       flushCurrentChunk();

@@ -46,9 +46,8 @@ public class IndexSpec
   public static final CompressionStrategy DEFAULT_METRIC_COMPRESSION = CompressionStrategy.DEFAULT_COMPRESSION_STRATEGY;
   public static final CompressionStrategy DEFAULT_DIMENSION_COMPRESSION = CompressionStrategy.DEFAULT_COMPRESSION_STRATEGY;
   public static final CompressionFactory.LongEncodingStrategy DEFAULT_LONG_ENCODING = CompressionFactory.DEFAULT_LONG_ENCODING_STRATEGY;
-  public static final EncodingStrategy DEFAULT_ENCODING_STRATEGY = EncodingStrategy.COMPRESSION;
-  public static final ShapeShiftOptimizationTarget DEFAULT_OPTIMIZATION_TARGET = ShapeShiftOptimizationTarget.FASTBUTSMALLISH;
-  public static final ShapeShiftAggressionLevel DEFAULT_AGGRO_LEVEL = ShapeShiftAggressionLevel.AGGRO;
+  public static final ColumnEncodingStrategy DEFAULT_INT_ENCODING_STRATEGY =
+      new ColumnEncodingStrategy(EncodingStrategy.COMPRESSION, null, null);
 
   private static final Set<CompressionStrategy> METRIC_COMPRESSION = Sets.newHashSet(
       Arrays.asList(CompressionStrategy.values())
@@ -62,24 +61,12 @@ public class IndexSpec
       Arrays.asList(CompressionFactory.LongEncodingStrategy.values())
   );
 
-  private static final Set<EncodingStrategy> ENCODING_STRATEGIES = Sets.newHashSet(
-      Arrays.asList(EncodingStrategy.values())
-  );
-  private static final Set<ShapeShiftOptimizationTarget> OPTIMIZATION_TARGETS = Sets.newHashSet(
-      Arrays.asList(ShapeShiftOptimizationTarget.values())
-  );
-  private static final Set<ShapeShiftAggressionLevel> AGGRO_LEVELS = Sets.newHashSet(
-      Arrays.asList(ShapeShiftAggressionLevel.values())
-  );
-
   private final BitmapSerdeFactory bitmapSerdeFactory;
   private final CompressionStrategy dimensionCompression;
   private final CompressionStrategy metricCompression;
   private final CompressionFactory.LongEncodingStrategy longEncoding;
 
-  private final EncodingStrategy encodingStrategy;
-  private final ShapeShiftOptimizationTarget optimizationTarget;
-  private final ShapeShiftAggressionLevel aggressionLevel;
+  private final ColumnEncodingStrategy intEncodingStrategy;
 
   /**
    * Creates an IndexSpec with default parameters
@@ -87,8 +74,6 @@ public class IndexSpec
   public IndexSpec()
   {
     this(
-        null,
-        null,
         null,
         null,
         null,
@@ -109,8 +94,6 @@ public class IndexSpec
         dimensionCompression,
         metricCompression,
         longEncoding,
-        null,
-        null,
         null
     );
   }
@@ -127,9 +110,7 @@ public class IndexSpec
    *                             Defaults to {@link CompressionStrategy#DEFAULT_COMPRESSION_STRATEGY}
    * @param longEncoding         encoding strategy for metric and dimension columns with type long, null to use the default.
    *                             Defaults to {@link CompressionFactory#DEFAULT_LONG_ENCODING_STRATEGY}
-   * @param encodingStrategy     encoding strategy for numerical columns
-   * @param optimizationTarget   shapeshift encoding optimization strategy
-   * @param aggroLevel           shapeshift encoding block size
+   * @param intEncodingStrategy     encoding strategy for integer columns
    */
   @JsonCreator
   public IndexSpec(
@@ -137,9 +118,7 @@ public class IndexSpec
       @JsonProperty("dimensionCompression") CompressionStrategy dimensionCompression,
       @JsonProperty("metricCompression") CompressionStrategy metricCompression,
       @JsonProperty("longEncoding") CompressionFactory.LongEncodingStrategy longEncoding,
-      @JsonProperty("encodingStrategy") EncodingStrategy encodingStrategy,
-      @JsonProperty("shapeshiftOptimizationTarget") ShapeShiftOptimizationTarget optimizationTarget,
-      @JsonProperty("shapeshiftAggressionLevel") ShapeShiftAggressionLevel aggroLevel
+      @JsonProperty("intEncodingStrategy") ColumnEncodingStrategy intEncodingStrategy
   )
   {
     Preconditions.checkArgument(dimensionCompression == null || DIMENSION_COMPRESSION.contains(dimensionCompression),
@@ -154,23 +133,11 @@ public class IndexSpec
                                 "Unknown long encoding type[%s]", longEncoding
     );
 
-    Preconditions.checkArgument(encodingStrategy == null || ENCODING_STRATEGIES.contains(encodingStrategy),
-                                "Unknown encoding strategy[%s]", encodingStrategy
-    );
-    Preconditions.checkArgument(optimizationTarget == null || OPTIMIZATION_TARGETS.contains(optimizationTarget),
-                                "Unknown shapeshift optimization target[%s]", optimizationTarget
-    );
-    Preconditions.checkArgument(aggroLevel == null || AGGRO_LEVELS.contains(aggroLevel),
-                                "Unknown shapeshift aggression level[%s]", aggroLevel
-    );
-
     this.bitmapSerdeFactory = bitmapSerdeFactory != null ? bitmapSerdeFactory : new ConciseBitmapSerdeFactory();
     this.dimensionCompression = dimensionCompression == null ? DEFAULT_DIMENSION_COMPRESSION : dimensionCompression;
     this.metricCompression = metricCompression == null ? DEFAULT_METRIC_COMPRESSION : metricCompression;
     this.longEncoding = longEncoding == null ? DEFAULT_LONG_ENCODING : longEncoding;
-    this.encodingStrategy = encodingStrategy == null ? DEFAULT_ENCODING_STRATEGY : encodingStrategy;
-    this.optimizationTarget = optimizationTarget == null ? DEFAULT_OPTIMIZATION_TARGET : optimizationTarget;
-    this.aggressionLevel = aggroLevel == null ? DEFAULT_AGGRO_LEVEL : aggroLevel;
+    this.intEncodingStrategy = intEncodingStrategy == null ? DEFAULT_INT_ENCODING_STRATEGY : intEncodingStrategy;
   }
 
   @JsonProperty("bitmap")
@@ -198,21 +165,9 @@ public class IndexSpec
   }
 
   @JsonProperty
-  public EncodingStrategy getEncodingStrategy()
+  public ColumnEncodingStrategy getIntEncodingStrategy()
   {
-    return encodingStrategy;
-  }
-
-  @JsonProperty
-  public ShapeShiftOptimizationTarget getOptimizationTarget()
-  {
-    return optimizationTarget;
-  }
-
-  @JsonProperty
-  public ShapeShiftAggressionLevel getAggressionLevel()
-  {
-    return aggressionLevel;
+    return intEncodingStrategy;
   }
 
   @Override
@@ -229,9 +184,7 @@ public class IndexSpec
            dimensionCompression == indexSpec.dimensionCompression &&
            metricCompression == indexSpec.metricCompression &&
            longEncoding == indexSpec.longEncoding &&
-           encodingStrategy == indexSpec.encodingStrategy &&
-           optimizationTarget == indexSpec.optimizationTarget &&
-           aggressionLevel == indexSpec.aggressionLevel;
+           intEncodingStrategy == indexSpec.intEncodingStrategy;
   }
 
   @Override
@@ -242,9 +195,7 @@ public class IndexSpec
         dimensionCompression,
         metricCompression,
         longEncoding,
-        encodingStrategy,
-        optimizationTarget,
-        aggressionLevel
+        intEncodingStrategy
     );
   }
 
@@ -256,10 +207,101 @@ public class IndexSpec
            ", dimensionCompression=" + dimensionCompression +
            ", metricCompression=" + metricCompression +
            ", longEncoding=" + longEncoding +
-           ", encodingStrategy=" + encodingStrategy +
-           ", optimizationTarget=" + optimizationTarget +
-           ", aggressionLevel=" + aggressionLevel +
+           ", intEncodingStrategy=" + intEncodingStrategy +
            '}';
+  }
+
+  /**
+   * Encapsulate column encoding strategy options
+   */
+  public static class ColumnEncodingStrategy
+  {
+    private static final EncodingStrategy DEFAULT_ENCODING_STRATEGY = EncodingStrategy.COMPRESSION;
+    private static final ShapeShiftOptimizationTarget DEFAULT_OPTIMIZATION_TARGET = ShapeShiftOptimizationTarget.FASTBUTSMALLISH;
+    private static final ShapeShiftingBlockSize DEFAULT_BLOCK_SIZE = ShapeShiftingBlockSize.LARGE;
+    private static final Set<EncodingStrategy> ENCODING_STRATEGIES = Sets.newHashSet(
+        Arrays.asList(EncodingStrategy.values())
+    );
+    private static final Set<ShapeShiftOptimizationTarget> OPTIMIZATION_TARGETS = Sets.newHashSet(
+        Arrays.asList(ShapeShiftOptimizationTarget.values())
+    );
+    private static final Set<ShapeShiftingBlockSize> BLOCK_SIZES = Sets.newHashSet(
+        Arrays.asList(ShapeShiftingBlockSize.values())
+    );
+
+    private final EncodingStrategy strategy;
+    private final ShapeShiftOptimizationTarget optimizationTarget;
+    private final ShapeShiftingBlockSize blockSize;
+
+    @JsonCreator
+    public ColumnEncodingStrategy(
+        @JsonProperty("strategy") EncodingStrategy strategy,
+        @JsonProperty("optimizationTarget") ShapeShiftOptimizationTarget optimizationTarget,
+        @JsonProperty("blockSize") ShapeShiftingBlockSize blockSize
+    ) {
+      Preconditions.checkArgument(strategy == null || ENCODING_STRATEGIES.contains(strategy),
+                                  "Unknown encoding strategy[%s]", strategy
+      );
+      Preconditions.checkArgument(optimizationTarget == null || OPTIMIZATION_TARGETS.contains(optimizationTarget),
+                                  "Unknown shapeshift optimization target[%s]", optimizationTarget
+      );
+      Preconditions.checkArgument(blockSize == null || BLOCK_SIZES.contains(blockSize),
+                                  "Unknown shapeshift block size[%s]", blockSize
+      );
+      this.strategy = strategy == null ? DEFAULT_ENCODING_STRATEGY : strategy;
+      this.optimizationTarget = optimizationTarget == null ? DEFAULT_OPTIMIZATION_TARGET : optimizationTarget;
+      this.blockSize = blockSize == null ? DEFAULT_BLOCK_SIZE : blockSize;
+    }
+
+    @JsonProperty
+    public EncodingStrategy getStrategy()
+    {
+      return strategy;
+    }
+
+    @JsonProperty
+    public ShapeShiftOptimizationTarget getOptimizationTarget()
+    {
+      return optimizationTarget;
+    }
+
+    @JsonProperty
+    public ShapeShiftingBlockSize getBlockSize()
+    {
+      return blockSize;
+    }
+
+    @Override
+    public boolean equals(Object o)
+    {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      ColumnEncodingStrategy that = (ColumnEncodingStrategy) o;
+      return strategy == that.strategy &&
+             optimizationTarget == that.optimizationTarget &&
+             blockSize == that.blockSize;
+    }
+
+    @Override
+    public int hashCode()
+    {
+
+      return Objects.hash(strategy, optimizationTarget, blockSize);
+    }
+
+    @Override
+    public String toString()
+    {
+      return "ColumnEncodingStrategy{" +
+             "strategy=" + strategy +
+             ", optimizationTarget=" + optimizationTarget +
+             ", blockSize=" + blockSize +
+             '}';
+    }
   }
 
 
@@ -286,14 +328,14 @@ public class IndexSpec
   /**
    * Log base 2 values per chunk in shapeshift encoding
    */
-  public enum ShapeShiftAggressionLevel
+  public enum ShapeShiftingBlockSize
   {
     /**
      * Shapeshift will encode blocks of 2^16 bytes. This puts the most memory pressure at indexing and query time in
      * exchange for the potential to reduce encoded size. Approximate footprint is 64k off heap for decompression buffer
      * and 129k on heap for value arrays
      */
-    AGGRO(16),
+    LARGE(16),
     /**
      * Shapeshift will encode blocks of 2^15 bytes. Approximate footprint is 32k off heap for decompression buffer
      * and 65k on heap for value arrays
@@ -305,11 +347,11 @@ public class IndexSpec
      * potentially smaller gains in overall encoded size. Approximate footprint is 16k off heap for decompression buffer
      * and 33k on heap for value arrays.
      */
-    TIMID(14);
+    SMALL(14);
 
     int logBlockSize;
 
-    ShapeShiftAggressionLevel(int blockSize)
+    ShapeShiftingBlockSize(int blockSize)
     {
       this.logBlockSize = blockSize;
     }
@@ -328,7 +370,7 @@ public class IndexSpec
     }
 
     @JsonCreator
-    public static ShapeShiftAggressionLevel fromString(String name)
+    public static ShapeShiftingBlockSize fromString(String name)
     {
       return valueOf(StringUtils.toUpperCase(name));
     }
