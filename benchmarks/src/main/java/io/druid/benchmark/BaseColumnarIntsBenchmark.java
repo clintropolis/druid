@@ -25,8 +25,6 @@ import io.druid.segment.IndexSpec;
 import io.druid.segment.data.ColumnarInts;
 import io.druid.segment.data.CompressedVSizeColumnarIntsSupplier;
 import io.druid.segment.data.CompressionStrategy;
-import io.druid.segment.data.FastPforIntsSerializer;
-import io.druid.segment.data.FastPforIntsSupplier;
 import io.druid.segment.data.IndexedInts;
 import io.druid.segment.data.ShapeShiftingColumnarIntsSerializer;
 import io.druid.segment.data.ShapeShiftingColumnarIntsSupplier;
@@ -44,12 +42,6 @@ import io.druid.segment.data.codecs.ints.ZeroIntFormEncoder;
 import io.druid.segment.writeout.OnHeapMemorySegmentWriteOutMedium;
 import io.druid.segment.writeout.SegmentWriteOutMedium;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
-import me.lemire.integercompression.BinaryPacking;
-import me.lemire.integercompression.FastPFOR;
-import me.lemire.integercompression.FastPFOR128;
-import me.lemire.integercompression.SkippableComposition;
-import me.lemire.integercompression.SkippableIntegerCODEC;
-import me.lemire.integercompression.VariableByte;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
@@ -119,20 +111,6 @@ public class BaseColumnarIntsBenchmark
           );
           compressedBigEndian.writeTo(output, null);
           return (int) compressedBigEndian.getSerializedSize();
-        case "fastpfor":
-          final SkippableIntegerCODEC fastPforcodec = new SkippableComposition(new FastPFOR(), new VariableByte());
-          final FastPforIntsSerializer fastPforSerializer =
-              new FastPforIntsSerializer(
-                  writeOutMedium,
-                  fastPforcodec,
-                  blockSize
-              );
-          fastPforSerializer.open();
-          for (int val : vals) {
-            fastPforSerializer.addValue(val);
-          }
-          fastPforSerializer.writeTo(output, null);
-          return (int) fastPforSerializer.getSerializedSize();
         case "shapeshift-unencoded":
           final IntFormEncoder[] ssucodecs = new IntFormEncoder[]{
               new UnencodedIntFormEncoder(
@@ -379,18 +357,6 @@ public class BaseColumnarIntsBenchmark
         return CompressedVSizeColumnarIntsSupplier.fromByteBuffer(buffer, ByteOrder.nativeOrder()).get();
       case "compressed-vsize-big-endian":
         return CompressedVSizeColumnarIntsSupplier.fromByteBuffer(buffer, ByteOrder.BIG_ENDIAN).get();
-      case "fastpfor":
-        final SkippableIntegerCODEC fastPforCodec = new SkippableComposition(new FastPFOR(), new VariableByte());
-        return FastPforIntsSupplier.fromByteBuffer(buffer, fastPforCodec).get();
-      case "fastpfor128":
-        final SkippableIntegerCODEC fastPfor128Codec = new SkippableComposition(new FastPFOR128(), new VariableByte());
-        return FastPforIntsSupplier.fromByteBuffer(buffer, fastPfor128Codec).get();
-      case "fastpfor-bitpacked":
-        final SkippableIntegerCODEC fastPforBitpackcodec = new SkippableComposition(
-            new BinaryPacking(),
-            new VariableByte()
-        );
-        return FastPforIntsSupplier.fromByteBuffer(buffer, fastPforBitpackcodec).get();
       case "shapeshift":
       case "shapeshift-unencoded":
       case "shapeshift-fastpfor":
