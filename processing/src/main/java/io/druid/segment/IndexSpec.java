@@ -238,7 +238,8 @@ public class IndexSpec
         @JsonProperty("strategy") EncodingStrategy strategy,
         @JsonProperty("optimizationTarget") ShapeShiftOptimizationTarget optimizationTarget,
         @JsonProperty("blockSize") ShapeShiftingBlockSize blockSize
-    ) {
+    )
+    {
       Preconditions.checkArgument(strategy == null || ENCODING_STRATEGIES.contains(strategy),
                                   "Unknown encoding strategy[%s]", strategy
       );
