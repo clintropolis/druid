@@ -581,6 +581,7 @@ public class StringDimensionMergerV9 implements DimensionMergerV9
     boolean hasMultiValue = capabilities.hasMultipleValues();
     final CompressionStrategy compressionStrategy = indexSpec.getDimensionCompression();
     final BitmapSerdeFactory bitmapSerdeFactory = indexSpec.getBitmapSerdeFactory();
+    final IndexSpec.ColumnEncodingStrategy intEncodingStrategy = indexSpec.getIntEncodingStrategy();
 
     final ColumnDescriptor.Builder builder = ColumnDescriptor.builder();
     builder.setValueType(ValueType.STRING);
@@ -592,7 +593,7 @@ public class StringDimensionMergerV9 implements DimensionMergerV9
             encodedValueSerializer,
             hasMultiValue,
             compressionStrategy != CompressionStrategy.UNCOMPRESSED,
-            indexSpec.getIntEncodingStrategy().equals(IndexSpec.EncodingStrategy.SHAPESHIFT)
+            intEncodingStrategy.getStrategy().equals(IndexSpec.EncodingStrategy.SHAPESHIFT)
         )
         .withBitmapSerdeFactory(bitmapSerdeFactory)
         .withBitmapIndex(bitmapWriter)
