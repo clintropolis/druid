@@ -47,4 +47,11 @@ public final class CompressedIntFormEncoder extends CompressedFormEncoder<int[],
   {
     super(logValuesPerChunk, byteOrder, strategy, encoder, compressedDataBuffer, uncompressedDataBuffer);
   }
+
+
+  @Override
+  public byte getHeader()
+  {
+    return IntCodecs.COMPRESSED;
+  }
 }
