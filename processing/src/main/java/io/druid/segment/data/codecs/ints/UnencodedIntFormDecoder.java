@@ -76,4 +76,10 @@ public final class UnencodedIntFormDecoder extends BaseFormDecoder<ShapeShifting
   {
     return IntCodecs.UNENCODED;
   }
+
+  @Override
+  public boolean preferDirectAccess()
+  {
+    return true;
+  }
 }

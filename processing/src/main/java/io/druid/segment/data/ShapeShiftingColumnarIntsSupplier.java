@@ -21,32 +21,46 @@ package io.druid.segment.data;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.druid.java.util.common.io.smoosh.FileSmoosher;
+import io.druid.java.util.common.logger.Logger;
+import io.druid.segment.data.codecs.DirectFormDecoder;
+import io.druid.segment.data.codecs.FormDecoder;
+import io.druid.segment.data.codecs.ints.IntCodecs;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.WritableByteChannel;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Reads mapped buffer contents into {@link ShapeShiftingColumnData} to supply {@link ShapeShiftingColumnarInts}
  */
 public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<ColumnarInts>
 {
+  private static Logger log = new Logger(ShapeShiftingColumnarIntsSupplier.class);
+
   private final ShapeShiftingColumnData columnData;
+  // null = default, false = force ShapeShiftingColumnarInts, true = force ShapeShiftingBlockColumnarInts
+  private final ShapeShiftingColumnarIntsDecodeOptimization overrideOptimization;
 
   private ShapeShiftingColumnarIntsSupplier(
-      ShapeShiftingColumnData columnData
+      ShapeShiftingColumnData columnData,
+      @Nullable ShapeShiftingColumnarIntsDecodeOptimization overrideOptimization
   )
   {
     this.columnData = columnData;
+    this.overrideOptimization = overrideOptimization;
   }
 
   /**
    * Create a new instance from a {@link ByteBuffer} with position set to the start of a
    * {@link ShapeShiftingColumnarInts}
+   *
    * @param buffer
    * @param byteOrder
+   *
    * @return
    */
   public static ShapeShiftingColumnarIntsSupplier fromByteBuffer(
@@ -54,44 +68,61 @@ public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<Colum
       final ByteOrder byteOrder
   )
   {
-    return fromByteBuffer(buffer, byteOrder, null);
+    ShapeShiftingColumnData columnData =
+        new ShapeShiftingColumnData(buffer, (byte) 2, byteOrder, true);
+
+    return new ShapeShiftingColumnarIntsSupplier(columnData, null);
   }
 
   /**
-   * Create from a {@link ByteBuffer} with position set to the start of a {@link ShapeShiftingColumnarInts}, optionally
-   * overriding the {@link ShapeShiftingColumnSerializer.DecodeStrategy} for testing, etc.
+   * Create a new instance from a {@link ByteBuffer} with position set to the start of a
+   * {@link ShapeShiftingColumnarInts}
+   *
    * @param buffer
    * @param byteOrder
-   * @param overrideDecodeStrategy
+   *
    * @return
    */
   @VisibleForTesting
   public static ShapeShiftingColumnarIntsSupplier fromByteBuffer(
       final ByteBuffer buffer,
       final ByteOrder byteOrder,
-      @Nullable Byte overrideDecodeStrategy
+      ShapeShiftingColumnarIntsDecodeOptimization overrideOptimization
   )
   {
     ShapeShiftingColumnData columnData =
-        new ShapeShiftingColumnData(buffer, (byte) 2, byteOrder, overrideDecodeStrategy, true);
+        new ShapeShiftingColumnData(buffer, (byte) 2, byteOrder, true);
 
-    return new ShapeShiftingColumnarIntsSupplier(columnData);
+    return new ShapeShiftingColumnarIntsSupplier(columnData, overrideOptimization);
   }
 
   /**
    * Supply a {@link ShapeShiftingColumnarInts}
+   *
    * @return
    */
   @Override
   public ColumnarInts get()
   {
-    switch (ShapeShiftingColumnSerializer.DecodeStrategy.forByteValue(columnData.getDecodeStrategy())) {
+    Map<Byte, Integer> composition = columnData.getComposition();
+
+    Map<Byte, FormDecoder<ShapeShiftingColumnarInts>> decoders = IntCodecs.getDecoders(
+        composition.keySet().stream().collect(Collectors.toList()),
+        columnData.getLogValuesPerChunk(),
+        columnData.getByteOrder()
+    );
+
+    ShapeShiftingColumnarIntsDecodeOptimization optimization =
+        overrideOptimization != null
+        ? overrideOptimization
+        : ShapeShiftingColumnarIntsDecodeOptimization.fromComposition(columnData, decoders);
+
+    switch (optimization) {
       case BLOCK:
-        return new ShapeShiftingBlockColumnarInts(columnData);
-      case DIRECT:
+        return new ShapeShiftingBlockColumnarInts(columnData, decoders);
       case MIXED:
       default:
-        return new ShapeShiftingColumnarInts(columnData);
+        return new ShapeShiftingColumnarInts(columnData, decoders);
     }
   }
 
@@ -107,18 +138,62 @@ public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<Colum
       final FileSmoosher smoosher
   ) throws IOException
   {
-    ByteBuffer intToBytesHelperBuffer = ByteBuffer.allocate(Integer.BYTES).order(columnData.getByteOrder());
+        // todo: idk
+    //    ByteBuffer intToBytesHelperBuffer = ByteBuffer.allocate(Integer.BYTES).order(columnData.getByteOrder());
 
-    ShapeShiftingColumnSerializer.writeShapeShiftHeader(
-        channel,
-        intToBytesHelperBuffer,
-        ShapeShiftingColumnarInts.VERSION,
-        columnData.getNumChunks(),
-        columnData.getNumValues(),
-        columnData.getLogValuesPerChunk(),
-        columnData.getDecodeStrategy(),
-        columnData.getOffsetsSize()
-    );
+    //    ShapeShiftingColumnSerializer.writeShapeShiftHeader(
+    //        channel,
+    //        intToBytesHelperBuffer,
+    //        ShapeShiftingColumnarInts.VERSION,
+    //        columnData.getNumChunks(),
+    //        columnData.getNumValues(),
+    //        columnData.getLogValuesPerChunk(),
+    //        columnData.getCompositionSize(),
+    //        columnData.getOffsetsSize()
+    //    );
     channel.write(columnData.getBaseBuffer());
+  }
+
+  public enum ShapeShiftingColumnarIntsDecodeOptimization
+  {
+    MIXED,
+    BLOCK;
+
+    public static ShapeShiftingColumnarIntsDecodeOptimization fromComposition(
+        ShapeShiftingColumnData columnData,
+        Map<Byte, FormDecoder<ShapeShiftingColumnarInts>> decoders
+    )
+    {
+      int numDirectAccess = 0;
+      int preferDirectAccess = 0;
+      for (FormDecoder<ShapeShiftingColumnarInts> intDecoder : decoders.values()) {
+        if (intDecoder instanceof DirectFormDecoder) {
+          numDirectAccess++;
+          if (((DirectFormDecoder) intDecoder).preferDirectAccess()) {
+            preferDirectAccess++;
+          }
+        }
+      }
+
+      //todo: legit? if less than 1/n prefer direct access, block optimize?
+      //todo: buffer/unsafe optimized version?
+      if (preferDirectAccess < columnData.getNumChunks() / 10) {
+        log.info(
+            "Using block optimized strategy, %d:%d have random access, %d prefer random access",
+            numDirectAccess,
+            columnData.getNumChunks(),
+            preferDirectAccess
+        );
+        return BLOCK;
+      } else {
+        log.info(
+            "Using mixed access strategy, %d:%d have random access, %d prefer random access",
+            numDirectAccess,
+            columnData.getNumChunks(),
+            preferDirectAccess
+        );
+        return MIXED;
+      }
+    }
   }
 }

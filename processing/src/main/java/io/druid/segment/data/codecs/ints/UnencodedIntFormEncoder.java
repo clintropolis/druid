@@ -85,18 +85,6 @@ public class UnencodedIntFormEncoder extends CompressibleIntFormEncoder
     return "unencoded";
   }
 
-  @Override
-  public boolean hasDirectAccessSupport()
-  {
-    return true;
-  }
-
-  @Override
-  public boolean preferDirectAccess()
-  {
-    return true;
-  }
-
   private void encodeValues(WriteOutFunction writer, int[] values, int numValues) throws IOException
   {
     for (int i = 0; i < numValues; i++) {

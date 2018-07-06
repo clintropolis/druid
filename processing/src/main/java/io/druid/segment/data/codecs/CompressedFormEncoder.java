@@ -109,18 +109,6 @@ public abstract class CompressedFormEncoder<TChunk, TChunkMetrics extends FormMe
   }
 
   @Override
-  public boolean hasDirectAccessSupport()
-  {
-    return formEncoder.hasDirectAccessSupport();
-  }
-
-  @Override
-  public boolean preferDirectAccess()
-  {
-    return formEncoder.preferDirectAccess();
-  }
-
-  @Override
   public double getSpeedModifier(TChunkMetrics metrics)
   {
     switch (metrics.getOptimizationTarget()) {
@@ -132,5 +120,10 @@ public abstract class CompressedFormEncoder<TChunk, TChunkMetrics extends FormMe
       default:
         return formEncoder.getSpeedModifier(metrics) + 0.05;
     }
+  }
+
+  public FormEncoder<TChunk, TChunkMetrics> getInnerEncoder()
+  {
+    return formEncoder;
   }
 }

@@ -84,7 +84,6 @@ public interface FormEncoder<TChunk, TChunkMetrics extends FormMetrics>
   String getName();
 
   /**
-   *
    * @param metrics
    *
    * @return
@@ -92,31 +91,5 @@ public interface FormEncoder<TChunk, TChunkMetrics extends FormMetrics>
   default double getSpeedModifier(TChunkMetrics metrics)
   {
     return 1.0;
-  }
-
-  /**
-   * Values decoded with this encoding may be accessed directly by {@link ShapeShiftingColumn}
-   * from either {@link ShapeShiftingColumn#buffer} or {@link ShapeShiftingColumn#decompressedDataBuffer}, used by
-   * {@link io.druid.segment.data.ShapeShiftingColumnSerializer} to choose
-   * {@link io.druid.segment.data.ShapeShiftingColumnSerializer.DecodeStrategy}.
-   *
-   * @return
-   */
-  default boolean hasDirectAccessSupport()
-  {
-    return false;
-  }
-
-  /**
-   * Prefer that decoded values are accessed directly from {@link ShapeShiftingColumn#buffer} or
-   * {@link ShapeShiftingColumn#decompressedDataBuffer}, used by
-   * {@link io.druid.segment.data.ShapeShiftingColumnSerializer} to choose
-   * {@link io.druid.segment.data.ShapeShiftingColumnSerializer.DecodeStrategy}.
-   *
-   * @return
-   */
-  default boolean preferDirectAccess()
-  {
-    return false;
   }
 }

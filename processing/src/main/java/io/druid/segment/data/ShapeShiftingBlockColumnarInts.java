@@ -21,18 +21,21 @@ package io.druid.segment.data;
 
 import io.druid.segment.data.codecs.FormDecoder;
 
+import java.util.Map;
+
 /**
  * Variant of {@link ShapeShiftingColumnarInts} that is optimized for eagerly decoding all column values, allowing
  * {@link ShapeShiftingColumnarInts#get(int)} to be implemented directly as a masked array access.
  * This optimization will be produced by {@link ShapeShiftingColumnarIntsSupplier} if
- * {@link ShapeShiftingColumnData#decodeStrategy} is set to {@link ShapeShiftingColumnSerializer.DecodeStrategy#BLOCK}
  */
 public final class ShapeShiftingBlockColumnarInts extends ShapeShiftingColumnarInts
 {
-  public ShapeShiftingBlockColumnarInts(ShapeShiftingColumnData sourceData)
+  public ShapeShiftingBlockColumnarInts(
+      ShapeShiftingColumnData sourceData,
+      Map<Byte, FormDecoder<ShapeShiftingColumnarInts>> decoders
+  )
   {
-    super(sourceData);
-
+    super(sourceData, decoders);
   }
 
   @Override
@@ -48,7 +51,7 @@ public final class ShapeShiftingBlockColumnarInts extends ShapeShiftingColumnarI
   }
 
   @Override
-  protected void transform(FormDecoder<ShapeShiftingColumnarInts> nextForm)
+  public void transform(FormDecoder<ShapeShiftingColumnarInts> nextForm)
   {
     nextForm.transform(this);
   }

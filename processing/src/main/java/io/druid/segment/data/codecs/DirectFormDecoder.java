@@ -26,4 +26,9 @@ public interface DirectFormDecoder<TColumn extends ShapeShiftingColumn> extends 
   void transformBuffer(TColumn column);
 
   void transformUnsafe(TColumn column);
+
+  default boolean preferDirectAccess()
+  {
+    return false;
+  }
 }

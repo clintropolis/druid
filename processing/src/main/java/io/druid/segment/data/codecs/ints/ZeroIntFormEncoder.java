@@ -72,10 +72,4 @@ public class ZeroIntFormEncoder extends BaseIntFormEncoder
   {
     return "zero";
   }
-
-  @Override
-  public boolean hasDirectAccessSupport()
-  {
-    return true;
-  }
 }

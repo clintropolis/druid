@@ -21,19 +21,12 @@ package io.druid.segment.data;
 
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
-import com.google.common.collect.ImmutableMap;
 import io.druid.collections.ResourceHolder;
 import io.druid.query.monomorphicprocessing.RuntimeShapeInspector;
 import io.druid.segment.CompressedPools;
 import io.druid.segment.data.codecs.DirectFormDecoder;
 import io.druid.segment.data.codecs.FormDecoder;
 import io.druid.segment.data.codecs.ints.BytePackedIntFormDecoder;
-import io.druid.segment.data.codecs.ints.ConstantIntFormDecoder;
-import io.druid.segment.data.codecs.ints.IntCodecs;
-import io.druid.segment.data.codecs.ints.LemireIntFormDecoder;
-import io.druid.segment.data.codecs.ints.RunLengthBytePackedIntFormDecoder;
-import io.druid.segment.data.codecs.ints.UnencodedIntFormDecoder;
-import io.druid.segment.data.codecs.ints.ZeroIntFormDecoder;
 import sun.misc.Unsafe;
 
 import java.io.IOException;
@@ -49,7 +42,6 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
 
   protected final GetIntBuffer oddSizeValueGet;
   protected final GetIntUnsafe oddSizeValueGetUnsafe;
-  final Map<Byte, FormDecoder<ShapeShiftingColumnarInts>> decoders;
   ResourceHolder<int[]> decodedValuesHolder;
 
   private final Supplier<int[]> decodedValuesSupplier;
@@ -60,24 +52,17 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
   protected int currentBytesPerValue = 4;
   protected int currentConstant = 0;
 
-  public ShapeShiftingColumnarInts(ShapeShiftingColumnData sourceData)
+  public ShapeShiftingColumnarInts(
+      ShapeShiftingColumnData sourceData,
+      Map<Byte, FormDecoder<ShapeShiftingColumnarInts>> decoders
+  )
   {
-    super(sourceData);
+    super(sourceData, decoders);
     this.decodedValuesSupplier = Suppliers.memoize(() -> {
       decodedValuesHolder = CompressedPools.getShapeshiftIntsDecodedValuesArray(logValuesPerChunk);
       return decodedValuesHolder.get();
     });
 
-    // todo: make more better, this is fragile and burried
-    this.decoders = ImmutableMap.<Byte, FormDecoder<ShapeShiftingColumnarInts>>builder()
-        .put(IntCodecs.ZERO, new ZeroIntFormDecoder(logValuesPerChunk, byteOrder))
-        .put(IntCodecs.CONSTANT, new ConstantIntFormDecoder(logValuesPerChunk, byteOrder))
-        .put(IntCodecs.UNENCODED, new UnencodedIntFormDecoder(logValuesPerChunk, byteOrder))
-        .put(IntCodecs.BYTEPACK, new BytePackedIntFormDecoder(logValuesPerChunk, byteOrder))
-        .put(IntCodecs.RLE_BYTEPACK, new RunLengthBytePackedIntFormDecoder(logValuesPerChunk, byteOrder))
-        .put(IntCodecs.COMPRESSED, new CompressedFormDecoder(logValuesPerChunk, byteOrder, IntCodecs.COMPRESSED))
-        .put(IntCodecs.FASTPFOR, new LemireIntFormDecoder(logValuesPerChunk, IntCodecs.FASTPFOR, byteOrder))
-        .build();
     oddSizeValueGet = byteOrder.equals(ByteOrder.LITTLE_ENDIAN)
                       ? (_buffer, pos) -> _buffer.getInt(pos) & BytePackedIntFormDecoder.littleEndianMask3
                       : (_buffer, pos) -> _buffer.getInt(pos) >>> BytePackedIntFormDecoder.bigEndianShift3;
@@ -112,11 +97,11 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
   @Override
   protected int headerSize()
   {
-    return ShapeShiftingColumnarIntsSerializer.HEADER_BYTES;
+    return ShapeShiftingColumnSerializer.HEADER_BYTES;
   }
 
   @Override
-  protected FormDecoder<ShapeShiftingColumnarInts> getFormDecoder(byte header)
+  public FormDecoder<ShapeShiftingColumnarInts> getFormDecoder(byte header)
   {
     return decoders.get(header);
   }
@@ -195,7 +180,7 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
    * @param nextForm
    */
   @Override
-  protected void transform(FormDecoder<ShapeShiftingColumnarInts> nextForm)
+  public void transform(FormDecoder<ShapeShiftingColumnarInts> nextForm)
   {
     currentBytesPerValue = 4;
     currentConstant = 0;

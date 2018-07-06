@@ -139,16 +139,4 @@ public class BytePackedIntFormEncoder extends CompressibleIntFormEncoder
   {
     return "bytepack";
   }
-
-  @Override
-  public boolean hasDirectAccessSupport()
-  {
-    return true;
-  }
-
-  @Override
-  public boolean preferDirectAccess()
-  {
-    return true;
-  }
 }

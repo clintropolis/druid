@@ -42,8 +42,8 @@ public final class ZeroIntFormDecoder extends BaseFormDecoder<ShapeShiftingColum
 
   /**
    * Fill shapeshifting int column chunk values array with zeros
-   *  @param columnarInts
    *
+   * @param columnarInts
    */
   @Override
   public void transform(ShapeShiftingColumnarInts columnarInts)
@@ -53,8 +53,8 @@ public final class ZeroIntFormDecoder extends BaseFormDecoder<ShapeShiftingColum
 
   /**
    * Set shapeshifting int column bytes per value and current constant to zero for magic 'constant' mode
-   *  @param columnarInts
    *
+   * @param columnarInts
    */
   @Override
   public void transformBuffer(
@@ -67,8 +67,8 @@ public final class ZeroIntFormDecoder extends BaseFormDecoder<ShapeShiftingColum
 
   /**
    * Set shapeshifting int column bytes per value and current constant to zero for magic 'constant' mode
-   *  @param columnarInts
    *
+   * @param columnarInts
    */
   @Override
   public void transformUnsafe(

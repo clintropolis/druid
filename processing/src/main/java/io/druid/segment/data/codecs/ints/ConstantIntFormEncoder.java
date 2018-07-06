@@ -79,10 +79,4 @@ public class ConstantIntFormEncoder extends BaseIntFormEncoder
   {
     return "constant";
   }
-
-  @Override
-  public boolean hasDirectAccessSupport()
-  {
-    return true;
-  }
 }

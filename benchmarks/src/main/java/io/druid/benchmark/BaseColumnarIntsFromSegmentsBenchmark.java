@@ -147,23 +147,23 @@ public class BaseColumnarIntsFromSegmentsBenchmark extends BaseColumnarIntsBench
 //  })
   String columnName;
 
-  @Param({"533652"})        // wiki
-//  @Param({"3537476"})        // wiki
+//  @Param({"533652"})        // wiki
+  @Param({"3537476"})        // wiki-2
 //  @Param({"3259585"})       // twitter
 //  @Param({"3783642"})       // clarity
 //  @Param({"6001215"})         // tpch-lineitem-1g
   int rows;
 
 
-  @Param({"tmp/segments/wiki-1/"})
-//  @Param({"tmp/segments/wiki-2/"})
+//  @Param({"tmp/segments/wiki-1/"})
+  @Param({"tmp/segments/wiki-2/"})
 //  @Param({"tmp/segments/twitter-1/"})
 //  @Param({"tmp/segments/clarity-1/"})
 //  @Param({"tmp/segments/tpch-lineitem-1/"})
   String segmentPath;
 
-  @Param({"wikiticker"})
-//  @Param({"wikiticker-2"})
+//  @Param({"wikiticker"})
+  @Param({"wikiticker-2"})
 //  @Param({"twitter"})
 //  @Param({"clarity"})
 //  @Param({"tpch-lineitem"})

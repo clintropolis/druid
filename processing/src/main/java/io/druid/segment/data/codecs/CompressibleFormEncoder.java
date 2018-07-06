@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
- * A CompressibleFormEncoder extends {@link FormEncoder} to allow usage with a {@link CompressedFormEncoder},
+ * A CompressibleFormEncoder extends {@link FormEncoder} to allow composition with a {@link CompressedFormEncoder},
  * to further compress encoded values at the byte level in a value agnostic manner using any
  * {@link io.druid.segment.data.CompressionStrategy}.
  *

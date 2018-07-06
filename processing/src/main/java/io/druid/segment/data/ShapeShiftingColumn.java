@@ -24,7 +24,6 @@ import com.google.common.base.Suppliers;
 import io.druid.collections.ResourceHolder;
 import io.druid.query.monomorphicprocessing.RuntimeShapeInspector;
 import io.druid.segment.CompressedPools;
-import io.druid.segment.data.codecs.BaseFormDecoder;
 import io.druid.segment.data.codecs.FormDecoder;
 import sun.misc.Unsafe;
 
@@ -33,15 +32,16 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Map;
 
 /**
  * Base type for reading 'shape shifting' columns, which divide row values into chunks sized to a power of 2, each
  * potentially encoded with a different algorithm which was chosen as optimal for size and speed for the given values
- * at indexing time. Using the 'curiously recurring template pattern', this class generically provides common structure
- * for loading and decoding chunks of values for all shape shifting column implementations, with the help of matching
- * {@link FormDecoder<TShapeShiftImpl>}. Like some other column decoding strategies, shape shifting columns operate
- * with a 'currentChunk' which is loaded when a 'get' operation for a row index is done, and remains until a row index
- * on a different chunk is requested, so performs best of row selection is done in an ordered manner.
+ * at indexing time. This class generically provides common structure for loading and decoding chunks of values for
+ * all shape shifting column implementations, with the help of matching {@link FormDecoder<TShapeShiftImpl>}. Like
+ * some other column decoding strategies, shape shifting columns operate with a 'currentChunk' which is loaded when
+ * a 'get' operation for a row index is done, and remains until a row index on a different chunk is requested, so
+ * performs best of row selection is done in an ordered manner.
  *
  * Shape shifting columns are designed to place row retrieval functions within the column implementation for optimal
  * performance with the jvm. Each chunk has a byte header that uniquely maps to a {@link FormDecoder}, andChunks are
@@ -78,7 +78,7 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
   ResourceHolder<ByteBuffer> bufHolder;
   private final Supplier<ByteBuffer> decompressedDataBuffer;
 
-  int currentChunk = -1;
+  protected int currentChunk = -1;
   protected ByteBuffer currentValueBuffer;
   protected ByteBuffer currentMetadataBuffer;
   protected long currentValuesAddress;
@@ -87,7 +87,10 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
   protected int currentChunkSize;
   protected int currentChunkNumValues;
 
-  public ShapeShiftingColumn(ShapeShiftingColumnData sourceData)
+  protected final Map<Byte, FormDecoder<TShapeShiftImpl>> decoders;
+  final ShapeShiftingColumnData columnData;
+
+  public ShapeShiftingColumn(ShapeShiftingColumnData sourceData, Map<Byte, FormDecoder<TShapeShiftImpl>> decoders)
   {
     this.buffer = sourceData.getBaseBuffer();
     this.numChunks = sourceData.getNumChunks();
@@ -97,6 +100,8 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
     this.chunkIndexMask = valuesPerChunk - 1;
     this.offsetsSize = sourceData.getOffsetsSize();
     this.byteOrder = sourceData.getByteOrder();
+    this.decoders = decoders;
+    this.columnData = sourceData;
 
     // todo: meh side effects...
     this.decompressedDataBuffer = Suppliers.memoize(() -> {
@@ -142,11 +147,11 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
     currentChunk = -1;
     currentChunkSize = -1;
 
-    final int headerSize = headerSize();
     // Determine chunk size.
-    final int chunkStartReadFrom = headerSize + (Integer.BYTES * desiredChunk);
-    final int chunkStartByte = buffer.getInt(chunkStartReadFrom) + headerSize + offsetsSize;
-    final int chunkEndByte = buffer.getInt(chunkStartReadFrom + Integer.BYTES) + headerSize + offsetsSize;
+    final int chunkStartReadFrom = columnData.getOffsetsStartOffset() + (Integer.BYTES * desiredChunk);
+    final int chunkStartByte = columnData.getValueChunksStartOffset() + buffer.getInt(chunkStartReadFrom);
+    final int chunkEndByte = columnData.getValueChunksStartOffset() +
+                             buffer.getInt(chunkStartReadFrom + Integer.BYTES);
 
     if (desiredChunk == numChunks - 1) {
       currentChunkNumValues = (numValues - ((numChunks - 1) * valuesPerChunk));
@@ -176,7 +181,7 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
    *
    * @param nextForm decoder for the form of the next chunk of values
    */
-  protected abstract void transform(FormDecoder<TShapeShiftImpl> nextForm);
+  public abstract void transform(FormDecoder<TShapeShiftImpl> nextForm);
 
   /**
    * Get header size, used to correctly calculate chunk and offset locations in underlying bytebuffer.
@@ -192,7 +197,7 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
    *
    * @return
    */
-  protected abstract FormDecoder<TShapeShiftImpl> getFormDecoder(byte header);
+  public abstract FormDecoder<TShapeShiftImpl> getFormDecoder(byte header);
 
   /**
    * Get underlying column buffer sliced from mapped smoosh
@@ -209,7 +214,7 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
    *
    * @return
    */
-  ByteBuffer getDecompressedDataBuffer()
+  public ByteBuffer getDecompressedDataBuffer()
   {
     return this.decompressedDataBuffer.get();
   }
@@ -332,54 +337,5 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
   public void setCurrentChunkNumValues(int currentChunkNumValues)
   {
     this.currentChunkNumValues = currentChunkNumValues;
-  }
-
-  /**
-   * Generic Shapeshifting form decoder for chunks that are block compressed using any of {@link CompressionStrategy}.
-   * Data is decompressed to 'decompressedDataBuffer' to be further decoded by another {@link BaseFormDecoder},
-   * via calling 'transform' again on the decompressed chunk.
-   */
-  public final class CompressedFormDecoder extends BaseFormDecoder<TShapeShiftImpl>
-  {
-    private final byte header;
-
-    CompressedFormDecoder(byte logValuesPerChunk, ByteOrder byteOrder, byte header)
-    {
-      super(logValuesPerChunk, byteOrder);
-      this.header = header;
-    }
-
-    @Override
-    public void transform(TShapeShiftImpl shapeshiftingColumn)
-    {
-      final ByteBuffer buffer = shapeshiftingColumn.getBuffer();
-      final ByteBuffer decompressed = shapeshiftingColumn.getDecompressedDataBuffer();
-      int startOffset = shapeshiftingColumn.getCurrentChunkStartOffset();
-      int endOffset = startOffset + shapeshiftingColumn.getCurrentChunkSize();
-      decompressed.clear();
-
-      final CompressionStrategy.Decompressor decompressor =
-          CompressionStrategy.forId(buffer.get(startOffset++)).getDecompressor();
-
-      // metadata for inner encoding is stored outside of the compressed values chunk, so set column metadata offsets
-      // accordingly
-      final byte chunkCodec = buffer.get(startOffset++);
-      shapeshiftingColumn.setCurrentChunkStartOffset(startOffset);
-      FormDecoder<? extends ShapeShiftingColumn> innerForm = shapeshiftingColumn.getFormDecoder(chunkCodec);
-      startOffset += innerForm.getMetadataSize();
-      final int size = endOffset - startOffset;
-
-      decompressor.decompress(buffer, startOffset, size, decompressed);
-      shapeshiftingColumn.setCurrentValueBuffer(decompressed);
-      shapeshiftingColumn.setCurrentValuesStartOffset(0);
-      // transform again, this time using the inner form against the the decompressed buffer
-      shapeshiftingColumn.transform(innerForm);
-    }
-
-    @Override
-    public byte getHeader()
-    {
-      return header;
-    }
   }
 }

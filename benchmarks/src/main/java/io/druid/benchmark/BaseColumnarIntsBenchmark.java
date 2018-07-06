@@ -375,9 +375,17 @@ public class BaseColumnarIntsBenchmark
       case "shapeshift-faster-12":
         return ShapeShiftingColumnarIntsSupplier.fromByteBuffer(buffer, ByteOrder.LITTLE_ENDIAN).get();
       case "shapeshift-lazy":
-        return ShapeShiftingColumnarIntsSupplier.fromByteBuffer(buffer, ByteOrder.LITTLE_ENDIAN, (byte) 1).get();
+        return ShapeShiftingColumnarIntsSupplier.fromByteBuffer(
+            buffer,
+            ByteOrder.LITTLE_ENDIAN,
+            ShapeShiftingColumnarIntsSupplier.ShapeShiftingColumnarIntsDecodeOptimization.MIXED
+        ).get();
       case "shapeshift-eager":
-        return ShapeShiftingColumnarIntsSupplier.fromByteBuffer(buffer, ByteOrder.LITTLE_ENDIAN, (byte) 0).get();
+        return ShapeShiftingColumnarIntsSupplier.fromByteBuffer(
+            buffer,
+            ByteOrder.LITTLE_ENDIAN,
+            ShapeShiftingColumnarIntsSupplier.ShapeShiftingColumnarIntsDecodeOptimization.BLOCK
+        ).get();
     }
     throw new IllegalArgumentException("unknown encoding");
   }

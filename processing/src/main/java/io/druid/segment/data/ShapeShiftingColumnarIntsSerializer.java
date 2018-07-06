@@ -107,7 +107,9 @@ public class ShapeShiftingColumnarIntsSerializer
   /**
    * Adds a value to the current chunk of ints, stored in an array, analyzing values with {@link IntFormMetrics}, and
    * flushing to the {@link SegmentWriteOutMedium} if the current chunk is full.
+   *
    * @param val
+   *
    * @throws IOException
    */
   @Override

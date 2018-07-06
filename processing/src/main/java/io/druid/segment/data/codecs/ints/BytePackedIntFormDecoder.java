@@ -59,8 +59,8 @@ public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftin
 
   /**
    * Eagerly decode all values into value array of shapeshifting int column
-   *  @param columnarInts
    *
+   * @param columnarInts
    */
   @Override
   public void transform(ShapeShiftingColumnarInts columnarInts)
@@ -110,8 +110,8 @@ public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftin
 
   /**
    * Set shapeshifting int column buffer offset and byte per value for direct buffer reads
-   *  @param columnarInts
    *
+   * @param columnarInts
    */
   @Override
   public void transformBuffer(ShapeShiftingColumnarInts columnarInts)
@@ -127,8 +127,8 @@ public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftin
 
   /**
    * Set shapeshifting int column memory address and byte per value for direct unsafe reads
-   *  @param columnarInts
    *
+   * @param columnarInts
    */
   @Override
   public void transformUnsafe(ShapeShiftingColumnarInts columnarInts)
@@ -153,6 +153,12 @@ public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftin
   public int getMetadataSize()
   {
     return 1;
+  }
+
+  @Override
+  public boolean preferDirectAccess()
+  {
+    return true;
   }
 
   private static void decodeByteSizedInts(

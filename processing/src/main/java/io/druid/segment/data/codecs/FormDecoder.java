@@ -32,14 +32,15 @@ public interface FormDecoder<TColumn extends ShapeShiftingColumn>
 {
   /**
    * Transform {@link ShapeShiftingColumn} to be able to read values for this decoder.
-   *  @param column
    *
+   * @param column
    */
   void transform(TColumn column);
 
   /**
    * Size of any chunk specific metadata stored at the start of a chunk, to calculate offset of values from chunk start
    * in underlying buffer
+   *
    * @return
    */
   default int getMetadataSize()
