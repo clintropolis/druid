@@ -30,12 +30,13 @@ import java.util.Map;
  * {@link ShapeShiftingColumn} objects.
  *
  * layout:
- * | version (byte) | numChunks (int) | numValues (int) | logValuesPerChunk (byte) | compositionSize (int) | offsetsSize (int) | composition | offsets | values |
+ * | version (byte) | headerSize (int) | numValues (int) | numChunks (int) | logValuesPerChunk (byte) | offsetsSize (int) |  compositionSize (int) | composition | offsets | values |
  */
 public class ShapeShiftingColumnData
 {
-  private final int numChunks;
+  private final int headerSize;
   private final int numValues;
+  private final int numChunks;
   private final byte logValuesPerChunk;
   private final byte logBytesPerValue;
   private final int compositionSize;
@@ -56,19 +57,22 @@ public class ShapeShiftingColumnData
       boolean moveSourceBufferPosition
   )
   {
-    this.logBytesPerValue = logBytesPerValue;
     ByteBuffer ourBuffer = buffer.slice().order(byteOrder);
-    this.numChunks = ourBuffer.getInt(1);
+    this.byteOrder = byteOrder;
+    this.logBytesPerValue = logBytesPerValue;
+    this.headerSize = ourBuffer.getInt(1);
     this.numValues = ourBuffer.getInt(1 + Integer.BYTES);
-    this.logValuesPerChunk = ourBuffer.get(1 + 2 * Integer.BYTES);
-    this.compositionSize = ourBuffer.getInt(1 + (2 * Integer.BYTES) + 1);
-    this.offsetsSize = ourBuffer.getInt(1 + (2 * Integer.BYTES) + 1 + Integer.BYTES);
-    this.composition = new HashMap<>();
+    this.numChunks = ourBuffer.getInt(1 + (2 * Integer.BYTES));
+    this.logValuesPerChunk = ourBuffer.get(1 + (3 * Integer.BYTES));
+    this.offsetsSize = ourBuffer.getInt(1 + (3 * Integer.BYTES) + 1);
+    this.compositionSize = ourBuffer.getInt(1 + (3 * Integer.BYTES) + 1 + Integer.BYTES);
 
+    int compositionOffset = 1 + (3 * Integer.BYTES) + 1 + (2 * Integer.BYTES);
+    this.composition = new HashMap<>();
     // 5 bytes per composition entry
     for (int i = 0; i < compositionSize; i += 5) {
-      byte header = ourBuffer.get(ShapeShiftingColumnSerializer.HEADER_BYTES + i);
-      int count = ourBuffer.getInt(ShapeShiftingColumnSerializer.HEADER_BYTES + 1 + i);
+      byte header = ourBuffer.get(compositionOffset + i);
+      int count = ourBuffer.getInt(compositionOffset + i + 1);
       composition.put(header, count);
     }
 
@@ -82,18 +86,17 @@ public class ShapeShiftingColumnData
     }
 
     this.baseBuffer = ourBuffer.slice().order(byteOrder);
-    this.byteOrder = byteOrder;
   }
 
-
   /**
-   * Number of 'chunks' of values this column is divided into
+   * Total 'header' size, to future proof by allowing us to always be able to find offsets and values sections offsets,
+   * but stuffing any additional data into the header.
    *
    * @return
    */
-  public int getNumChunks()
+  public int getHeaderSize()
   {
-    return numChunks;
+    return headerSize;
   }
 
   /**
@@ -104,6 +107,16 @@ public class ShapeShiftingColumnData
   public int getNumValues()
   {
     return numValues;
+  }
+
+  /**
+   * Number of 'chunks' of values this column is divided into
+   *
+   * @return
+   */
+  public int getNumChunks()
+  {
+    return numChunks;
   }
 
   /**
@@ -165,7 +178,7 @@ public class ShapeShiftingColumnData
    */
   public int getOffsetsStartOffset()
   {
-    return ShapeShiftingColumnSerializer.HEADER_BYTES + compositionSize;
+    return headerSize;
   }
 
   /**
@@ -175,7 +188,7 @@ public class ShapeShiftingColumnData
    */
   public int getValueChunksStartOffset()
   {
-    return ShapeShiftingColumnSerializer.HEADER_BYTES + compositionSize + offsetsSize;
+    return headerSize + offsetsSize;
   }
 
   /**

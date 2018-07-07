@@ -65,7 +65,7 @@ import java.util.function.Function;
  * {@link io.druid.segment.data.codecs.CompressedFormEncoder} in the codec list passed to the serializer.
  *
  * layout:
- * | version (byte) | numChunks (int) | numValues (int) | logValuesPerChunk (byte) | compositionSize (int) | offsetsOutSize (int) | composition | offsets | values |
+ * | version (byte) | headerSize (int) | numValues (int) | numChunks (int) | logValuesPerChunk (byte) | offsetsOutSize (int) |  compositionSize (int) | composition | offsets | values |
  *
  * @param <TChunk>
  * @param <TChunkMetrics>
@@ -73,9 +73,9 @@ import java.util.function.Function;
 public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extends FormMetrics> implements Serializer
 {
   /**
-   * | version (byte) | numChunks (int) | numValues (int) | logValuesPerChunk (byte) | compositionSize (int) | offsetsOutSize (int) |
+   * | version (byte) | headerSize (int) | numValues (int) | numChunks (int) | logValuesPerChunk (byte) | offsetsOutSize (int) | compositionSize (int) |
    */
-  static final int HEADER_BYTES = 1 + (2 * Integer.BYTES) + 1 + (2 * Integer.BYTES);
+  private static final int BASE_HEADER_BYTES = 1 + (3 * Integer.BYTES) + 1 + (2 * Integer.BYTES);
 
   private static Logger log = new Logger(ShapeShiftingColumnSerializer.class);
 
@@ -150,7 +150,7 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
 
     writeFinalOffset();
 
-    return HEADER_BYTES + (composition.size() * 5) + offsetsOut.size() + valuesOut.size();
+    return getHeaderSize() + offsetsOut.size() + valuesOut.size();
   }
 
   @Override
@@ -172,18 +172,9 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
         numChunks,
         numValues,
         logValuesPerChunk,
-        composition.entrySet().size(),
+        composition,
         Ints.checkedCast(offsetsOut.size())
     );
-    // write composition map
-    for (Map.Entry<FormEncoder, Integer> enc : composition.entrySet()) {
-      channel.write(ByteBuffer.wrap(new byte[]{
-          enc.getKey().getHeader()
-      }));
-      channel.write(toBytes(enc.getValue()));
-
-      log.info(enc.getKey().getName() + ": " + enc.getValue());
-    }
     offsetsOut.writeTo(channel);
     valuesOut.writeTo(channel);
   }
@@ -268,6 +259,11 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
     }
   }
 
+  private int getHeaderSize()
+  {
+    return BASE_HEADER_BYTES + (composition.size() * 5);
+  }
+
   static void writeShapeShiftHeader(
       WritableByteChannel channel,
       ByteBuffer tmpBuffer,
@@ -275,7 +271,7 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
       int numChunks,
       int numValues,
       byte logValuesPerChunk,
-      int compositionSize,
+      Map<FormEncoder, Integer> composition,
       int offsetsSize
   ) throws IOException
   {
@@ -284,13 +280,23 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
       tmpBuffer.rewind();
       return tmpBuffer;
     };
+    int compositionSizeBytes = composition.entrySet().size() * 5;
     channel.write(ByteBuffer.wrap(new byte[]{version}));
-    channel.write(toBytes.apply(numChunks));
+    channel.write(toBytes.apply(BASE_HEADER_BYTES + compositionSizeBytes));
     channel.write(toBytes.apply(numValues));
-    channel.write(ByteBuffer.wrap(new byte[]{
-        logValuesPerChunk,
-        }));
-    channel.write(toBytes.apply(compositionSize * 5));
+    channel.write(toBytes.apply(numChunks));
+    channel.write(ByteBuffer.wrap(new byte[]{ logValuesPerChunk }));
     channel.write(toBytes.apply(offsetsSize));
+    channel.write(toBytes.apply(compositionSizeBytes));
+
+    // write composition map
+    for (Map.Entry<FormEncoder, Integer> enc : composition.entrySet()) {
+      channel.write(ByteBuffer.wrap(new byte[]{
+          enc.getKey().getHeader()
+      }));
+      channel.write(toBytes.apply(enc.getValue()));
+
+      log.info(enc.getKey().getName() + ": " + enc.getValue());
+    }
   }
 }

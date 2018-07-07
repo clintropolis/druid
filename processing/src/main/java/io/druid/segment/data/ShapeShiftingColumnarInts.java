@@ -97,7 +97,7 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
   @Override
   protected int headerSize()
   {
-    return ShapeShiftingColumnSerializer.HEADER_BYTES;
+    return columnData.getHeaderSize();
   }
 
   @Override
