@@ -285,17 +285,14 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
     channel.write(toBytes.apply(BASE_HEADER_BYTES + compositionSizeBytes));
     channel.write(toBytes.apply(numValues));
     channel.write(toBytes.apply(numChunks));
-    channel.write(ByteBuffer.wrap(new byte[]{ logValuesPerChunk }));
+    channel.write(ByteBuffer.wrap(new byte[]{logValuesPerChunk}));
     channel.write(toBytes.apply(offsetsSize));
     channel.write(toBytes.apply(compositionSizeBytes));
 
     // write composition map
     for (Map.Entry<FormEncoder, Integer> enc : composition.entrySet()) {
-      channel.write(ByteBuffer.wrap(new byte[]{
-          enc.getKey().getHeader()
-      }));
+      channel.write(ByteBuffer.wrap(new byte[]{enc.getKey().getHeader()}));
       channel.write(toBytes.apply(enc.getValue()));
-
       log.info(enc.getKey().getName() + ": " + enc.getValue());
     }
   }
