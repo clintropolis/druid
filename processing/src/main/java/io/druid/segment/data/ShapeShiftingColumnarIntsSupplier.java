@@ -166,11 +166,14 @@ public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<Colum
     {
       int numDirectAccess = 0;
       int preferDirectAccess = 0;
-      for (FormDecoder<ShapeShiftingColumnarInts> intDecoder : decoders.values()) {
+      final Map<Byte, Integer> composition = columnData.getComposition();
+      for (Map.Entry<Byte, FormDecoder<ShapeShiftingColumnarInts>> intDecoderEntry : decoders.entrySet()) {
+        final FormDecoder<ShapeShiftingColumnarInts> intDecoder = intDecoderEntry.getValue();
         if (intDecoder instanceof DirectFormDecoder) {
-          numDirectAccess++;
+          final int count = composition.get(intDecoderEntry.getKey());
+          numDirectAccess += count;
           if (((DirectFormDecoder) intDecoder).preferDirectAccess()) {
-            preferDirectAccess++;
+            preferDirectAccess += count;
           }
         }
       }

@@ -184,7 +184,7 @@ public class IndexSpec
            dimensionCompression == indexSpec.dimensionCompression &&
            metricCompression == indexSpec.metricCompression &&
            longEncoding == indexSpec.longEncoding &&
-           intEncodingStrategy == indexSpec.intEncodingStrategy;
+           intEncodingStrategy.equals(indexSpec.intEncodingStrategy);
   }
 
   @Override
