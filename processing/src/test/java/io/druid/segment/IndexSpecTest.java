@@ -46,7 +46,7 @@ public class IndexSpecTest
         IndexSpec.ShapeShiftOptimizationTarget.FASTBUTSMALLISH,
         spec.getIntEncodingStrategy().getOptimizationTarget()
     );
-    Assert.assertEquals(IndexSpec.ShapeShiftingBlockSize.LARGE, spec.getIntEncodingStrategy().getBlockSize());
+    Assert.assertEquals(IndexSpec.ShapeShiftBlockSize.LARGE, spec.getIntEncodingStrategy().getBlockSize());
 
     Assert.assertEquals(spec, objectMapper.readValue(objectMapper.writeValueAsBytes(spec), IndexSpec.class));
   }
@@ -71,7 +71,7 @@ public class IndexSpecTest
         IndexSpec.ShapeShiftOptimizationTarget.FASTER,
         spec.getIntEncodingStrategy().getOptimizationTarget()
     );
-    Assert.assertEquals(IndexSpec.ShapeShiftingBlockSize.SMALL, spec.getIntEncodingStrategy().getBlockSize());
+    Assert.assertEquals(IndexSpec.ShapeShiftBlockSize.SMALL, spec.getIntEncodingStrategy().getBlockSize());
 
     Assert.assertEquals(spec, objectMapper.readValue(objectMapper.writeValueAsBytes(spec), IndexSpec.class));
   }

@@ -19,6 +19,7 @@
 
 package io.druid.segment.data.codecs;
 
+import io.druid.java.util.common.StringUtils;
 import io.druid.segment.data.CompressionStrategy;
 import io.druid.segment.writeout.WriteOutBytes;
 
@@ -48,8 +49,8 @@ public abstract class CompressedFormEncoder<TChunk, TChunkMetrics extends FormMe
       ByteOrder byteOrder,
       CompressionStrategy strategy,
       CompressibleFormEncoder<TChunk, TChunkMetrics> encoder,
-      ByteBuffer compressedDataBuffer,
-      ByteBuffer uncompressedDataBuffer
+      ByteBuffer uncompressedDataBuffer,
+      ByteBuffer compressedDataBuffer
   )
   {
     super(logValuesPerChunk, byteOrder);
@@ -105,7 +106,7 @@ public abstract class CompressedFormEncoder<TChunk, TChunkMetrics extends FormMe
   @Override
   public String getName()
   {
-    return compressionStrategy.toString() + "-" + formEncoder.getName();
+    return StringUtils.format("%s [%s]", compressionStrategy.toString(), formEncoder.getName());
   }
 
   @Override

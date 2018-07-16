@@ -254,7 +254,7 @@ public class BaseColumnarIntsFromSegmentsBenchmark extends BaseColumnarIntsBench
           DictionaryEncodedColumn<String> theColumn = column.getDictionaryEncoding();
 
           if (theColumn.hasMultipleValues()) {
-            throw new RuntimeException("multi-int benchmarks are not current supported");
+            throw new RuntimeException("Multi-int benchmarks are not current supported");
           }
 
           for (int i = 0; i < theColumn.length(); i++) {

@@ -42,11 +42,10 @@ public class IntFormMetrics extends FormMetrics
   private int previousValue;
   private int numValues = 0;
   private boolean isFirstValue = true;
-  private byte tmpEncodedValuesHolder;
 
-  public IntFormMetrics(IndexSpec.ShapeShiftOptimizationTarget target)
+  public IntFormMetrics(IndexSpec.ShapeShiftOptimizationTarget target, boolean enableEncoderOptOut)
   {
-    super(target);
+    super(target, enableEncoderOptOut);
   }
 
   /**

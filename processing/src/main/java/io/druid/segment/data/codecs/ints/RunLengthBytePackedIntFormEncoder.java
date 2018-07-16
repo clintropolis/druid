@@ -85,7 +85,8 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
     final byte numBytesBytepack = BytePackedIntFormEncoder.getNumBytesForMax(metrics.getMaxValue());
     final int bytepackSize = numBytesBytepack * numValues;
     final int projectedSize = projectSize(metrics);
-    if (projectedSize > bytepackSize) {
+
+    if (!metrics.isEnableEncoderOptOut() && projectedSize > bytepackSize) {
       return Integer.MAX_VALUE;
     }
     return projectedSize;
@@ -184,6 +185,10 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
   @Override
   public boolean shouldAttemptCompression(IntFormMetrics hints)
   {
+    if (!hints.isEnableEncoderOptOut()) {
+      return true;
+    }
+
     // if not very many runs, cheese it out of here since i am expensive-ish
     // todo: this is totally scientific. 100%. If we don't have at least 3/4 runs, then bail on trying compression since expensive
     if ((hints.getOptimizationTarget() != IndexSpec.ShapeShiftOptimizationTarget.SMALLER) &&

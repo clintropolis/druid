@@ -29,12 +29,14 @@ import io.druid.segment.IndexSpec;
 public abstract class FormMetrics
 {
   private IndexSpec.ShapeShiftOptimizationTarget optimizationTarget;
+  private boolean enableEncoderOptOut;
 
   private byte compressionBufferHolder = -1;
 
-  public FormMetrics(IndexSpec.ShapeShiftOptimizationTarget optimizationTarget)
+  public FormMetrics(IndexSpec.ShapeShiftOptimizationTarget optimizationTarget, boolean enableEncoderOptOut)
   {
     this.optimizationTarget = optimizationTarget;
+    this.enableEncoderOptOut = enableEncoderOptOut;
   }
 
   /**
@@ -46,6 +48,16 @@ public abstract class FormMetrics
   public IndexSpec.ShapeShiftOptimizationTarget getOptimizationTarget()
   {
     return this.optimizationTarget;
+  }
+
+  /**
+   * Whenb multiple 'complete' encoders are being employed, allow encoders which 'think' they will perform poorly for a
+   * given block to opt out of being used, which in some cases can save expensive calculations
+   * @return
+   */
+  public boolean isEnableEncoderOptOut()
+  {
+    return enableEncoderOptOut;
   }
 
   /**

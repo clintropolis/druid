@@ -218,26 +218,26 @@ public class IndexSpec
   {
     private static final EncodingStrategy DEFAULT_ENCODING_STRATEGY = EncodingStrategy.COMPRESSION;
     private static final ShapeShiftOptimizationTarget DEFAULT_OPTIMIZATION_TARGET = ShapeShiftOptimizationTarget.FASTBUTSMALLISH;
-    private static final ShapeShiftingBlockSize DEFAULT_BLOCK_SIZE = ShapeShiftingBlockSize.LARGE;
+    private static final ShapeShiftBlockSize DEFAULT_BLOCK_SIZE = ShapeShiftBlockSize.LARGE;
     private static final Set<EncodingStrategy> ENCODING_STRATEGIES = Sets.newHashSet(
         Arrays.asList(EncodingStrategy.values())
     );
     private static final Set<ShapeShiftOptimizationTarget> OPTIMIZATION_TARGETS = Sets.newHashSet(
         Arrays.asList(ShapeShiftOptimizationTarget.values())
     );
-    private static final Set<ShapeShiftingBlockSize> BLOCK_SIZES = Sets.newHashSet(
-        Arrays.asList(ShapeShiftingBlockSize.values())
+    private static final Set<ShapeShiftBlockSize> BLOCK_SIZES = Sets.newHashSet(
+        Arrays.asList(ShapeShiftBlockSize.values())
     );
 
     private final EncodingStrategy strategy;
     private final ShapeShiftOptimizationTarget optimizationTarget;
-    private final ShapeShiftingBlockSize blockSize;
+    private final ShapeShiftBlockSize blockSize;
 
     @JsonCreator
     public ColumnEncodingStrategy(
         @JsonProperty("strategy") EncodingStrategy strategy,
         @JsonProperty("optimizationTarget") ShapeShiftOptimizationTarget optimizationTarget,
-        @JsonProperty("blockSize") ShapeShiftingBlockSize blockSize
+        @JsonProperty("blockSize") ShapeShiftBlockSize blockSize
     )
     {
       Preconditions.checkArgument(strategy == null || ENCODING_STRATEGIES.contains(strategy),
@@ -267,7 +267,7 @@ public class IndexSpec
     }
 
     @JsonProperty
-    public ShapeShiftingBlockSize getBlockSize()
+    public ShapeShiftBlockSize getBlockSize()
     {
       return blockSize;
     }
@@ -329,7 +329,7 @@ public class IndexSpec
   /**
    * Log base 2 values per chunk in shapeshift encoding
    */
-  public enum ShapeShiftingBlockSize
+  public enum ShapeShiftBlockSize
   {
     /**
      * Shapeshift will encode blocks of 2^16 bytes. This puts the most memory pressure at indexing and query time in
@@ -352,7 +352,7 @@ public class IndexSpec
 
     int logBlockSize;
 
-    ShapeShiftingBlockSize(int blockSize)
+    ShapeShiftBlockSize(int blockSize)
     {
       this.logBlockSize = blockSize;
     }
@@ -371,7 +371,7 @@ public class IndexSpec
     }
 
     @JsonCreator
-    public static ShapeShiftingBlockSize fromString(String name)
+    public static ShapeShiftBlockSize fromString(String name)
     {
       return valueOf(StringUtils.toUpperCase(name));
     }

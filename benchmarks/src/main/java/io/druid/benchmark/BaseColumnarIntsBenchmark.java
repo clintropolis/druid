@@ -31,14 +31,11 @@ import io.druid.segment.data.ShapeShiftingColumnarIntsSupplier;
 import io.druid.segment.data.VSizeColumnarInts;
 import io.druid.segment.data.codecs.ints.BytePackedIntFormEncoder;
 import io.druid.segment.data.codecs.ints.CompressedIntFormEncoder;
-import io.druid.segment.data.codecs.ints.CompressibleIntFormEncoder;
-import io.druid.segment.data.codecs.ints.ConstantIntFormEncoder;
 import io.druid.segment.data.codecs.ints.IntCodecs;
 import io.druid.segment.data.codecs.ints.IntFormEncoder;
 import io.druid.segment.data.codecs.ints.LemireIntFormEncoder;
 import io.druid.segment.data.codecs.ints.RunLengthBytePackedIntFormEncoder;
 import io.druid.segment.data.codecs.ints.UnencodedIntFormEncoder;
-import io.druid.segment.data.codecs.ints.ZeroIntFormEncoder;
 import io.druid.segment.writeout.OnHeapMemorySegmentWriteOutMedium;
 import io.druid.segment.writeout.SegmentWriteOutMedium;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -62,11 +59,13 @@ public class BaseColumnarIntsBenchmark
   {
     int numBytes = VSizeColumnarInts.getNumBytesForMax(maxValue);
 
-    IndexSpec.ShapeShiftingBlockSize blockSizeEnum = encoding.endsWith("-13")
-                                                ? IndexSpec.ShapeShiftingBlockSize.MIDDLE
+    ByteOrder byteOrder = ByteOrder.LITTLE_ENDIAN;
+
+    IndexSpec.ShapeShiftBlockSize blockSizeEnum = encoding.endsWith("-13")
+                                                ? IndexSpec.ShapeShiftBlockSize.MIDDLE
                                                 : encoding.endsWith("-12")
-                                                  ? IndexSpec.ShapeShiftingBlockSize.SMALL
-                                                  : IndexSpec.ShapeShiftingBlockSize.LARGE;
+                                                  ? IndexSpec.ShapeShiftBlockSize.SMALL
+                                                  : IndexSpec.ShapeShiftBlockSize.LARGE;
     byte blockSize = (byte) (blockSizeEnum.getLogBlockSize() - 2);
     IndexSpec.ShapeShiftOptimizationTarget optimizationTarget =
         IndexSpec.ShapeShiftOptimizationTarget.FASTBUTSMALLISH;
@@ -77,7 +76,7 @@ public class BaseColumnarIntsBenchmark
       ByteBuffer uncompressedDataBuffer =
           CompressionStrategy.LZ4.getCompressor()
                                  .allocateInBuffer(8 + ((1 << blockSize) * Integer.BYTES), writeOutMedium.getCloser())
-                                 .order(ByteOrder.LITTLE_ENDIAN);
+                                 .order(byteOrder);
       ByteBuffer compressedDataBuffer =
           CompressionStrategy.LZ4.getCompressor()
                                  .allocateOutBuffer(
@@ -115,7 +114,7 @@ public class BaseColumnarIntsBenchmark
           final IntFormEncoder[] ssucodecs = new IntFormEncoder[]{
               new UnencodedIntFormEncoder(
                   blockSize,
-                  ByteOrder.LITTLE_ENDIAN
+                  byteOrder
               )
           };
           final ShapeShiftingColumnarIntsSerializer ssunencodedSerializer =
@@ -124,7 +123,7 @@ public class BaseColumnarIntsBenchmark
                   ssucodecs,
                   optimizationTarget,
                   blockSizeEnum,
-                  ByteOrder.LITTLE_ENDIAN
+                  byteOrder
               );
           ssunencodedSerializer.open();
           for (int val : vals) {
@@ -136,7 +135,7 @@ public class BaseColumnarIntsBenchmark
           final IntFormEncoder[] ssbytepackcodecs = new IntFormEncoder[]{
               new BytePackedIntFormEncoder(
                   blockSize,
-                  ByteOrder.LITTLE_ENDIAN
+                  byteOrder
               )
           };
           final ShapeShiftingColumnarIntsSerializer ssbytepackSerializer =
@@ -145,7 +144,7 @@ public class BaseColumnarIntsBenchmark
                   ssbytepackcodecs,
                   optimizationTarget,
                   blockSizeEnum,
-                  ByteOrder.LITTLE_ENDIAN
+                  byteOrder
               );
           ssbytepackSerializer.open();
           for (int val : vals) {
@@ -157,7 +156,7 @@ public class BaseColumnarIntsBenchmark
           final IntFormEncoder[] ssrbytepackcodecs = new IntFormEncoder[]{
               new RunLengthBytePackedIntFormEncoder(
                   blockSize,
-                  ByteOrder.LITTLE_ENDIAN
+                  byteOrder
               )
           };
           final ShapeShiftingColumnarIntsSerializer ssrbytepackSerializer =
@@ -166,7 +165,7 @@ public class BaseColumnarIntsBenchmark
                   ssrbytepackcodecs,
                   optimizationTarget,
                   blockSizeEnum,
-                  ByteOrder.LITTLE_ENDIAN
+                  byteOrder
               );
           ssrbytepackSerializer.open();
           for (int val : vals) {
@@ -178,12 +177,12 @@ public class BaseColumnarIntsBenchmark
           final IntFormEncoder[] sslzcodecs = new IntFormEncoder[]{
               new CompressedIntFormEncoder(
                   blockSize,
-                  ByteOrder.LITTLE_ENDIAN,
+                  byteOrder,
                   CompressionStrategy.LZ4,
-                  new BytePackedIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
-                  compressedDataBuffer,
-                  uncompressedDataBuffer
-              )
+                  new BytePackedIntFormEncoder(blockSize, byteOrder),
+                  uncompressedDataBuffer,
+                  compressedDataBuffer
+                  )
           };
           final ShapeShiftingColumnarIntsSerializer sslzSerializer =
               new ShapeShiftingColumnarIntsSerializer(
@@ -191,7 +190,7 @@ public class BaseColumnarIntsBenchmark
                   sslzcodecs,
                   optimizationTarget,
                   blockSizeEnum,
-                  ByteOrder.LITTLE_ENDIAN
+                  byteOrder
               );
           sslzSerializer.open();
           for (int val : vals) {
@@ -203,11 +202,11 @@ public class BaseColumnarIntsBenchmark
           final IntFormEncoder[] sslzrlecodecs = new IntFormEncoder[]{
               new CompressedIntFormEncoder(
                   blockSize,
-                  ByteOrder.LITTLE_ENDIAN,
+                  byteOrder,
                   CompressionStrategy.LZ4,
-                  new RunLengthBytePackedIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
-                  compressedDataBuffer,
-                  uncompressedDataBuffer
+                  new RunLengthBytePackedIntFormEncoder(blockSize, byteOrder),
+                  uncompressedDataBuffer,
+                  compressedDataBuffer
               )
           };
           final ShapeShiftingColumnarIntsSerializer sslzrleSerializer =
@@ -216,7 +215,7 @@ public class BaseColumnarIntsBenchmark
                   sslzrlecodecs,
                   optimizationTarget,
                   blockSizeEnum,
-                  ByteOrder.LITTLE_ENDIAN
+                  byteOrder
               );
           sslzrleSerializer.open();
           for (int val : vals) {
@@ -230,7 +229,7 @@ public class BaseColumnarIntsBenchmark
                   blockSize,
                   IntCodecs.FASTPFOR,
                   "fastpfor",
-                  ByteOrder.LITTLE_ENDIAN
+                  byteOrder
               )
           };
           final ShapeShiftingColumnarIntsSerializer ssfastPforSerializer =
@@ -239,7 +238,7 @@ public class BaseColumnarIntsBenchmark
                   dfastcodecs,
                   optimizationTarget,
                   blockSizeEnum,
-                  ByteOrder.LITTLE_ENDIAN
+                  byteOrder
               );
           ssfastPforSerializer.open();
           for (int val : vals) {
@@ -258,40 +257,12 @@ public class BaseColumnarIntsBenchmark
         case "shapeshift-smaller":
         case "shapeshift-smaller-13":
         case "shapeshift-smaller-12":
-          final CompressibleIntFormEncoder rle = new RunLengthBytePackedIntFormEncoder(
-              blockSize,
-              ByteOrder.LITTLE_ENDIAN
+          final IntFormEncoder[] sscodecs = ShapeShiftingColumnarIntsSerializer.getDefaultIntFormEncoders(
+              blockSizeEnum,
+              CompressionStrategy.LZ4,
+              writeOutMedium.getCloser(),
+              byteOrder
           );
-          final CompressibleIntFormEncoder bytepack = new BytePackedIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN);
-          final IntFormEncoder[] sscodecs = new IntFormEncoder[]{
-              new ZeroIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
-              new ConstantIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
-              new UnencodedIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
-              rle,
-              bytepack,
-              new CompressedIntFormEncoder(
-                  blockSize,
-                  ByteOrder.LITTLE_ENDIAN,
-                  CompressionStrategy.LZ4,
-                  rle,
-                  compressedDataBuffer,
-                  uncompressedDataBuffer
-              ),
-              new CompressedIntFormEncoder(
-                  blockSize,
-                  ByteOrder.LITTLE_ENDIAN,
-                  CompressionStrategy.LZ4,
-                  bytepack,
-                  compressedDataBuffer,
-                  uncompressedDataBuffer
-              ),
-              new LemireIntFormEncoder(
-                  blockSize,
-                  IntCodecs.FASTPFOR,
-                  "fastpfor",
-                  ByteOrder.LITTLE_ENDIAN
-              )
-          };
           final ShapeShiftingColumnarIntsSerializer ssSerializer =
               new ShapeShiftingColumnarIntsSerializer(
                   writeOutMedium,
@@ -302,7 +273,7 @@ public class BaseColumnarIntsBenchmark
                     ? IndexSpec.ShapeShiftOptimizationTarget.FASTER
                     : optimizationTarget,
                   blockSizeEnum,
-                  ByteOrder.LITTLE_ENDIAN
+                  byteOrder
               );
           ssSerializer.open();
           for (int val : vals) {
@@ -314,19 +285,19 @@ public class BaseColumnarIntsBenchmark
           final IntFormEncoder[] sslzNewcodecs = new IntFormEncoder[]{
               new CompressedIntFormEncoder(
                   blockSize,
-                  ByteOrder.LITTLE_ENDIAN,
+                  byteOrder,
                   CompressionStrategy.LZ4,
-                  new RunLengthBytePackedIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
-                  compressedDataBuffer,
-                  uncompressedDataBuffer
+                  new RunLengthBytePackedIntFormEncoder(blockSize, byteOrder),
+                  uncompressedDataBuffer,
+                  compressedDataBuffer
               ),
               new CompressedIntFormEncoder(
                   blockSize,
-                  ByteOrder.LITTLE_ENDIAN,
+                  byteOrder,
                   CompressionStrategy.LZ4,
-                  new BytePackedIntFormEncoder(blockSize, ByteOrder.LITTLE_ENDIAN),
-                  compressedDataBuffer,
-                  uncompressedDataBuffer
+                  new BytePackedIntFormEncoder(blockSize, byteOrder),
+                  uncompressedDataBuffer,
+                  compressedDataBuffer
               ),
               };
           final ShapeShiftingColumnarIntsSerializer sslzNewSerializer =
@@ -335,7 +306,7 @@ public class BaseColumnarIntsBenchmark
                   sslzNewcodecs,
                   optimizationTarget,
                   blockSizeEnum,
-                  ByteOrder.LITTLE_ENDIAN
+                  byteOrder
               );
           sslzNewSerializer.open();
           for (int val : vals) {
@@ -350,6 +321,7 @@ public class BaseColumnarIntsBenchmark
 
   static ColumnarInts createIndexedInts(String encoding, ByteBuffer buffer, int size)
   {
+    ByteOrder byteOrder = ByteOrder.LITTLE_ENDIAN;
     switch (encoding) {
       case "vsize-byte":
         return VSizeColumnarInts.readFromByteBuffer(buffer);
@@ -373,17 +345,17 @@ public class BaseColumnarIntsBenchmark
       case "shapeshift-12":
       case "shapeshift-smaller-12":
       case "shapeshift-faster-12":
-        return ShapeShiftingColumnarIntsSupplier.fromByteBuffer(buffer, ByteOrder.LITTLE_ENDIAN).get();
+        return ShapeShiftingColumnarIntsSupplier.fromByteBuffer(buffer, byteOrder).get();
       case "shapeshift-lazy":
         return ShapeShiftingColumnarIntsSupplier.fromByteBuffer(
             buffer,
-            ByteOrder.LITTLE_ENDIAN,
+            byteOrder,
             ShapeShiftingColumnarIntsSupplier.ShapeShiftingColumnarIntsDecodeOptimization.MIXED
         ).get();
       case "shapeshift-eager":
         return ShapeShiftingColumnarIntsSupplier.fromByteBuffer(
             buffer,
-            ByteOrder.LITTLE_ENDIAN,
+            byteOrder,
             ShapeShiftingColumnarIntsSupplier.ShapeShiftingColumnarIntsDecodeOptimization.BLOCK
         ).get();
     }

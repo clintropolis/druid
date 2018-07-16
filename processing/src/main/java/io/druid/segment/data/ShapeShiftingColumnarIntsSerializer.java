@@ -24,13 +24,24 @@ import io.druid.collections.ResourceHolder;
 import io.druid.java.util.common.io.Closer;
 import io.druid.segment.CompressedPools;
 import io.druid.segment.IndexSpec;
+import io.druid.segment.data.codecs.ints.BytePackedIntFormEncoder;
+import io.druid.segment.data.codecs.ints.CompressedIntFormEncoder;
+import io.druid.segment.data.codecs.ints.CompressibleIntFormEncoder;
+import io.druid.segment.data.codecs.ints.ConstantIntFormEncoder;
+import io.druid.segment.data.codecs.ints.IntCodecs;
 import io.druid.segment.data.codecs.ints.IntFormEncoder;
 import io.druid.segment.data.codecs.ints.IntFormMetrics;
+import io.druid.segment.data.codecs.ints.LemireIntFormEncoder;
+import io.druid.segment.data.codecs.ints.RunLengthBytePackedIntFormEncoder;
+import io.druid.segment.data.codecs.ints.UnencodedIntFormEncoder;
+import io.druid.segment.data.codecs.ints.ZeroIntFormEncoder;
 import io.druid.segment.writeout.SegmentWriteOutMedium;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Arrays;
 
 /**
  * {@link ShapeShiftingColumnSerializer} implementation for {@link ShapeShiftingColumnarInts}, using
@@ -43,11 +54,64 @@ public class ShapeShiftingColumnarIntsSerializer
 {
   private ResourceHolder<int[]> unencodedValuesHolder;
 
+  private final boolean enableEncoderOptOut;
+
+  public static IntFormEncoder[] getDefaultIntFormEncoders(
+      IndexSpec.ShapeShiftBlockSize blockSize,
+      CompressionStrategy compressionStrategy,
+      Closer closer,
+      ByteOrder byteOrder
+  )
+  {
+    byte intBlockSize = (byte) (blockSize.getLogBlockSize() - 2);
+
+    ByteBuffer uncompressedDataBuffer =
+        compressionStrategy.getCompressor()
+                               .allocateInBuffer(8 + ((1 << intBlockSize) * Integer.BYTES), closer)
+                               .order(byteOrder);
+    ByteBuffer compressedDataBuffer =
+        compressionStrategy.getCompressor()
+                               .allocateOutBuffer(((1 << intBlockSize) * Integer.BYTES) + 1024, closer);
+
+    final CompressibleIntFormEncoder rle = new RunLengthBytePackedIntFormEncoder(
+        intBlockSize,
+        byteOrder
+    );
+    final CompressibleIntFormEncoder bytepack = new BytePackedIntFormEncoder(intBlockSize, byteOrder);
+
+    final IntFormEncoder[] defaultCodecs = new IntFormEncoder[]{
+        new ZeroIntFormEncoder(intBlockSize, byteOrder),
+        new ConstantIntFormEncoder(intBlockSize, byteOrder),
+        new UnencodedIntFormEncoder(intBlockSize, byteOrder),
+        rle,
+        bytepack,
+        new CompressedIntFormEncoder(
+            intBlockSize,
+            byteOrder,
+            compressionStrategy,
+            rle,
+            uncompressedDataBuffer,
+            compressedDataBuffer
+        ),
+        new CompressedIntFormEncoder(
+            intBlockSize,
+            byteOrder,
+            compressionStrategy,
+            bytepack,
+            uncompressedDataBuffer,
+            compressedDataBuffer
+        ),
+        new LemireIntFormEncoder(intBlockSize, IntCodecs.FASTPFOR, "fastpfor", byteOrder)
+    };
+
+    return defaultCodecs;
+  }
+
   public ShapeShiftingColumnarIntsSerializer(
       final SegmentWriteOutMedium segmentWriteOutMedium,
       final IntFormEncoder[] codecs,
       final IndexSpec.ShapeShiftOptimizationTarget optimizationTarget,
-      final IndexSpec.ShapeShiftingBlockSize blockSize,
+      final IndexSpec.ShapeShiftBlockSize blockSize,
       @Nullable final ByteOrder overrideByteOrder
   )
   {
@@ -66,14 +130,15 @@ public class ShapeShiftingColumnarIntsSerializer
       final SegmentWriteOutMedium segmentWriteOutMedium,
       final IntFormEncoder[] codecs,
       final IndexSpec.ShapeShiftOptimizationTarget optimizationTarget,
-      final IndexSpec.ShapeShiftingBlockSize blockSize,
+      final IndexSpec.ShapeShiftBlockSize blockSize,
       @Nullable final ByteOrder overrideByteOrder,
       @Nullable final Byte overrideLogValuesPerChunk
   )
   {
     super(
         segmentWriteOutMedium,
-        codecs, optimizationTarget,
+        codecs,
+        optimizationTarget,
         blockSize,
         2,
         ShapeShiftingColumnarInts.VERSION,
@@ -89,6 +154,12 @@ public class ShapeShiftingColumnarIntsSerializer
         }
       });
     }
+
+    // enable optimization of encoders such as rle if there are additional non-zero and non-constant encoders.
+    this.enableEncoderOptOut =
+        Arrays.stream(codecs)
+              .filter(e -> !(e instanceof ZeroIntFormEncoder) && !(e instanceof ConstantIntFormEncoder))
+              .count() > 1;
   }
 
   @Override
@@ -101,7 +172,7 @@ public class ShapeShiftingColumnarIntsSerializer
   @Override
   public void resetChunkCollector()
   {
-    chunkMetrics = new IntFormMetrics(optimizationTarget);
+    chunkMetrics = new IntFormMetrics(optimizationTarget, this.enableEncoderOptOut);
   }
 
   /**

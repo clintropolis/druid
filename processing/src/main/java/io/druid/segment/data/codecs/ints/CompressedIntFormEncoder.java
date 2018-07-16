@@ -41,11 +41,11 @@ public final class CompressedIntFormEncoder extends CompressedFormEncoder<int[],
       ByteOrder byteOrder,
       CompressionStrategy strategy,
       CompressibleIntFormEncoder encoder,
-      ByteBuffer compressedDataBuffer,
-      ByteBuffer uncompressedDataBuffer
+      ByteBuffer uncompressedDataBuffer,
+      ByteBuffer compressedDataBuffer
   )
   {
-    super(logValuesPerChunk, byteOrder, strategy, encoder, compressedDataBuffer, uncompressedDataBuffer);
+    super(logValuesPerChunk, byteOrder, strategy, encoder, uncompressedDataBuffer, compressedDataBuffer);
   }
 
 

@@ -100,7 +100,7 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
       final SegmentWriteOutMedium segmentWriteOutMedium,
       final FormEncoder<TChunk, TChunkMetrics>[] codecs,
       final IndexSpec.ShapeShiftOptimizationTarget optimizationTarget,
-      final IndexSpec.ShapeShiftingBlockSize blockSize,
+      final IndexSpec.ShapeShiftBlockSize blockSize,
       final int logBytesPerValue,
       final byte version,
       @Nullable final ByteOrder overrideByteOrder,
@@ -217,27 +217,26 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
           }
         }
       }
-
-      if (!composition.containsKey(bestCodec)) {
-        composition.put(bestCodec, 0);
-      }
-      composition.computeIfPresent(bestCodec, (k, v) -> v + 1);
-      if (bestCodec instanceof CompressedFormEncoder) {
-        FormEncoder inner = ((CompressedFormEncoder) bestCodec).getInnerEncoder();
-        if (!composition.containsKey(inner)) {
-          composition.put(inner, 0);
-        }
-        composition.computeIfPresent(inner, (k, v) -> v + 1);
-      }
-
     } else {
       bestCodec = codecs[0];
     }
+
 
     if (bestCodec == null) {
       throw new RuntimeException("WTF? Unable to select an encoder.");
     }
 
+    if (!composition.containsKey(bestCodec)) {
+      composition.put(bestCodec, 0);
+    }
+    composition.computeIfPresent(bestCodec, (k, v) -> v + 1);
+    if (bestCodec instanceof CompressedFormEncoder) {
+      FormEncoder inner = ((CompressedFormEncoder) bestCodec).getInnerEncoder();
+      if (!composition.containsKey(inner)) {
+        composition.put(inner, 0);
+      }
+      composition.computeIfPresent(inner, (k, v) -> v + 1);
+    }
     valuesOut.write(new byte[]{bestCodec.getHeader()});
     bestCodec.encode(valuesOut, currentChunk, currentChunkPos, chunkMetrics);
 
