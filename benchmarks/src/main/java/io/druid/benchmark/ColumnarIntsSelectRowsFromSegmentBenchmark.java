@@ -128,7 +128,6 @@ public class ColumnarIntsSelectRowsFromSegmentBenchmark extends BaseColumnarInts
 
   public static void main(String[] args) throws RunnerException
   {
-    System.out.println("main happened");
     Options opt = new OptionsBuilder()
         .include(ColumnarIntsSelectRowsFromSegmentBenchmark.class.getSimpleName())
         .addProfiler(EncodingSizeProfiler.class)

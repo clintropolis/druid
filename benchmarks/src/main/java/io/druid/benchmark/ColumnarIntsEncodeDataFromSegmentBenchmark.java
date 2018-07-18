@@ -73,7 +73,6 @@ public class ColumnarIntsEncodeDataFromSegmentBenchmark extends BaseColumnarInts
 
   public static void main(String[] args) throws RunnerException
   {
-    System.out.println("main happened");
     Options opt = new OptionsBuilder()
         .include(ColumnarIntsEncodeDataFromSegmentBenchmark.class.getSimpleName())
         .addProfiler(EncodingSizeProfiler.class)

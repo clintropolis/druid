@@ -73,7 +73,6 @@ public class ColumnarIntsEncodeDataFromGeneratorBenchmark extends BaseColumnarIn
 
   public static void main(String[] args) throws RunnerException
   {
-    System.out.println("main happened");
     Options opt = new OptionsBuilder()
         .include(ColumnarIntsEncodeDataFromGeneratorBenchmark.class.getSimpleName())
         .addProfiler(EncodingSizeProfiler.class)
