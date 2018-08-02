@@ -82,14 +82,7 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
       IntFormMetrics metrics
   )
   {
-    final byte numBytesBytepack = BytePackedIntFormEncoder.getNumBytesForMax(metrics.getMaxValue());
-    final int bytepackSize = numBytesBytepack * numValues;
-    final int projectedSize = projectSize(metrics);
-
-    if (!metrics.isEnableEncoderOptOut() && projectedSize > bytepackSize) {
-      return Integer.MAX_VALUE;
-    }
-    return projectedSize;
+    return projectSize(metrics);
   }
 
   /**
@@ -102,15 +95,20 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
    * @return
    */
   @Override
-  public double getSpeedModifier(IntFormMetrics metrics)
+  public double getModifiedEncodedSize(
+      int[] values,
+      int numValues,
+      IntFormMetrics metrics
+  )
   {
+    int size = projectSize(metrics);
     // rle is pretty slow when not in a situation where it is appropriate, penalize if big gains are not projected
-    final byte numBytesBytepack = BytePackedIntFormEncoder.getNumBytesForMax(metrics.getMaxValue());
+    final byte numBytesBytepack =
+        RunLengthBytePackedIntFormEncoder.getNumBytesForMax(metrics.getMaxValue(), metrics.getLongestRun());
     final int bytepackSize = numBytesBytepack * metrics.getNumValues();
-    final int projectedSize = projectSize(metrics);
     // don't bother if not smaller than bytepacking
-    if (projectedSize > bytepackSize) {
-      return 10.0;
+    if (size > bytepackSize) {
+      return 10.0 * size;
     }
     double modifier;
     switch (metrics.getOptimizationTarget()) {
@@ -118,10 +116,10 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
         modifier = 1.0;
         break;
       default:
-        modifier = (((double) bytepackSize - (double) projectedSize)) / (double) bytepackSize;
+        modifier = (((double) bytepackSize - (double) size)) / (double) bytepackSize;
         break;
     }
-    return Math.max(2.0 - modifier, 1.0);
+    return Math.max(2.0 - modifier, 1.0) * size;
   }
 
   @Override

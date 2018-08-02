@@ -50,6 +50,15 @@ public interface FormEncoder<TChunk, TChunkMetrics extends FormMetrics>
   ) throws IOException;
 
 
+  default double getModifiedEncodedSize(
+      TChunk values,
+      int numValues,
+      TChunkMetrics metrics
+  ) throws IOException
+  {
+    return 1.0 * getEncodedSize(values, numValues, metrics);
+  }
+
   /**
    * Encode the values to the supplied {@link WriteOutBytes}
    *
@@ -82,14 +91,4 @@ public interface FormEncoder<TChunk, TChunkMetrics extends FormMetrics>
    * @return
    */
   String getName();
-
-  /**
-   * @param metrics
-   *
-   * @return
-   */
-  default double getSpeedModifier(TChunkMetrics metrics)
-  {
-    return 1.0;
-  }
 }

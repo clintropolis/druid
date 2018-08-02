@@ -51,7 +51,7 @@ public abstract class FormMetrics
   }
 
   /**
-   * Whenb multiple 'complete' encoders are being employed, allow encoders which 'think' they will perform poorly for a
+   * When multiple 'complete' encoders are being employed, allow encoders which 'think' they will perform poorly for a
    * given block to opt out of being used, which in some cases can save expensive calculations
    * @return
    */

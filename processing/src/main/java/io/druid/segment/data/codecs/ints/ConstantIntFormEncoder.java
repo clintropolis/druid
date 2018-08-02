@@ -52,6 +52,18 @@ public class ConstantIntFormEncoder extends BaseIntFormEncoder
   }
 
   @Override
+  public double getModifiedEncodedSize(
+      int[] values,
+      int numValues,
+      IntFormMetrics metrics
+  )
+  {
+    // count as 1 byte for sake of comparison, iow, never replace zero, but prefer this over rle
+    return 0.2 * getEncodedSize(values, numValues, metrics);
+  }
+
+
+  @Override
   public void encode(
       WriteOutBytes valuesOut,
       int[] values,
@@ -60,12 +72,6 @@ public class ConstantIntFormEncoder extends BaseIntFormEncoder
   ) throws IOException
   {
     valuesOut.write(toBytes(metrics.getMaxValue()));
-  }
-
-  @Override
-  public double getSpeedModifier(IntFormMetrics metrics)
-  {
-    return 0.2; // count as 1 byte for sake of comparison, iow, never replace zero, but prefer this over rle
   }
 
   @Override

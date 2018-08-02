@@ -72,7 +72,6 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
   final byte logValuesPerChunk;
   final int valuesPerChunk;
   final int chunkIndexMask;
-  final int offsetsSize;
   final ByteOrder byteOrder;
   // shared chunk data areas for decoders that need space
   ResourceHolder<ByteBuffer> bufHolder;
@@ -98,7 +97,6 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
     this.logValuesPerChunk = sourceData.getLogValuesPerChunk();
     this.valuesPerChunk = 1 << logValuesPerChunk;
     this.chunkIndexMask = valuesPerChunk - 1;
-    this.offsetsSize = sourceData.getOffsetsSize();
     this.byteOrder = sourceData.getByteOrder();
     this.decoders = decoders;
     this.columnData = sourceData;
@@ -147,18 +145,15 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
     currentChunk = -1;
     currentChunkSize = -1;
 
-    // Determine chunk size.
-    final int chunkStartReadFrom = columnData.getOffsetsStartOffset() + (Integer.BYTES * desiredChunk);
-    final int chunkStartByte = columnData.getValueChunksStartOffset() + buffer.getInt(chunkStartReadFrom);
-    final int chunkEndByte = columnData.getValueChunksStartOffset() +
-                             buffer.getInt(chunkStartReadFrom + Integer.BYTES);
-
     if (desiredChunk == numChunks - 1) {
       currentChunkNumValues = (numValues - ((numChunks - 1) * valuesPerChunk));
     } else {
       currentChunkNumValues = valuesPerChunk;
     }
 
+    ShapeShiftingColumnData.ChunkPosition position = columnData.getChunkPosition(desiredChunk);
+    final int chunkStartByte = columnData.getValueChunksStartOffset() + position.getStartOffset();
+    final int chunkEndByte = columnData.getValueChunksStartOffset() + position.getEndOffset();
     final byte chunkCodec = buffer.get(chunkStartByte);
     FormDecoder<TShapeShiftImpl> nextForm = getFormDecoder(chunkCodec);
 
@@ -184,20 +179,16 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
   public abstract void transform(FormDecoder<TShapeShiftImpl> nextForm);
 
   /**
-   * Get header size, used to correctly calculate chunk and offset locations in underlying bytebuffer.
-   *
-   * @return
-   */
-  protected abstract int headerSize();
-
-  /**
    * Get form decoder mapped to chunk header, used to transform this column to prepare for value reading
    *
    * @param header
    *
    * @return
    */
-  public abstract FormDecoder<TShapeShiftImpl> getFormDecoder(byte header);
+  public FormDecoder<TShapeShiftImpl> getFormDecoder(byte header)
+  {
+    return decoders.get(header);
+  }
 
   /**
    * Get underlying column buffer sliced from mapped smoosh

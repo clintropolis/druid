@@ -38,7 +38,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.WritableByteChannel;
 import java.util.Map;
-import java.util.function.Function;
 
 /**
  * Base serializer for {@link ShapeShiftingColumn} implementations, providing most common functionality such as headers,
@@ -65,7 +64,7 @@ import java.util.function.Function;
  * {@link io.druid.segment.data.codecs.CompressedFormEncoder} in the codec list passed to the serializer.
  *
  * layout:
- * | version (byte) | headerSize (int) | numValues (int) | numChunks (int) | logValuesPerChunk (byte) | offsetsOutSize (int) |  compositionSize (int) | composition | offsets | values |
+ * | version (byte) | headerSize (int) | numValues (int) | numChunks (int) | logValuesPerChunk (byte) |  compositionOffset (int) | compositionSize (int) | offsetsOffset (int) | offsetsSize (int) | composition | offsets | values |
  *
  * @param <TChunk>
  * @param <TChunkMetrics>
@@ -73,9 +72,9 @@ import java.util.function.Function;
 public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extends FormMetrics> implements Serializer
 {
   /**
-   * | version (byte) | headerSize (int) | numValues (int) | numChunks (int) | logValuesPerChunk (byte) | offsetsOutSize (int) | compositionSize (int) |
+   * | version (byte) | headerSize (int) | numValues (int) | numChunks (int) | logValuesPerChunk (byte) | compositionOffset (int) | compositionSize (int) |  offsetsOffset (int) | offsetsSize (int) |
    */
-  private static final int BASE_HEADER_BYTES = 1 + (3 * Integer.BYTES) + 1 + (2 * Integer.BYTES);
+  private static final int BASE_HEADER_BYTES = 1 + (3 * Integer.BYTES) + 1 + (4 * Integer.BYTES);
 
   private static Logger log = new Logger(ShapeShiftingColumnSerializer.class);
 
@@ -150,7 +149,7 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
 
     writeFinalOffset();
 
-    return getHeaderSize() + offsetsOut.size() + valuesOut.size();
+    return getHeaderSize() + valuesOut.size();
   }
 
   @Override
@@ -163,19 +162,7 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
       flushCurrentChunk();
     }
 
-    writeFinalOffset();
-
-    writeShapeShiftHeader(
-        channel,
-        intToBytesHelperBuffer,
-        version,
-        numChunks,
-        numValues,
-        logValuesPerChunk,
-        composition,
-        Ints.checkedCast(offsetsOut.size())
-    );
-    offsetsOut.writeTo(channel);
+    writeShapeShiftHeader(channel);
     valuesOut.writeTo(channel);
   }
 
@@ -190,12 +177,12 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
   /**
    * Encode values of {@link ShapeShiftingColumnSerializer#currentChunk} with the 'best' available {@link FormEncoder}
    * given the information collected in {@link ShapeShiftingColumnSerializer#chunkMetrics}. The best is chosen by
-   * computing the smallest 'modified' size, where {@link FormEncoder#getSpeedModifier(FormMetrics)}} is tuned based
+   * computing the smallest 'modified' size, where {@link FormEncoder#getModifiedEncodedSize} is tuned based
    * on decoding speed for each encoding in relation to all other available encodings.
    *
    * @throws IOException
    */
-  void flushCurrentChunk() throws IOException
+  protected void flushCurrentChunk() throws IOException
   {
     Preconditions.checkState(!wroteFinalOffset, "!wroteFinalOffset");
     Preconditions.checkState(currentChunkPos > 0, "currentChunkPos > 0");
@@ -208,19 +195,15 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
     FormEncoder<TChunk, TChunkMetrics> bestCodec = null;
     if (codecs.length > 1) {
       for (FormEncoder<TChunk, TChunkMetrics> codec : codecs) {
-        int theSize = codec.getEncodedSize(currentChunk, currentChunkPos, chunkMetrics);
-        if (theSize < bestSize) {
-          double modified = (double) theSize * codec.getSpeedModifier(chunkMetrics);
-          if (modified < bestSize) {
-            bestCodec = codec;
-            bestSize = (int) modified;
-          }
+        double modifiedSize = codec.getModifiedEncodedSize(currentChunk, currentChunkPos, chunkMetrics);
+        if (modifiedSize < bestSize) {
+          bestCodec = codec;
+          bestSize = (int) modifiedSize;
         }
       }
     } else {
       bestCodec = codecs[0];
     }
-
 
     if (bestCodec == null) {
       throw new RuntimeException("WTF? Unable to select an encoder.");
@@ -250,6 +233,13 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
     resetChunkCollector();
   }
 
+
+  private int getHeaderSize() throws IOException
+  {
+    return BASE_HEADER_BYTES + (composition.size() * 5) + Ints.checkedCast(offsetsOut.size());
+  }
+
+
   private void writeFinalOffset() throws IOException
   {
     if (!wroteFinalOffset) {
@@ -258,41 +248,32 @@ public abstract class ShapeShiftingColumnSerializer<TChunk, TChunkMetrics extend
     }
   }
 
-  private int getHeaderSize()
+  private void writeShapeShiftHeader(WritableByteChannel channel) throws IOException
   {
-    return BASE_HEADER_BYTES + (composition.size() * 5);
-  }
+    writeFinalOffset();
 
-  static void writeShapeShiftHeader(
-      WritableByteChannel channel,
-      ByteBuffer tmpBuffer,
-      byte version,
-      int numChunks,
-      int numValues,
-      byte logValuesPerChunk,
-      Map<FormEncoder, Integer> composition,
-      int offsetsSize
-  ) throws IOException
-  {
-    Function<Integer, ByteBuffer> toBytes = (n) -> {
-      tmpBuffer.putInt(0, n);
-      tmpBuffer.rewind();
-      return tmpBuffer;
-    };
     int compositionSizeBytes = composition.entrySet().size() * 5;
+    int offsetsSizeBytes = Ints.checkedCast(offsetsOut.size());
+    int headerSizeBytes = BASE_HEADER_BYTES + compositionSizeBytes + offsetsSizeBytes;
+
     channel.write(ByteBuffer.wrap(new byte[]{version}));
-    channel.write(toBytes.apply(BASE_HEADER_BYTES + compositionSizeBytes));
-    channel.write(toBytes.apply(numValues));
-    channel.write(toBytes.apply(numChunks));
+    channel.write(toBytes(headerSizeBytes));
+    channel.write(toBytes(numValues));
+    channel.write(toBytes(numChunks));
     channel.write(ByteBuffer.wrap(new byte[]{logValuesPerChunk}));
-    channel.write(toBytes.apply(offsetsSize));
-    channel.write(toBytes.apply(compositionSizeBytes));
+    channel.write(toBytes(BASE_HEADER_BYTES));
+    channel.write(toBytes(compositionSizeBytes));
+    channel.write(toBytes(BASE_HEADER_BYTES + compositionSizeBytes));
+    channel.write(toBytes(offsetsSizeBytes));
 
     // write composition map
     for (Map.Entry<FormEncoder, Integer> enc : composition.entrySet()) {
       channel.write(ByteBuffer.wrap(new byte[]{enc.getKey().getHeader()}));
-      channel.write(toBytes.apply(enc.getValue()));
+      channel.write(toBytes(enc.getValue()));
       log.info(enc.getKey().getName() + ": " + enc.getValue());
     }
+
+    // write offsets
+    offsetsOut.writeTo(channel);
   }
 }

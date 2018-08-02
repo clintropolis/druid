@@ -95,18 +95,6 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
   }
 
   @Override
-  protected int headerSize()
-  {
-    return columnData.getHeaderSize();
-  }
-
-  @Override
-  public FormDecoder<ShapeShiftingColumnarInts> getFormDecoder(byte header)
-  {
-    return decoders.get(header);
-  }
-
-  @Override
   public int get(final int index)
   {
     final int desiredChunk = index >> logValuesPerChunk;
@@ -232,6 +220,11 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
       default:
         return currentConstant;
     }
+  }
+
+  private int decodeConstantForm(int index)
+  {
+    return currentConstant;
   }
 
   /**

@@ -82,6 +82,25 @@ public abstract class CompressedFormEncoder<TChunk, TChunkMetrics extends FormMe
   }
 
   @Override
+  public double getModifiedEncodedSize(
+      TChunk values,
+      int numValues,
+      TChunkMetrics metrics
+  ) throws IOException
+  {
+    double innerModifiedSize = formEncoder.getModifiedEncodedSize(values, numValues, metrics);
+    switch (metrics.getOptimizationTarget()) {
+      case FASTER:
+        return innerModifiedSize * 1.30;
+      case SMALLER:
+        return innerModifiedSize;
+      case FASTBUTSMALLISH:
+      default:
+        return innerModifiedSize * 1.05;
+    }
+  }
+
+  @Override
   public void encode(
       WriteOutBytes valuesOut,
       TChunk values,
@@ -107,20 +126,6 @@ public abstract class CompressedFormEncoder<TChunk, TChunkMetrics extends FormMe
   public String getName()
   {
     return StringUtils.format("%s [%s]", compressionStrategy.toString(), formEncoder.getName());
-  }
-
-  @Override
-  public double getSpeedModifier(TChunkMetrics metrics)
-  {
-    switch (metrics.getOptimizationTarget()) {
-      case FASTER:
-        return formEncoder.getSpeedModifier(metrics) + 0.30;
-      case SMALLER:
-        return formEncoder.getSpeedModifier(metrics);
-      case FASTBUTSMALLISH:
-      default:
-        return formEncoder.getSpeedModifier(metrics) + 0.05;
-    }
   }
 
   public FormEncoder<TChunk, TChunkMetrics> getInnerEncoder()

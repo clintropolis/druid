@@ -39,9 +39,12 @@ public class ShapeShiftingColumnData
   private final int numChunks;
   private final byte logValuesPerChunk;
   private final byte logBytesPerValue;
+  private final int compositionOffset;
   private final int compositionSize;
-  private final Map<Byte, Integer> composition;
+  private final int offsetsOffset;
   private final int offsetsSize;
+  private final Map<Byte, Integer> composition;
+  private final ChunkPosition[] chunkPositions;
   private final ByteBuffer baseBuffer;
   private final ByteOrder byteOrder;
 
@@ -58,16 +61,18 @@ public class ShapeShiftingColumnData
   )
   {
     ByteBuffer ourBuffer = buffer.slice().order(byteOrder);
+    int position = 0;
     this.byteOrder = byteOrder;
     this.logBytesPerValue = logBytesPerValue;
-    this.headerSize = ourBuffer.getInt(1);
-    this.numValues = ourBuffer.getInt(1 + Integer.BYTES);
-    this.numChunks = ourBuffer.getInt(1 + (2 * Integer.BYTES));
-    this.logValuesPerChunk = ourBuffer.get(1 + (3 * Integer.BYTES));
-    this.offsetsSize = ourBuffer.getInt(1 + (3 * Integer.BYTES) + 1);
-    this.compositionSize = ourBuffer.getInt(1 + (3 * Integer.BYTES) + 1 + Integer.BYTES);
+    this.headerSize = ourBuffer.getInt(++position);
+    this.numValues = ourBuffer.getInt(position += Integer.BYTES);
+    this.numChunks = ourBuffer.getInt(position += Integer.BYTES);
+    this.logValuesPerChunk = ourBuffer.get(position += Integer.BYTES);
+    this.compositionOffset = ourBuffer.getInt(++position);
+    this.compositionSize = ourBuffer.getInt(position += Integer.BYTES);
+    this.offsetsOffset = ourBuffer.getInt(position += Integer.BYTES);
+    this.offsetsSize = ourBuffer.getInt(position += Integer.BYTES);
 
-    int compositionOffset = 1 + (3 * Integer.BYTES) + 1 + (2 * Integer.BYTES);
     this.composition = new HashMap<>();
     // 5 bytes per composition entry
     for (int i = 0; i < compositionSize; i += 5) {
@@ -76,10 +81,16 @@ public class ShapeShiftingColumnData
       composition.put(header, count);
     }
 
-    ourBuffer.limit(
-        getValueChunksStartOffset() +
-        ourBuffer.getInt(getOffsetsStartOffset() + (numChunks * Integer.BYTES))
-    );
+    this.chunkPositions = new ChunkPosition[numChunks];
+    int prevOffset = 0;
+    for (int chunk = 0, chunkOffset = 0; chunk < numChunks; chunk++, chunkOffset += Integer.BYTES) {
+      int chunkStart = ourBuffer.getInt(offsetsOffset + chunkOffset);
+      int chunkEnd = ourBuffer.getInt(offsetsOffset + chunkOffset + Integer.BYTES);
+      chunkPositions[chunk] = new ChunkPosition(chunkStart, chunkEnd);
+      prevOffset = chunkEnd;
+    }
+
+    ourBuffer.limit(getValueChunksStartOffset() + prevOffset);
 
     if (moveSourceBufferPosition) {
       buffer.position(buffer.position() + ourBuffer.remaining());
@@ -172,13 +183,13 @@ public class ShapeShiftingColumnData
   }
 
   /**
-   * Start offset of {@link ShapeShiftingColumnData#baseBuffer} for the 'chunk offsets' section
-   *
+   * get start and end offset of chunk in {@link ShapeShiftingColumnData#baseBuffer}
+   * @param chunk index of chunk
    * @return
    */
-  public int getOffsetsStartOffset()
+  public ChunkPosition getChunkPosition(int chunk)
   {
-    return headerSize;
+    return chunkPositions[chunk];
   }
 
   /**
@@ -188,7 +199,7 @@ public class ShapeShiftingColumnData
    */
   public int getValueChunksStartOffset()
   {
-    return headerSize + offsetsSize;
+    return headerSize;
   }
 
   /**
@@ -209,5 +220,27 @@ public class ShapeShiftingColumnData
   public ByteOrder getByteOrder()
   {
     return byteOrder;
+  }
+
+  public class ChunkPosition
+  {
+    private final int startOffset;
+    private final int endOffset;
+
+    public ChunkPosition(int startOffset, int endOffset)
+    {
+      this.startOffset = startOffset;
+      this.endOffset = endOffset;
+    }
+
+    public int getStartOffset()
+    {
+      return startOffset;
+    }
+
+    public int getEndOffset()
+    {
+      return endOffset;
+    }
   }
 }

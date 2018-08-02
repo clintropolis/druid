@@ -48,6 +48,83 @@ public class IntFormMetrics extends FormMetrics
     super(target, enableEncoderOptOut);
   }
 
+  @Override
+  public int getNumValues()
+  {
+    return numValues;
+  }
+
+  /**
+   * Minimum integer value encountered in the block of values
+   *
+   * @return
+   */
+  public int getMinValue()
+  {
+    return minValue;
+  }
+
+  /**
+   * Maximum integer value encountered in the block of values
+   *
+   * @return
+   */
+  public int getMaxValue()
+  {
+    return maxValue;
+  }
+
+  /**
+   * Total count of values which are part of a 'run', or a repitition of a value 3 or more times
+   *
+   * @return
+   */
+  public int getNumRunValues()
+  {
+    return numRunValues;
+  }
+
+  /**
+   * Count of distinct of 'runs', or values which are repeated more than 2 times
+   *
+   * @return
+   */
+  public int getNumDistinctRuns()
+  {
+    return numDistinctRuns;
+  }
+
+  /**
+   * Count of longest continuous sequence of repeated values
+   *
+   * @return
+   */
+  public int getLongestRun()
+  {
+    return longestRun;
+  }
+
+  /**
+   * All block values are a constant
+   *
+   * @return
+   */
+  public boolean isConstant()
+  {
+    return minValue == maxValue;
+  }
+
+  /**
+   * All block values are zero
+   *
+   * @return
+   */
+  public boolean isZero()
+  {
+    return minValue == 0 && minValue == maxValue;
+  }
+
+
   /**
    * This method is called for every {@link io.druid.segment.data.ShapeShiftingColumnarIntsSerializer#addValue(int)} to
    * aggregate details about a chunk of values.
@@ -86,81 +163,5 @@ public class IntFormMetrics extends FormMetrics
       maxValue = val;
     }
     numValues++;
-  }
-
-  @Override
-  public int getNumValues()
-  {
-    return numValues;
-  }
-
-  /**
-   * Minimum integer value encountered
-   *
-   * @return
-   */
-  public int getMinValue()
-  {
-    return minValue;
-  }
-
-  /**
-   * Maximum integer value encountered
-   *
-   * @return
-   */
-  public int getMaxValue()
-  {
-    return maxValue;
-  }
-
-  /**
-   * Total number of values which are part of a 'run', or a repitition of a value 3 or more times
-   *
-   * @return
-   */
-  public int getNumRunValues()
-  {
-    return numRunValues;
-  }
-
-  /**
-   * Distinct number of 'runs', or values which are repeated more than 2 times
-   *
-   * @return
-   */
-  public int getNumDistinctRuns()
-  {
-    return numDistinctRuns;
-  }
-
-  /**
-   * Longest number of repeated values
-   *
-   * @return
-   */
-  public int getLongestRun()
-  {
-    return longestRun;
-  }
-
-  /**
-   * All values are a constant
-   *
-   * @return
-   */
-  public boolean isConstant()
-  {
-    return minValue == maxValue;
-  }
-
-  /**
-   * All values are zero
-   *
-   * @return
-   */
-  public boolean isZero()
-  {
-    return minValue == 0 && minValue == maxValue;
   }
 }
