@@ -222,7 +222,7 @@ public class ShapeShiftingColumnData
     return byteOrder;
   }
 
-  public class ChunkPosition
+  public static class ChunkPosition
   {
     private final int startOffset;
     private final int endOffset;
