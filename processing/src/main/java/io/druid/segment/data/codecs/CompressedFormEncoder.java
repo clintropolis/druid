@@ -88,15 +88,15 @@ public abstract class CompressedFormEncoder<TChunk, TChunkMetrics extends FormMe
       TChunkMetrics metrics
   ) throws IOException
   {
-    double innerModifiedSize = formEncoder.getModifiedEncodedSize(values, numValues, metrics);
+    int encodedSize = getEncodedSize(values, numValues, metrics);
     switch (metrics.getOptimizationTarget()) {
       case FASTER:
-        return innerModifiedSize * 1.30;
+        return encodedSize * 1.30;
       case SMALLER:
-        return innerModifiedSize;
+        return encodedSize;
       case FASTBUTSMALLISH:
       default:
-        return innerModifiedSize * 1.05;
+        return encodedSize * 1.05;
     }
   }
 

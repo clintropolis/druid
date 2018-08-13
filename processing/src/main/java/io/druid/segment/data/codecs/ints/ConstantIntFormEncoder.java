@@ -58,8 +58,11 @@ public class ConstantIntFormEncoder extends BaseIntFormEncoder
       IntFormMetrics metrics
   )
   {
-    // count as 1 byte for sake of comparison, iow, never replace zero, but prefer this over rle
-    return 0.2 * getEncodedSize(values, numValues, metrics);
+    if (metrics.isConstant()) {
+      // count as 1 byte for sake of comparison, iow, never replace zero, but prefer this over rle
+      return 0.2 * getEncodedSize(values, numValues, metrics);
+    }
+    return Integer.MAX_VALUE;
   }
 
 

@@ -22,6 +22,7 @@ package io.druid.segment.data;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.google.common.primitives.Ints;
+import io.druid.java.util.common.StringUtils;
 import io.druid.java.util.common.io.smoosh.FileSmoosher;
 import io.druid.java.util.common.logger.Logger;
 import io.druid.segment.IndexSpec;

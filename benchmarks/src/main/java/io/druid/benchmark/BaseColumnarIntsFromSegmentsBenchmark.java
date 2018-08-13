@@ -74,16 +74,16 @@ public class BaseColumnarIntsFromSegmentsBenchmark extends BaseColumnarIntsBench
 //  })
 
   // twitter columns
-//  @Param({
-//    "geo",
-//    "lang",
-//    "retweet",
-//    "screen_name",
-//    "source",
-//    "text",
-//    "utc_offset",
-//    "verified"
-//  })
+  @Param({
+    "geo",
+    "lang",
+    "retweet",
+    "screen_name",
+    "source",
+    "text",
+    "utc_offset",
+    "verified"
+  })
 
   // clarity columns
 //  @Param({
@@ -132,41 +132,41 @@ public class BaseColumnarIntsFromSegmentsBenchmark extends BaseColumnarIntsBench
 //  })
 
   // lineitem columns
-  @Param({
-      "l_comment",
-      "l_commitdate",
-      "l_linenumber",
-      "l_linestatus",
-      "l_orderkey",
-      "l_partkey",
-      "l_receiptdate",
-      "l_returnflag",
-      "l_shipinstruct",
-      "l_shipmode",
-      "l_suppkey"
-  })
+//  @Param({
+//      "l_comment",
+//      "l_commitdate",
+//      "l_linenumber",
+//      "l_linestatus",
+//      "l_orderkey",
+//      "l_partkey",
+//      "l_receiptdate",
+//      "l_returnflag",
+//      "l_shipinstruct",
+//      "l_shipmode",
+//      "l_suppkey"
+//  })
   String columnName;
 
 //  @Param({"533652"})        // wiki
 //  @Param({"3537476"})        // wiki-2
-//  @Param({"3259585"})       // twitter
+  @Param({"3259585"})       // twitter
 //  @Param({"3783642"})       // clarity
-  @Param({"6001215"})         // tpch-lineitem-1g
+//  @Param({"6001215"})         // tpch-lineitem-1g
   int rows;
 
 
 //  @Param({"tmp/segments/wiki-1/"})
 //  @Param({"tmp/segments/wiki-2/"})
-//  @Param({"tmp/segments/twitter-1/"})
+  @Param({"tmp/segments/twitter-1/"})
 //  @Param({"tmp/segments/clarity-1/"})
-  @Param({"tmp/segments/tpch-lineitem-1/"})
+//  @Param({"tmp/segments/tpch-lineitem-1/"})
   String segmentPath;
 
 //  @Param({"wikiticker"})
 //  @Param({"wikiticker-2"})
-//  @Param({"twitter"})
+  @Param({"twitter"})
 //  @Param({"clarity"})
-  @Param({"tpch-lineitem"})
+//  @Param({"tpch-lineitem"})
   String segmentName;
 
 
