@@ -24,6 +24,7 @@ import io.druid.collections.ResourceHolder;
 import io.druid.segment.CompressedPools;
 import io.druid.segment.data.ShapeShiftingColumn;
 import io.druid.segment.data.ShapeShiftingColumnarInts;
+import io.druid.segment.data.codecs.ArrayFormDecoder;
 import io.druid.segment.data.codecs.BaseFormDecoder;
 import me.lemire.integercompression.IntWrapper;
 import me.lemire.integercompression.SkippableIntegerCODEC;
@@ -43,6 +44,7 @@ import java.nio.ByteOrder;
  * | header (byte) | encoded values  (numOutputInts * Integer.BYTES) |
  */
 public final class LemireIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
+    implements ArrayFormDecoder<ShapeShiftingColumnarInts>
 {
   private static final Unsafe unsafe = ShapeShiftingColumn.getTheUnsafe();
   private final NonBlockingPool<SkippableIntegerCODEC> codecPool;

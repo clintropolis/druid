@@ -21,10 +21,10 @@ package io.druid.segment.data.codecs.ints;
 
 import io.druid.segment.data.ShapeShiftingColumnarInts;
 import io.druid.segment.data.codecs.BaseFormDecoder;
+import io.druid.segment.data.codecs.ConstantFormDecoder;
 import io.druid.segment.data.codecs.DirectFormDecoder;
 
 import java.nio.ByteOrder;
-import java.util.Arrays;
 
 /**
  * Decoder used if all values are the same within a chunk are constant.
@@ -33,7 +33,7 @@ import java.util.Arrays;
  * | header: IntCodecs.CONSTANT (byte) | constant value (int) |
  */
 public final class ConstantIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
-    implements DirectFormDecoder<ShapeShiftingColumnarInts>
+  implements ConstantFormDecoder<ShapeShiftingColumnarInts>, DirectFormDecoder<ShapeShiftingColumnarInts>
 {
   public ConstantIntFormDecoder(final byte logValuesPerChunk, final ByteOrder byteOrder)
   {
@@ -42,23 +42,6 @@ public final class ConstantIntFormDecoder extends BaseFormDecoder<ShapeShiftingC
 
   @Override
   public void transform(ShapeShiftingColumnarInts columnarInts)
-  {
-    final int startOffset = columnarInts.getCurrentValuesStartOffset();
-    final int currentConstant = columnarInts.getCurrentValueBuffer().getInt(startOffset);
-    Arrays.fill(columnarInts.getDecodedValues(), currentConstant);
-  }
-
-  @Override
-  public void transformBuffer(ShapeShiftingColumnarInts columnarInts)
-  {
-    final int startOffset = columnarInts.getCurrentValuesStartOffset();
-    final int currentConstant = columnarInts.getCurrentValueBuffer().getInt(startOffset);
-    columnarInts.setCurrentBytesPerValue(0);
-    columnarInts.setCurrentConstant(currentConstant);
-  }
-
-  @Override
-  public void transformUnsafe(ShapeShiftingColumnarInts columnarInts)
   {
     final int startOffset = columnarInts.getCurrentValuesStartOffset();
     final int currentConstant = columnarInts.getCurrentValueBuffer().getInt(startOffset);

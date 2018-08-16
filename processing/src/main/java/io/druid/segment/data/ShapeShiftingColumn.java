@@ -26,6 +26,7 @@ import io.druid.query.monomorphicprocessing.RuntimeShapeInspector;
 import io.druid.segment.CompressedPools;
 import io.druid.segment.data.codecs.FormDecoder;
 import sun.misc.Unsafe;
+import sun.nio.ch.DirectBuffer;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -151,15 +152,20 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
       currentChunkNumValues = valuesPerChunk;
     }
 
-    ShapeShiftingColumnData.ChunkPosition position = columnData.getChunkPosition(desiredChunk);
+    final ShapeShiftingColumnData.ChunkPosition position = columnData.getChunkPosition(desiredChunk);
     final int chunkStartByte = columnData.getValueChunksStartOffset() + position.getStartOffset();
     final int chunkEndByte = columnData.getValueChunksStartOffset() + position.getEndOffset();
     final byte chunkCodec = buffer.get(chunkStartByte);
+
     FormDecoder<TShapeShiftImpl> nextForm = getFormDecoder(chunkCodec);
 
     currentChunkStartOffset = chunkStartByte + 1;
-    currentChunkSize = chunkEndByte - currentChunkStartOffset;
     currentValuesStartOffset = currentChunkStartOffset + nextForm.getMetadataSize();
+    currentChunkSize = chunkEndByte - currentValuesStartOffset;
+    if (buffer.isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
+      currentValuesAddress = (((DirectBuffer) buffer).address() + currentValuesStartOffset);
+    }
+
     transform(nextForm);
 
     currentChunk = desiredChunk;
@@ -201,7 +207,7 @@ public abstract class ShapeShiftingColumn<TShapeShiftImpl extends ShapeShiftingC
   }
 
   /**
-   * Get shared temporary bytebuffer for decompression
+   * Get shared bytebuffer for decompression
    *
    * @return
    */

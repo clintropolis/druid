@@ -21,6 +21,7 @@ package io.druid.segment.data.codecs;
 
 import io.druid.segment.data.CompressionStrategy;
 import io.druid.segment.data.ShapeShiftingColumn;
+import sun.nio.ch.DirectBuffer;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -64,6 +65,9 @@ public final class CompressedFormDecoder<TShapeShiftImpl extends ShapeShiftingCo
     decompressor.decompress(buffer, startOffset, size, decompressed);
     shapeshiftingColumn.setCurrentValueBuffer(decompressed);
     shapeshiftingColumn.setCurrentValuesStartOffset(0);
+    if (decompressed.isDirect()) {
+      shapeshiftingColumn.setCurrentValuesAddress(((DirectBuffer) decompressed).address());
+    }
     // transform again, this time using the inner form against the the decompressed buffer
     shapeshiftingColumn.transform(innerForm);
   }

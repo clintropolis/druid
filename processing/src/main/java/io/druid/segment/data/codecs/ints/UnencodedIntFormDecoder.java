@@ -22,9 +22,7 @@ package io.druid.segment.data.codecs.ints;
 import io.druid.segment.data.ShapeShiftingColumnarInts;
 import io.druid.segment.data.codecs.BaseFormDecoder;
 import io.druid.segment.data.codecs.DirectFormDecoder;
-import sun.nio.ch.DirectBuffer;
 
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 /**
@@ -34,7 +32,7 @@ import java.nio.ByteOrder;
  * | header: IntCodecs.UNENCODED (byte) | values  (numValues * Integer.BYTES) |
  */
 public final class UnencodedIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
-    implements DirectFormDecoder<ShapeShiftingColumnarInts>
+  implements DirectFormDecoder<ShapeShiftingColumnarInts>
 {
   public UnencodedIntFormDecoder(byte logValuesPerChunk, ByteOrder byteOrder)
   {
@@ -44,42 +42,12 @@ public final class UnencodedIntFormDecoder extends BaseFormDecoder<ShapeShifting
   @Override
   public void transform(ShapeShiftingColumnarInts columnarInts)
   {
-    final int numValues = columnarInts.getCurrentChunkNumValues();
-    final int startOffset = columnarInts.getCurrentValuesStartOffset();
-    final ByteBuffer buffer = columnarInts.getCurrentValueBuffer();
-    final int[] decodedChunk = columnarInts.getDecodedValues();
-    // todo: call out to bytepack decoder?
-    for (int i = 0, pos = startOffset; i < numValues; i++, pos += Integer.BYTES) {
-      decodedChunk[i] = buffer.getInt(pos);
-    }
-  }
-
-  @Override
-  public void transformBuffer(ShapeShiftingColumnarInts columnarInts)
-  {
-    final int startOffset = columnarInts.getCurrentValuesStartOffset();
     columnarInts.setCurrentBytesPerValue(Integer.BYTES);
-    columnarInts.setCurrentValuesStartOffset(startOffset);
-  }
-
-  @Override
-  public void transformUnsafe(ShapeShiftingColumnarInts columnarInts)
-  {
-    final int startOffset = columnarInts.getCurrentValuesStartOffset();
-    final ByteBuffer buffer = columnarInts.getCurrentValueBuffer();
-    columnarInts.setCurrentBytesPerValue(Integer.BYTES);
-    columnarInts.setCurrentValuesAddress(((DirectBuffer) buffer).address() + startOffset);
   }
 
   @Override
   public byte getHeader()
   {
     return IntCodecs.UNENCODED;
-  }
-
-  @Override
-  public boolean preferDirectAccess()
-  {
-    return true;
   }
 }

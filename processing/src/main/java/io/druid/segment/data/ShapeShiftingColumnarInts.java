@@ -24,9 +24,9 @@ import com.google.common.base.Suppliers;
 import io.druid.collections.ResourceHolder;
 import io.druid.query.monomorphicprocessing.RuntimeShapeInspector;
 import io.druid.segment.CompressedPools;
-import io.druid.segment.data.codecs.DirectFormDecoder;
 import io.druid.segment.data.codecs.FormDecoder;
 import io.druid.segment.data.codecs.ints.BytePackedIntFormDecoder;
+import io.druid.segment.data.codecs.ArrayFormDecoder;
 import sun.misc.Unsafe;
 
 import java.io.IOException;
@@ -172,17 +172,16 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
   {
     currentBytesPerValue = 4;
     currentConstant = 0;
-    if (nextForm instanceof DirectFormDecoder) {
+
+    nextForm.transform(this);
+    if (nextForm instanceof ArrayFormDecoder) {
+      currentForm = this::decodeBlockForm;
+    } else {
       if (getCurrentValueBuffer().isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
         currentForm = this::decodeUnsafeForm;
-        ((DirectFormDecoder<ShapeShiftingColumnarInts>) nextForm).transformUnsafe(this);
       } else {
         currentForm = this::decodeBufferForm;
-        ((DirectFormDecoder<ShapeShiftingColumnarInts>) nextForm).transformBuffer(this);
       }
-    } else {
-      currentForm = this::decodeBlockForm;
-      nextForm.transform(this);
     }
   }
 
@@ -199,7 +198,7 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
   }
 
   /**
-   * get value (unsafe) at index produced by {@link DirectFormDecoder} transformation
+   * get value (unsafe) at index produced by {@link FormDecoder} transformation
    *
    * @param index masked index into the chunk array (index & {@link ShapeShiftingColumnarInts#chunkIndexMask})
    *
@@ -222,13 +221,8 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
     }
   }
 
-  private int decodeConstantForm(int index)
-  {
-    return currentConstant;
-  }
-
   /**
-   * get value at index produced by {@link DirectFormDecoder} transformation
+   * get value at index produced by {@link FormDecoder} transformation
    *
    * @param index masked index into the chunk array (index & {@link ShapeShiftingColumnarInts#chunkIndexMask})
    *

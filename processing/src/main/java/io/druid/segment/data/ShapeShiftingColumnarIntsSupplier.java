@@ -22,8 +22,9 @@ package io.druid.segment.data;
 import com.google.common.annotations.VisibleForTesting;
 import io.druid.java.util.common.io.smoosh.FileSmoosher;
 import io.druid.java.util.common.logger.Logger;
-import io.druid.segment.data.codecs.DirectFormDecoder;
 import io.druid.segment.data.codecs.FormDecoder;
+import io.druid.segment.data.codecs.ConstantFormDecoder;
+import io.druid.segment.data.codecs.DirectFormDecoder;
 import io.druid.segment.data.codecs.ints.IntCodecs;
 
 import javax.annotation.Nullable;
@@ -172,15 +173,13 @@ public class ShapeShiftingColumnarIntsSupplier implements WritableSupplier<Colum
         if (intDecoder instanceof DirectFormDecoder) {
           final int count = composition.get(intDecoderEntry.getKey());
           numDirectAccess += count;
-          if (((DirectFormDecoder) intDecoder).preferDirectAccess()) {
+          if (!(intDecoder instanceof ConstantFormDecoder)) {
             preferDirectAccess += count;
           }
         }
       }
 
-      //todo: legit? if less than 1/n prefer direct access, block optimize?
-      //todo: buffer/unsafe optimized version?
-      if (preferDirectAccess < columnData.getNumChunks() / 10) {
+      if (preferDirectAccess == 0) {
         log.info(
             "Using block optimized strategy, %d:%d have random access, %d prefer random access",
             numDirectAccess,

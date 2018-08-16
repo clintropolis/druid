@@ -21,10 +21,10 @@ package io.druid.segment.data.codecs.ints;
 
 import io.druid.segment.data.ShapeShiftingColumnarInts;
 import io.druid.segment.data.codecs.BaseFormDecoder;
+import io.druid.segment.data.codecs.ConstantFormDecoder;
 import io.druid.segment.data.codecs.DirectFormDecoder;
 
 import java.nio.ByteOrder;
-import java.util.Arrays;
 
 /**
  * Decoder used if all values are the same within a chunk are zero.
@@ -33,7 +33,7 @@ import java.util.Arrays;
  * | header: IntCodecs.ZERO (byte) |
  */
 public final class ZeroIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
-    implements DirectFormDecoder<ShapeShiftingColumnarInts>
+    implements ConstantFormDecoder<ShapeShiftingColumnarInts>, DirectFormDecoder<ShapeShiftingColumnarInts>
 {
   public ZeroIntFormDecoder(byte logValuesPerChunk, ByteOrder byteOrder)
   {
@@ -47,33 +47,6 @@ public final class ZeroIntFormDecoder extends BaseFormDecoder<ShapeShiftingColum
    */
   @Override
   public void transform(ShapeShiftingColumnarInts columnarInts)
-  {
-    Arrays.fill(columnarInts.getDecodedValues(), 0);
-  }
-
-  /**
-   * Set shapeshifting int column bytes per value and current constant to zero for magic 'constant' mode
-   *
-   * @param columnarInts
-   */
-  @Override
-  public void transformBuffer(
-      ShapeShiftingColumnarInts columnarInts
-  )
-  {
-    columnarInts.setCurrentBytesPerValue(0);
-    columnarInts.setCurrentConstant(0);
-  }
-
-  /**
-   * Set shapeshifting int column bytes per value and current constant to zero for magic 'constant' mode
-   *
-   * @param columnarInts
-   */
-  @Override
-  public void transformUnsafe(
-      ShapeShiftingColumnarInts columnarInts
-  )
   {
     columnarInts.setCurrentBytesPerValue(0);
     columnarInts.setCurrentConstant(0);

@@ -19,12 +19,9 @@
 
 package io.druid.segment.data.codecs.ints;
 
-import io.druid.segment.data.ShapeShiftingColumn;
 import io.druid.segment.data.ShapeShiftingColumnarInts;
 import io.druid.segment.data.codecs.BaseFormDecoder;
 import io.druid.segment.data.codecs.DirectFormDecoder;
-import sun.misc.Unsafe;
-import sun.nio.ch.DirectBuffer;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -37,110 +34,29 @@ import java.nio.ByteOrder;
  * | header: IntCodecs.BYTEPACK (byte) | numBytes (byte) | encoded values  (numValues * numBytes) |
  */
 public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
-    implements DirectFormDecoder<ShapeShiftingColumnarInts>
+  implements DirectFormDecoder<ShapeShiftingColumnarInts>
 {
-  private static final Unsafe unsafe = ShapeShiftingColumn.getTheUnsafe();
   public static final int bigEndianShift3 = Integer.SIZE - 24;
   public static final int littleEndianMask3 = (int) ((1L << 24) - 1);
-  private final DecoderFunction oddFunction;
-  private final UnsafeDecoderFunction oddFunctionUnsafe;
 
   public BytePackedIntFormDecoder(final byte logValuesPerChunk, ByteOrder byteOrder)
   {
     super(logValuesPerChunk, byteOrder);
-    boolean isBigEndian = byteOrder.equals(ByteOrder.BIG_ENDIAN);
-    this.oddFunction = !isBigEndian
-                       ? BytePackedIntFormDecoder::decodeLittleEndianOddSizedInts
-                       : BytePackedIntFormDecoder::decodeBigEndianOddSizedInts;
-    this.oddFunctionUnsafe = !isBigEndian
-                             ? BytePackedIntFormDecoder::decodeLittleEndianOddSizedIntsUnsafe
-                             : BytePackedIntFormDecoder::decodeBigEndianOddSizedIntsUnsafe;
   }
 
   /**
-   * Eagerly decode all values into value array of shapeshifting int column
+   * Eagerly get all values into value array of shapeshifting int column
    *
    * @param columnarInts
    */
   @Override
   public void transform(ShapeShiftingColumnarInts columnarInts)
   {
-    final ByteBuffer buffer = columnarInts.getCurrentValueBuffer();
-    // metadata is always in base buffer
-    final ByteBuffer metaBuffer = columnarInts.getBuffer();
-    final int metaOffset = columnarInts.getCurrentChunkStartOffset();
-    final byte numBytes = metaBuffer.get(metaOffset);
-    final int[] decodedChunk = columnarInts.getDecodedValues();
-    final int numValues = columnarInts.getCurrentChunkNumValues();
-    final int startOffset = columnarInts.getCurrentValuesStartOffset();
-
-    if (buffer.isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
-      long addr = ((DirectBuffer) buffer).address() + startOffset;
-      switch (numBytes) {
-        case 1:
-          decodeByteSizedIntsUnsafe(addr, numValues, decodedChunk);
-          break;
-        case 2:
-          decodeShortSizedIntsUnsafe(addr, numValues, decodedChunk);
-          break;
-        case 3:
-          oddFunctionUnsafe.decode(addr, numValues, decodedChunk);
-          break;
-        case 4:
-          decodeIntSizedIntsUnsafe(addr, numValues, decodedChunk);
-          break;
-      }
-    } else {
-      switch (numBytes) {
-        case 1:
-          decodeByteSizedInts(buffer, startOffset, numValues, decodedChunk);
-          break;
-        case 2:
-          decodeShortSizedInts(buffer, startOffset, numValues, decodedChunk);
-          break;
-        case 3:
-          oddFunction.decode(buffer, startOffset, numValues, decodedChunk);
-          break;
-        case 4:
-          decodeIntSizedInts(buffer, startOffset, numValues, decodedChunk);
-          break;
-      }
-    }
-  }
-
-  /**
-   * Set shapeshifting int column buffer offset and byte per value for direct buffer reads
-   *
-   * @param columnarInts
-   */
-  @Override
-  public void transformBuffer(ShapeShiftingColumnarInts columnarInts)
-  {
-    final int startOffset = columnarInts.getCurrentValuesStartOffset();
-    // metadata is always in base buffer
-    final ByteBuffer metaBuffer = columnarInts.getBuffer();
-    final int metaOffset = columnarInts.getCurrentChunkStartOffset();
-    final byte numBytes = metaBuffer.get(metaOffset);
-    columnarInts.setCurrentBytesPerValue(numBytes);
-    columnarInts.setCurrentValuesStartOffset(startOffset);
-  }
-
-  /**
-   * Set shapeshifting int column memory address and byte per value for direct unsafe reads
-   *
-   * @param columnarInts
-   */
-  @Override
-  public void transformUnsafe(ShapeShiftingColumnarInts columnarInts)
-  {
-    final int startOffset = columnarInts.getCurrentValuesStartOffset();
-    final ByteBuffer buffer = columnarInts.getCurrentValueBuffer();
     // metadata is always in base buffer at current chunk start offset
     final ByteBuffer metaBuffer = columnarInts.getBuffer();
     final int metaOffset = columnarInts.getCurrentChunkStartOffset();
     final byte numBytes = metaBuffer.get(metaOffset);
     columnarInts.setCurrentBytesPerValue(numBytes);
-    columnarInts.setCurrentValuesAddress(((DirectBuffer) buffer).address() + startOffset);
   }
 
   @Override
@@ -153,134 +69,5 @@ public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftin
   public int getMetadataSize()
   {
     return 1;
-  }
-
-  @Override
-  public boolean preferDirectAccess()
-  {
-    return true;
-  }
-
-  private static void decodeByteSizedInts(
-      ByteBuffer buffer,
-      int startOffset,
-      final int numValues,
-      final int[] decoded
-  )
-  {
-    for (int i = 0, pos = startOffset; i < numValues; i++, pos++) {
-      decoded[i] = buffer.get(pos) & 0xFF;
-    }
-  }
-
-  private static void decodeShortSizedInts(
-      ByteBuffer buffer,
-      int startOffset,
-      final int numValues,
-      final int[] decoded
-  )
-  {
-    for (int i = 0, pos = startOffset; i < numValues; i++, pos += Short.BYTES) {
-      decoded[i] = buffer.get(pos) & 0xFFFF;
-    }
-  }
-
-  private static void decodeBigEndianOddSizedInts(
-      ByteBuffer buffer,
-      int startOffset,
-      final int numValues,
-      final int[] decoded
-  )
-  {
-    // big-endian:    0x000c0b0a stored 0c 0b 0a XX, read 0x0c0b0aXX >>> 8
-    for (int i = 0, pos = startOffset; i < numValues; i++, pos += 3) {
-      decoded[i] = buffer.getInt(pos) >>> bigEndianShift3;
-    }
-  }
-
-  private static void decodeLittleEndianOddSizedInts(
-      ByteBuffer buffer,
-      int startOffset,
-      final int numValues,
-      final int[] decoded
-  )
-  {
-    // little-endian: 0x000c0b0a stored 0a 0b 0c XX, read 0xXX0c0b0a & 0x00FFFFFF
-    for (int i = 0, pos = startOffset; i < numValues; i++, pos += 3) {
-      decoded[i] = buffer.getInt(pos) & littleEndianMask3;
-    }
-  }
-
-  private static void decodeIntSizedInts(
-      ByteBuffer buffer,
-      int startOffset,
-      final int numValues,
-      final int[] decoded
-  )
-  {
-    for (int i = 0, pos = startOffset; i < numValues; i++, pos += Integer.BYTES) {
-      decoded[i] = buffer.getInt(pos);
-    }
-  }
-
-  private static void decodeByteSizedIntsUnsafe(long addr, final int numValues, final int[] decoded)
-  {
-    for (int i = 0; i < numValues; i++, addr++) {
-      decoded[i] = unsafe.getByte(addr) & 0xFF;
-    }
-  }
-
-  private static void decodeShortSizedIntsUnsafe(
-      long addr,
-      final int numValues,
-      final int[] decoded
-  )
-  {
-    for (int i = 0; i < numValues; i++, addr += 2) {
-      decoded[i] = unsafe.getShort(addr) & 0xFFFF;
-    }
-  }
-
-  private static void decodeBigEndianOddSizedIntsUnsafe(
-      long addr,
-      final int numValues,
-      final int[] decoded
-  )
-  {
-    // big-endian:    0x000c0b0a stored 0c 0b 0a XX, read 0x0c0b0aXX >>> 8
-    for (int i = 0; i < numValues; i++, addr += 3) {
-      decoded[i] = unsafe.getInt(addr) >>> bigEndianShift3;
-    }
-  }
-
-  private static void decodeLittleEndianOddSizedIntsUnsafe(
-      long addr,
-      final int numValues,
-      final int[] decoded
-  )
-  {
-    // little-endian: 0x000c0b0a stored 0a 0b 0c XX, read 0xXX0c0b0a & 0x00FFFFFF
-    for (int i = 0; i < numValues; i++, addr += 3) {
-      decoded[i] = unsafe.getInt(addr) & littleEndianMask3;
-    }
-  }
-
-  private static void decodeIntSizedIntsUnsafe(long addr, final int numValues, final int[] decoded)
-  {
-    for (int i = 0; i < numValues; i++, addr += 4) {
-      decoded[i] = unsafe.getInt(addr);
-    }
-  }
-
-  @FunctionalInterface
-  public interface DecoderFunction
-  {
-    void decode(ByteBuffer buffer, int startOffset, int numValues, int[] decoded);
-  }
-
-  @FunctionalInterface
-  public interface UnsafeDecoderFunction
-  {
-    void decode(long address, int numValues, int[] decoded);
   }
 }

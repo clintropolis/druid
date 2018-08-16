@@ -19,8 +19,10 @@
 
 package io.druid.segment.data;
 
+import io.druid.segment.data.codecs.ConstantFormDecoder;
 import io.druid.segment.data.codecs.FormDecoder;
 
+import java.util.Arrays;
 import java.util.Map;
 
 /**
@@ -54,5 +56,8 @@ public final class ShapeShiftingBlockColumnarInts extends ShapeShiftingColumnarI
   public void transform(FormDecoder<ShapeShiftingColumnarInts> nextForm)
   {
     nextForm.transform(this);
+    if (nextForm instanceof ConstantFormDecoder) {
+      Arrays.fill(getDecodedValues(), 0, currentChunkNumValues, getCurrentConstant());
+    }
   }
 }

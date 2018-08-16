@@ -21,9 +21,9 @@ package io.druid.segment.data.codecs.ints;
 
 import io.druid.segment.data.ShapeShiftingColumn;
 import io.druid.segment.data.ShapeShiftingColumnarInts;
+import io.druid.segment.data.codecs.ArrayFormDecoder;
 import io.druid.segment.data.codecs.BaseFormDecoder;
 import sun.misc.Unsafe;
-import sun.nio.ch.DirectBuffer;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -33,6 +33,7 @@ import java.nio.ByteOrder;
  * | header: IntCodecs.RLE_BYTEPACK (byte) | numBytes (byte) | encoded values ((2 * numDistinctRuns * numBytes) + (numSingleValues * numBytes)) |
  */
 public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
+    implements ArrayFormDecoder<ShapeShiftingColumnarInts>
 {
   static final int mask1 = 0x7F;
   static final int mask2 = 0x7FFF;
@@ -46,22 +47,9 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
 
   private static final Unsafe unsafe = ShapeShiftingColumn.getTheUnsafe();
 
-
-  private final BytePackedIntFormDecoder.DecoderFunction oddFunction;
-  private final BytePackedIntFormDecoder.UnsafeDecoderFunction oddFunctionUnsafe;
-
-
   public RunLengthBytePackedIntFormDecoder(final byte logValuesPerChunk, ByteOrder byteOrder)
   {
     super(logValuesPerChunk, byteOrder);
-    boolean isBigEndian = byteOrder.equals(ByteOrder.BIG_ENDIAN);
-    this.oddFunction = !isBigEndian
-                       ? RunLengthBytePackedIntFormDecoder::decodeLittleEndianOddSizedInts
-                       : RunLengthBytePackedIntFormDecoder::decodeBigEndianOddSizedInts;
-    this.oddFunctionUnsafe = !isBigEndian
-                             ? RunLengthBytePackedIntFormDecoder::decodeLittleEndianOddSizedIntsUnsafe
-                             : RunLengthBytePackedIntFormDecoder::decodeBigEndianOddSizedIntsUnsafe;
-
   }
 
   @Override
@@ -77,36 +65,10 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
     final int startOffset = columnarInts.getCurrentValuesStartOffset();
 
     if (buffer.isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
-      long addr = ((DirectBuffer) buffer).address() + startOffset;
-      switch (numBytes) {
-        case 1:
-          decodeByteSizedIntsUnsafe(addr, numValues, decodedChunk);
-          break;
-        case 2:
-          decodeShortSizedIntsUnsafe(addr, numValues, decodedChunk);
-          break;
-        case 3:
-          oddFunctionUnsafe.decode(addr, numValues, decodedChunk);
-          break;
-        case 4:
-          decodeIntSizedIntsUnsafe(addr, numValues, decodedChunk);
-          break;
-      }
+      final long addr = columnarInts.getCurrentValuesAddress();
+      decodeIntsUnsafe(addr, numValues, decodedChunk, numBytes, byteOrder);
     } else {
-      switch (numBytes) {
-        case 1:
-          decodeByteSizedInts(buffer, startOffset, numValues, decodedChunk);
-          break;
-        case 2:
-          decodeShortSizedInts(buffer, startOffset, numValues, decodedChunk);
-          break;
-        case 3:
-          oddFunction.decode(buffer, startOffset, numValues, decodedChunk);
-          break;
-        case 4:
-          decodeIntSizedInts(buffer, startOffset, numValues, decodedChunk);
-          break;
-      }
+      decodeIntsBuffer(buffer, startOffset, numValues, decodedChunk, numBytes, byteOrder);
     }
   }
 
@@ -122,262 +84,200 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
     return 1;
   }
 
-  private static void decodeByteSizedIntsUnsafe(
+  private static void decodeIntsUnsafe(
       long addr,
       final int numValues,
-      final int[] decoded
+      final int[] decodedValues,
+      final int bytePerValue,
+      final ByteOrder byteOrder
   )
   {
     int runCount;
     int runValue;
 
+    final boolean isBigEndian = byteOrder.equals(ByteOrder.BIG_ENDIAN);
+    final DecodeAddressFunction decode;
+    final int runMask;
+    final int valueMask;
+    switch (bytePerValue) {
+      case 1:
+        decode = RunLengthBytePackedIntFormDecoder::decodeByteUnsafe;
+        runMask = runMask1;
+        valueMask = mask1;
+        break;
+      case 2:
+        decode = RunLengthBytePackedIntFormDecoder::decodeShortUnsafe;
+        runMask = runMask2;
+        valueMask = mask2;
+        break;
+      case 3:
+        decode = isBigEndian
+                 ? RunLengthBytePackedIntFormDecoder::decodeBigEndianOddSizedIntUnsafe
+                 : RunLengthBytePackedIntFormDecoder::decodeLittleEndianOddSizedIntUnsafe;
+        runMask = runMask3;
+        valueMask = mask3;
+        break;
+      default:
+        decode = RunLengthBytePackedIntFormDecoder::decodeIntUnsafe;
+        runMask = runMask4;
+        valueMask = mask4;
+        break;
+    }
+
     for (int i = 0; i < numValues; i++) {
-      final int nextVal = unsafe.getByte(addr++) & 0xFF;
-      if ((nextVal & runMask1) == 0) {
-        decoded[i] = nextVal;
+      final int nextVal = decode.get(addr);
+      addr += bytePerValue;
+      if ((nextVal & runMask) == 0) {
+        decodedValues[i] = nextVal;
       } else {
-        runCount = nextVal & mask1;
-        runValue = unsafe.getByte(addr++) & 0xFF;
+        runCount = nextVal & valueMask;
+        runValue = decode.get(addr);
+        addr += bytePerValue;
         do {
-          decoded[i] = runValue;
+          decodedValues[i] = runValue;
         } while (--runCount > 0 && ++i < numValues);
       }
     }
   }
 
-  private static void decodeShortSizedIntsUnsafe(
-      long addr,
-      final int numValues,
-      final int[] decoded
-  )
-  {
-    int runCount;
-    int runValue;
 
-    for (int i = 0; i < numValues; i++) {
-      final int nextVal = unsafe.getShort(addr) & 0xFFFF;
-      addr += 2;
-      if ((nextVal & runMask2) == 0) {
-        decoded[i] = nextVal;
-      } else {
-        runCount = nextVal & mask2;
-        runValue = unsafe.getShort(addr) & 0xFFFF;
-        addr += 2;
-        do {
-          decoded[i] = runValue;
-        } while (--runCount > 0 && ++i < numValues);
-      }
-    }
+  private static int decodeByteUnsafe(long addr)
+  {
+    return unsafe.getByte(addr) & 0xFF;
   }
 
-
-  private static void decodeBigEndianOddSizedIntsUnsafe(
-      long addr,
-      final int numValues,
-      final int[] decoded
-  )
+  private static int decodeShortUnsafe(long addr)
   {
-    // todo: numBytes is always 3...
-    // example for numBytes = 3
+    return unsafe.getShort(addr) & 0xFFFF;
+  }
+
+  private static int decodeBigEndianOddSizedIntUnsafe(long addr)
+  {
     // big-endian:    0x000c0b0a stored 0c 0b 0a XX, read 0x0c0b0aXX >>> 8
-    int runCount;
-    int runValue;
-    for (int i = 0; i < numValues; i++) {
-      final int nextVal = unsafe.getInt(addr) >>> BytePackedIntFormDecoder.bigEndianShift3;
-      addr += 3;
-      if ((nextVal & runMask3) == 0) {
-        decoded[i] = nextVal;
-      } else {
-        runCount = nextVal & mask3;
-        runValue = unsafe.getInt(addr) >>> BytePackedIntFormDecoder.bigEndianShift3;
-        addr += 3;
-        do {
-          decoded[i] = runValue;
-        } while (--runCount > 0 && ++i < numValues);
-      }
-    }
+    return unsafe.getInt(addr) >>> BytePackedIntFormDecoder.bigEndianShift3;
   }
 
-  private static void decodeLittleEndianOddSizedIntsUnsafe(
-      long addr,
-      final int numValues,
-      final int[] decoded
-  )
+  private static int decodeLittleEndianOddSizedIntUnsafe(long addr)
   {
-    // todo: numBytes is always 3...
-    // example for numBytes = 3
     // little-endian: 0x000c0b0a stored 0a 0b 0c XX, read 0xXX0c0b0a & 0x00FFFFFF
-    int runCount;
-    int runValue;
-
-    for (int i = 0; i < numValues; i++) {
-      final int nextVal = unsafe.getInt(addr) & BytePackedIntFormDecoder.littleEndianMask3;
-      addr += 3;
-      if ((nextVal & runMask3) == 0) {
-        decoded[i] = nextVal;
-      } else {
-        runCount = nextVal & mask3;
-        runValue = unsafe.getInt(addr) & BytePackedIntFormDecoder.littleEndianMask3;
-        addr += 3;
-        do {
-          decoded[i] = runValue;
-        } while (--runCount > 0 && ++i < numValues);
-      }
-    }
+    return unsafe.getInt(addr) & BytePackedIntFormDecoder.littleEndianMask3;
   }
 
-  private static void decodeIntSizedIntsUnsafe(long addr, final int numValues, final int[] decoded)
+  private static int decodeIntUnsafe(long addr)
   {
-    int runCount;
-    int runValue;
-
-    for (int i = 0; i < numValues; i++) {
-      final int nextVal = unsafe.getInt(addr);
-      addr += 4;
-      if ((nextVal & runMask4) == 0) {
-        decoded[i] = nextVal;
-      } else {
-        runCount = nextVal & mask4;
-        runValue = unsafe.getInt(addr);
-        addr += 4;
-        do {
-          decoded[i] = runValue;
-        } while (--runCount > 0 && ++i < numValues);
-      }
-    }
+    return unsafe.getInt(addr);
   }
 
-  private static void decodeByteSizedInts(
+  public static void decodeIntsBuffer(
       ByteBuffer buffer,
       final int startOffset,
       final int numValues,
-      final int[] decoded
+      final int[] decodedValues,
+      final int bytePerValue,
+      final ByteOrder byteOrder
   )
   {
-    int runCount;
-    int runValue;
-    int bufferPosition = startOffset;
 
-    for (int i = 0; i < numValues; i++) {
-      final int nextVal = buffer.get(bufferPosition++) & 0xFF;
-      if ((nextVal & runMask1) == 0) {
-        decoded[i] = nextVal;
-      } else {
-        runCount = nextVal & mask1;
-        runValue = buffer.get(bufferPosition++) & 0xFF;
-        do {
-          decoded[i] = runValue;
-        } while (--runCount > 0 && ++i < numValues);
-      }
-    }
-  }
-
-  private static void decodeShortSizedInts(
-      ByteBuffer buffer,
-      final int startOffset,
-      final int numValues,
-      final int[] decoded
-  )
-  {
     int bufferPosition = startOffset;
     int runCount;
     int runValue;
 
+    final boolean isBigEndian = byteOrder.equals(ByteOrder.BIG_ENDIAN);
+    final DecodeBufferFunction decode;
+    final int runMask;
+    final int valueMask;
+    switch (bytePerValue) {
+      case 1:
+        decode = RunLengthBytePackedIntFormDecoder::decodeByte;
+        runMask = runMask1;
+        valueMask = mask1;
+        break;
+      case 2:
+        decode = RunLengthBytePackedIntFormDecoder::decodeShort;
+        runMask = runMask2;
+        valueMask = mask2;
+        break;
+      case 3:
+        decode = isBigEndian
+                 ? RunLengthBytePackedIntFormDecoder::decodeBigEndianOddSizedInt
+                 : RunLengthBytePackedIntFormDecoder::decodeLittleEndianOddSizedInt;
+        runMask = runMask3;
+        valueMask = mask3;
+        break;
+      default:
+        decode = RunLengthBytePackedIntFormDecoder::decodeInt;
+        runMask = runMask4;
+        valueMask = mask4;
+        break;
+    }
+
     for (int i = 0; i < numValues; i++) {
-      final int nextVal = buffer.getShort(bufferPosition) & 0xFFFF;
-      bufferPosition += Short.BYTES;
-      if ((nextVal & runMask2) == 0) {
-        decoded[i] = nextVal;
+      final int nextVal = decode.get(buffer, bufferPosition);
+      bufferPosition += bytePerValue;
+      if ((nextVal & runMask) == 0) {
+        decodedValues[i] = nextVal;
       } else {
-        runCount = nextVal & mask2;
-        runValue = buffer.get(bufferPosition) & 0xFFFF;
-        bufferPosition += Short.BYTES;
+        runCount = nextVal & valueMask;
+        runValue = decode.get(buffer, bufferPosition);
+        bufferPosition += bytePerValue;
         do {
-          decoded[i] = runValue;
+          decodedValues[i] = runValue;
         } while (--runCount > 0 && ++i < numValues);
       }
     }
   }
 
-  private static void decodeBigEndianOddSizedInts(
-      ByteBuffer buffer,
-      final int startOffset,
-      final int numValues,
-      final int[] decoded
+  private static int decodeByte(
+      final ByteBuffer buffer,
+      final int offset
+  )
+  {
+    return buffer.get(offset) & 0xFF;
+  }
+
+  private static int decodeShort(
+      final ByteBuffer buffer,
+      final int offset
+  )
+  {
+    return buffer.getShort(offset) & 0xFFFF;
+  }
+
+  private static int decodeBigEndianOddSizedInt(
+      final ByteBuffer buffer,
+      final int offset
   )
   {
     // big-endian:    0x000c0b0a stored 0c 0b 0a XX, read 0x0c0b0aXX >>> 8
-    int runCount;
-    int runValue;
-    int bufferPosition = startOffset;
-    for (int i = 0; i < numValues; i++) {
-      final int nextVal = buffer.getInt(bufferPosition) >>> BytePackedIntFormDecoder.bigEndianShift3;
-      bufferPosition += 3;
-      if ((nextVal & runMask3) == 0) {
-        decoded[i] = nextVal;
-      } else {
-        runCount = nextVal & mask3;
-        runValue = buffer.getInt(bufferPosition) >>> BytePackedIntFormDecoder.bigEndianShift3;
-        bufferPosition += 3;
-        do {
-          decoded[i] = runValue;
-        } while (--runCount > 0 && ++i < numValues);
-      }
-    }
+    return buffer.getInt(offset) >>> BytePackedIntFormDecoder.bigEndianShift3;
   }
 
-  private static void decodeLittleEndianOddSizedInts(
-      ByteBuffer buffer,
-      final int startOffset,
-      final int numValues,
-      final int[] decoded
+  private static int decodeLittleEndianOddSizedInt(
+      final ByteBuffer buffer,
+      final int offset
   )
   {
     // little-endian: 0x000c0b0a stored 0a 0b 0c XX, read 0xXX0c0b0a & 0x00FFFFFF
-    int runCount;
-    int runValue;
-    int bufferPosition = startOffset;
-
-    for (int i = 0; i < numValues; i++) {
-      final int nextVal = buffer.getInt(bufferPosition) & BytePackedIntFormDecoder.littleEndianMask3;
-      bufferPosition += 3;
-      if ((nextVal & runMask3) == 0) {
-        decoded[i] = nextVal;
-      } else {
-        runCount = nextVal & mask3;
-        runValue = buffer.getInt(bufferPosition) & BytePackedIntFormDecoder.littleEndianMask3;
-        bufferPosition += 3;
-        do {
-          decoded[i] = runValue;
-        } while (--runCount > 0 && ++i < numValues);
-      }
-    }
+    return buffer.getInt(offset) & BytePackedIntFormDecoder.littleEndianMask3;
   }
 
-  private static void decodeIntSizedInts(
-      ByteBuffer buffer,
-      final int startOffset,
-      final int numValues,
-      final int[] decoded
+  private static int decodeInt(
+      final ByteBuffer buffer,
+      final int offset
   )
   {
-    int runCount;
-    int runValue;
-    int bufferPosition = startOffset;
+    return buffer.getInt(offset);
+  }
 
-    for (int i = 0; i < numValues; i++) {
-      final int nextVal = buffer.getInt(bufferPosition);
-      bufferPosition += Integer.BYTES;
-      if ((nextVal & runMask4) == 0) {
-        decoded[i] = nextVal;
-      } else {
-        runCount = nextVal & mask4;
-        runValue = buffer.getInt(bufferPosition);
-        bufferPosition += Integer.BYTES;
-        do {
-          decoded[i] = runValue;
-        } while (--runCount > 0 && ++i < numValues);
-      }
-    }
+  @FunctionalInterface
+  public interface DecodeBufferFunction
+  {
+    int get(ByteBuffer buffer, int offset);
+  }
+
+  @FunctionalInterface
+  public interface DecodeAddressFunction
+  {
+    int get(long address);
   }
 }
