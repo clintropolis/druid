@@ -77,8 +77,8 @@ public abstract class CompressedFormEncoder<TChunk, TChunkMetrics extends FormMe
     compressedDataBuffer.clear();
     formEncoder.encodeToBuffer(uncompressedDataBuffer, values, numValues, metrics);
     compressed = compressor.compress(uncompressedDataBuffer, compressedDataBuffer);
-    // header | compressionId | inner encoding header | inner encoding metadata | compressed values
-    return 1 + 1 + 1 + formEncoder.getMetadataSize() + compressed.remaining();
+    // compressionId | inner encoding header | inner encoding metadata | compressed values
+    return 1 + 1 + formEncoder.getMetadataSize() + compressed.remaining();
   }
 
   @Override
@@ -91,12 +91,12 @@ public abstract class CompressedFormEncoder<TChunk, TChunkMetrics extends FormMe
     int encodedSize = getEncodedSize(values, numValues, metrics);
     switch (metrics.getOptimizationTarget()) {
       case FASTER:
-        return encodedSize * 1.30;
+        return encodedSize * formEncoder.getSpeedModifier(metrics) * 1.30;
       case SMALLER:
-        return encodedSize;
+        return encodedSize * formEncoder.getSpeedModifier(metrics);
       case FASTBUTSMALLISH:
       default:
-        return encodedSize * 1.05;
+        return encodedSize * formEncoder.getSpeedModifier(metrics) * 1.05;
     }
   }
 

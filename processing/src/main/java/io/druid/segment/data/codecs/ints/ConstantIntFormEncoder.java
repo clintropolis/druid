@@ -46,7 +46,7 @@ public class ConstantIntFormEncoder extends BaseIntFormEncoder
   )
   {
     if (metrics.isConstant()) {
-      return 1 + Integer.BYTES;
+      return Integer.BYTES;
     }
     return Integer.MAX_VALUE;
   }
@@ -59,8 +59,8 @@ public class ConstantIntFormEncoder extends BaseIntFormEncoder
   )
   {
     if (metrics.isConstant()) {
-      // count as 1 byte for sake of comparison, iow, never replace zero, but prefer this over rle
-      return 0.2 * getEncodedSize(values, numValues, metrics);
+      // count as 1 byte for sake of comparison, iow, never replace zero, but prefer this over 2 bpv rle
+      return 1;
     }
     return Integer.MAX_VALUE;
   }

@@ -82,7 +82,7 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
       IntFormMetrics metrics
   )
   {
-    return projectSize(metrics);
+    return computeSize(metrics);
   }
 
   /**
@@ -95,20 +95,15 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
    * @return
    */
   @Override
-  public double getModifiedEncodedSize(
-      int[] values,
-      int numValues,
-      IntFormMetrics metrics
-  )
+  public double getSpeedModifier(IntFormMetrics metrics)
   {
-    int size = projectSize(metrics);
     // rle is pretty slow when not in a situation where it is appropriate, penalize if big gains are not projected
-    final byte numBytesBytepack =
-        RunLengthBytePackedIntFormEncoder.getNumBytesForMax(metrics.getMaxValue(), metrics.getLongestRun());
+    final byte numBytesBytepack = BytePackedIntFormEncoder.getNumBytesForMax(metrics.getMaxValue());
     final int bytepackSize = numBytesBytepack * metrics.getNumValues();
+    final int size = computeSize(metrics);
     // don't bother if not smaller than bytepacking
-    if (size > bytepackSize) {
-      return 10.0 * size;
+    if (size >= bytepackSize) {
+      return 10.0;
     }
     double modifier;
     switch (metrics.getOptimizationTarget()) {
@@ -119,7 +114,7 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
         modifier = (((double) bytepackSize - (double) size)) / (double) bytepackSize;
         break;
     }
-    return Math.max(2.0 - modifier, 1.0) * size;
+    return Math.max(2.0 - modifier, 1.0);
   }
 
   @Override
@@ -250,7 +245,7 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
     }
   }
 
-  private int projectSize(IntFormMetrics metadata)
+  private int computeSize(IntFormMetrics metadata)
   {
     final byte numBytes = getNumBytesForMax(metadata.getMaxValue(), metadata.getLongestRun());
     int projectedSize = numBytes * metadata.getNumValues();
