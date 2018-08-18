@@ -36,8 +36,8 @@ import java.nio.ByteOrder;
 public final class BytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
   implements DirectFormDecoder<ShapeShiftingColumnarInts>
 {
-  public static final int bigEndianShift3 = Integer.SIZE - 24;
-  public static final int littleEndianMask3 = (int) ((1L << 24) - 1);
+  public static final int BIG_ENDIAN_INT_24_SHIFT = Integer.SIZE - 24;
+  public static final int LITTLE_ENDIAN_INT_24_MASK = (int) ((1L << 24) - 1);
 
   public BytePackedIntFormDecoder(final byte logValuesPerChunk, ByteOrder byteOrder)
   {

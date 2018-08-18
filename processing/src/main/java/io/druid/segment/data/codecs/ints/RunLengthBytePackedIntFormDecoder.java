@@ -35,15 +35,15 @@ import java.nio.ByteOrder;
 public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<ShapeShiftingColumnarInts>
     implements ArrayFormDecoder<ShapeShiftingColumnarInts>
 {
-  static final int mask1 = 0x7F;
-  static final int mask2 = 0x7FFF;
-  static final int mask3 = 0x7FFFFF;
-  static final int mask4 = 0x7FFFFFFF;
+  static final int value_mask_int8 = 0x7F;
+  static final int value_mask_int16 = 0x7FFF;
+  static final int value_mask_int24 = 0x7FFFFF;
+  static final int value_mask_int32 = 0x7FFFFFFF;
 
-  static final int runMask1 = 0x80;
-  static final int runMask2 = 0x8000;
-  static final int runMask3 = 0x800000;
-  static final int runMask4 = 0x80000000;
+  static final int run_mask_int8 = 0x80;
+  static final int run_mask_int16 = 0x8000;
+  static final int run_mask_int24 = 0x800000;
+  static final int run_mask_int32 = 0x80000000;
 
   private static final Unsafe unsafe = ShapeShiftingColumn.getTheUnsafe();
 
@@ -101,26 +101,26 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
     final int valueMask;
     switch (bytePerValue) {
       case 1:
-        decode = RunLengthBytePackedIntFormDecoder::decodeByteUnsafe;
-        runMask = runMask1;
-        valueMask = mask1;
+        decode = RunLengthBytePackedIntFormDecoder::decodeInt8Unsafe;
+        runMask = run_mask_int8;
+        valueMask = value_mask_int8;
         break;
       case 2:
-        decode = RunLengthBytePackedIntFormDecoder::decodeShortUnsafe;
-        runMask = runMask2;
-        valueMask = mask2;
+        decode = RunLengthBytePackedIntFormDecoder::decodeInt16Unsafe;
+        runMask = run_mask_int16;
+        valueMask = value_mask_int16;
         break;
       case 3:
         decode = isBigEndian
-                 ? RunLengthBytePackedIntFormDecoder::decodeBigEndianOddSizedIntUnsafe
-                 : RunLengthBytePackedIntFormDecoder::decodeLittleEndianOddSizedIntUnsafe;
-        runMask = runMask3;
-        valueMask = mask3;
+                 ? RunLengthBytePackedIntFormDecoder::decodeBigEndianInt24Unsafe
+                 : RunLengthBytePackedIntFormDecoder::decodeInt24Unsafe;
+        runMask = run_mask_int24;
+        valueMask = value_mask_int24;
         break;
       default:
-        decode = RunLengthBytePackedIntFormDecoder::decodeIntUnsafe;
-        runMask = runMask4;
-        valueMask = mask4;
+        decode = RunLengthBytePackedIntFormDecoder::decodeInt32Unsafe;
+        runMask = run_mask_int32;
+        valueMask = value_mask_int32;
         break;
     }
 
@@ -141,29 +141,29 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
   }
 
 
-  private static int decodeByteUnsafe(long addr)
+  private static int decodeInt8Unsafe(long addr)
   {
     return unsafe.getByte(addr) & 0xFF;
   }
 
-  private static int decodeShortUnsafe(long addr)
+  private static int decodeInt16Unsafe(long addr)
   {
     return unsafe.getShort(addr) & 0xFFFF;
   }
 
-  private static int decodeBigEndianOddSizedIntUnsafe(long addr)
+  private static int decodeBigEndianInt24Unsafe(long addr)
   {
     // big-endian:    0x000c0b0a stored 0c 0b 0a XX, read 0x0c0b0aXX >>> 8
-    return unsafe.getInt(addr) >>> BytePackedIntFormDecoder.bigEndianShift3;
+    return unsafe.getInt(addr) >>> BytePackedIntFormDecoder.BIG_ENDIAN_INT_24_SHIFT;
   }
 
-  private static int decodeLittleEndianOddSizedIntUnsafe(long addr)
+  private static int decodeInt24Unsafe(long addr)
   {
     // little-endian: 0x000c0b0a stored 0a 0b 0c XX, read 0xXX0c0b0a & 0x00FFFFFF
-    return unsafe.getInt(addr) & BytePackedIntFormDecoder.littleEndianMask3;
+    return unsafe.getInt(addr) & BytePackedIntFormDecoder.LITTLE_ENDIAN_INT_24_MASK;
   }
 
-  private static int decodeIntUnsafe(long addr)
+  private static int decodeInt32Unsafe(long addr)
   {
     return unsafe.getInt(addr);
   }
@@ -188,26 +188,26 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
     final int valueMask;
     switch (bytePerValue) {
       case 1:
-        decode = RunLengthBytePackedIntFormDecoder::decodeByte;
-        runMask = runMask1;
-        valueMask = mask1;
+        decode = RunLengthBytePackedIntFormDecoder::decodeInt8;
+        runMask = run_mask_int8;
+        valueMask = value_mask_int8;
         break;
       case 2:
-        decode = RunLengthBytePackedIntFormDecoder::decodeShort;
-        runMask = runMask2;
-        valueMask = mask2;
+        decode = RunLengthBytePackedIntFormDecoder::decodeInt16;
+        runMask = run_mask_int16;
+        valueMask = value_mask_int16;
         break;
       case 3:
         decode = isBigEndian
-                 ? RunLengthBytePackedIntFormDecoder::decodeBigEndianOddSizedInt
-                 : RunLengthBytePackedIntFormDecoder::decodeLittleEndianOddSizedInt;
-        runMask = runMask3;
-        valueMask = mask3;
+                 ? RunLengthBytePackedIntFormDecoder::decodeBigEndianInt24
+                 : RunLengthBytePackedIntFormDecoder::decodeInt24;
+        runMask = run_mask_int24;
+        valueMask = value_mask_int24;
         break;
       default:
-        decode = RunLengthBytePackedIntFormDecoder::decodeInt;
-        runMask = runMask4;
-        valueMask = mask4;
+        decode = RunLengthBytePackedIntFormDecoder::decodeInt32;
+        runMask = run_mask_int32;
+        valueMask = value_mask_int32;
         break;
     }
 
@@ -227,7 +227,7 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
     }
   }
 
-  private static int decodeByte(
+  private static int decodeInt8(
       final ByteBuffer buffer,
       final int offset
   )
@@ -235,7 +235,7 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
     return buffer.get(offset) & 0xFF;
   }
 
-  private static int decodeShort(
+  private static int decodeInt16(
       final ByteBuffer buffer,
       final int offset
   )
@@ -243,25 +243,25 @@ public final class RunLengthBytePackedIntFormDecoder extends BaseFormDecoder<Sha
     return buffer.getShort(offset) & 0xFFFF;
   }
 
-  private static int decodeBigEndianOddSizedInt(
+  private static int decodeBigEndianInt24(
       final ByteBuffer buffer,
       final int offset
   )
   {
     // big-endian:    0x000c0b0a stored 0c 0b 0a XX, read 0x0c0b0aXX >>> 8
-    return buffer.getInt(offset) >>> BytePackedIntFormDecoder.bigEndianShift3;
+    return buffer.getInt(offset) >>> BytePackedIntFormDecoder.BIG_ENDIAN_INT_24_SHIFT;
   }
 
-  private static int decodeLittleEndianOddSizedInt(
+  private static int decodeInt24(
       final ByteBuffer buffer,
       final int offset
   )
   {
     // little-endian: 0x000c0b0a stored 0a 0b 0c XX, read 0xXX0c0b0a & 0x00FFFFFF
-    return buffer.getInt(offset) & BytePackedIntFormDecoder.littleEndianMask3;
+    return buffer.getInt(offset) & BytePackedIntFormDecoder.LITTLE_ENDIAN_INT_24_MASK;
   }
 
-  private static int decodeInt(
+  private static int decodeInt32(
       final ByteBuffer buffer,
       final int offset
   )

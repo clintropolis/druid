@@ -50,40 +50,40 @@ public class BaseColumnarIntsFromSegmentsBenchmark extends BaseColumnarIntsBench
 {
   //CHECKSTYLE.OFF: Regexp
   // wiki columns
-//  @Param({
-//      "channel",
-//      "cityName",
-//      "comment",
-//      "commentLength",
-//      "countryIsoCode",
-//      "countryName",
-//      "deltaBucket",
-//      "diffUrl",
-//      "flags",
-//      "isAnonymous",
-//      "isMinor",
-//      "isNew",
-//      "isRobot",
-//      "isUnpatrolled",
-//      "metroCode",
-//      "namespace",
-//      "page",
-//      "regionIsoCode",
-//      "regionName",
-//      "user"
-//  })
+  @Param({
+      "channel",
+      "cityName",
+      "comment",
+      "commentLength",
+      "countryIsoCode",
+      "countryName",
+      "deltaBucket",
+      "diffUrl",
+      "flags",
+      "isAnonymous",
+      "isMinor",
+      "isNew",
+      "isRobot",
+      "isUnpatrolled",
+      "metroCode",
+      "namespace",
+      "page",
+      "regionIsoCode",
+      "regionName",
+      "user"
+  })
 
   // twitter columns
-  @Param({
-    "geo",
-    "lang",
-    "retweet",
-    "screen_name",
-    "source",
-    "text",
-    "utc_offset",
-    "verified"
-  })
+//  @Param({
+//    "geo",
+//    "lang",
+//    "retweet",
+//    "screen_name",
+//    "source",
+//    "text",
+//    "utc_offset",
+//    "verified"
+//  })
 
   // clarity columns
 //  @Param({
@@ -148,23 +148,23 @@ public class BaseColumnarIntsFromSegmentsBenchmark extends BaseColumnarIntsBench
   String columnName;
 
 //  @Param({"533652"})        // wiki
-//  @Param({"3537476"})        // wiki-2
-  @Param({"3259585"})       // twitter
+  @Param({"3537476"})        // wiki-2
+//  @Param({"3259585"})       // twitter
 //  @Param({"3783642"})       // clarity
 //  @Param({"6001215"})         // tpch-lineitem-1g
   int rows;
 
 
 //  @Param({"tmp/segments/wiki-1/"})
-//  @Param({"tmp/segments/wiki-2/"})
-  @Param({"tmp/segments/twitter-1/"})
+  @Param({"tmp/segments/wiki-2/"})
+//  @Param({"tmp/segments/twitter-1/"})
 //  @Param({"tmp/segments/clarity-1/"})
 //  @Param({"tmp/segments/tpch-lineitem-1/"})
   String segmentPath;
 
 //  @Param({"wikiticker"})
-//  @Param({"wikiticker-2"})
-  @Param({"twitter"})
+  @Param({"wikiticker-2"})
+//  @Param({"twitter"})
 //  @Param({"clarity"})
 //  @Param({"tpch-lineitem"})
   String segmentName;

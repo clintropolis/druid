@@ -49,13 +49,13 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
   {
     switch (numBytes) {
       case 1:
-        return runLength | RunLengthBytePackedIntFormDecoder.runMask1;
+        return runLength | RunLengthBytePackedIntFormDecoder.run_mask_int8;
       case 2:
-        return runLength | RunLengthBytePackedIntFormDecoder.runMask2;
+        return runLength | RunLengthBytePackedIntFormDecoder.run_mask_int16;
       case 3:
-        return runLength | RunLengthBytePackedIntFormDecoder.runMask3;
+        return runLength | RunLengthBytePackedIntFormDecoder.run_mask_int24;
       default:
-        return runLength | RunLengthBytePackedIntFormDecoder.runMask4;
+        return runLength | RunLengthBytePackedIntFormDecoder.run_mask_int32;
     }
   }
 
@@ -65,11 +65,11 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
       throw new IAE("maxValue[%s] must be positive", maxValue);
     }
     int toConsider = maxValue > maxRun ? maxValue : maxRun;
-    if (toConsider <= RunLengthBytePackedIntFormDecoder.mask1) {
+    if (toConsider <= RunLengthBytePackedIntFormDecoder.value_mask_int8) {
       return 1;
-    } else if (toConsider <= RunLengthBytePackedIntFormDecoder.mask2) {
+    } else if (toConsider <= RunLengthBytePackedIntFormDecoder.value_mask_int16) {
       return 2;
-    } else if (toConsider <= RunLengthBytePackedIntFormDecoder.mask3) {
+    } else if (toConsider <= RunLengthBytePackedIntFormDecoder.value_mask_int24) {
       return 3;
     }
     return 4;
@@ -153,7 +153,8 @@ public class RunLengthBytePackedIntFormEncoder extends CompressibleIntFormEncode
 
     encodeValues(writer, values, numValues, numBytes);
 
-    // pad if odd length
+    // pad if int24, it reads values with buffer.getInt and either masks or shifts as appropriate for endian-ness
+    // other sizes have native read methods and don't require padding
     if (numBytes == 3) {
       buffer.put((byte) 0);
     }

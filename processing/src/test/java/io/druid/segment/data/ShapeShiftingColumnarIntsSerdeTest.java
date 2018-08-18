@@ -66,7 +66,7 @@ public class ShapeShiftingColumnarIntsSerdeTest
         Sets.newHashSet(IndexSpec.ShapeShiftBlockSize.values()),
         Sets.newHashSet(IndexSpec.ShapeShiftOptimizationTarget.values()),
         Sets.newHashSet(ByteOrder.LITTLE_ENDIAN, ByteOrder.BIG_ENDIAN),
-        Sets.newHashSet("bytepack", "rle-bytepack", "fastpfor", "lz4-bytepack", "lz4-rle-bytepack", "default")
+        Sets.newHashSet("bytepack", "rle-bytepack", "fastpfor", "lz4-bytepack", "lz4-rle-bytepack", "lz4", "default")
     );
 
     return combinations.stream()
@@ -264,6 +264,10 @@ public class ShapeShiftingColumnarIntsSerdeTest
                                     ((CompressedFormEncoder) e).getInnerEncoder() instanceof RunLengthBytePackedIntFormEncoder
                        ).toArray(IntFormEncoder[]::new);
         break;
+      case "lz4":
+        encoders =
+            encoderList.stream().filter(e -> e instanceof CompressedFormEncoder).toArray(IntFormEncoder[]::new);
+        break;
     }
 
     ShapeShiftingColumnarIntsSerializer serializer = new ShapeShiftingColumnarIntsSerializer(
@@ -338,7 +342,7 @@ public class ShapeShiftingColumnarIntsSerdeTest
     // sequential access
     int[] indices = new int[vals.length];
     for (int i = 0, size = columnarInts.size(); i < size; i++) {
-      Assert.assertEquals(vals[i], columnarInts.get(i), 0.0);
+      Assert.assertEquals("row mismatch at " + i, vals[i], columnarInts.get(i), 0.0);
       indices[i] = i;
     }
 

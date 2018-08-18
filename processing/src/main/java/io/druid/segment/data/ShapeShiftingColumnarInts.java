@@ -24,6 +24,7 @@ import com.google.common.base.Suppliers;
 import io.druid.collections.ResourceHolder;
 import io.druid.query.monomorphicprocessing.RuntimeShapeInspector;
 import io.druid.segment.CompressedPools;
+import io.druid.segment.data.codecs.CompressedFormDecoder;
 import io.druid.segment.data.codecs.FormDecoder;
 import io.druid.segment.data.codecs.ints.BytePackedIntFormDecoder;
 import io.druid.segment.data.codecs.ArrayFormDecoder;
@@ -40,8 +41,8 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
 
   protected static final Unsafe unsafe = getTheUnsafe();
 
-  protected final GetIntBuffer oddSizeValueGet;
-  protected final GetIntUnsafe oddSizeValueGetUnsafe;
+  protected final GetIntBuffer getInt24;
+  protected final GetIntUnsafe getInt24Unsafe;
   ResourceHolder<int[]> decodedValuesHolder;
 
   private final Supplier<int[]> decodedValuesSupplier;
@@ -63,12 +64,12 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
       return decodedValuesHolder.get();
     });
 
-    oddSizeValueGet = byteOrder.equals(ByteOrder.LITTLE_ENDIAN)
-                      ? (_buffer, pos) -> _buffer.getInt(pos) & BytePackedIntFormDecoder.littleEndianMask3
-                      : (_buffer, pos) -> _buffer.getInt(pos) >>> BytePackedIntFormDecoder.bigEndianShift3;
-    oddSizeValueGetUnsafe = byteOrder.equals(ByteOrder.LITTLE_ENDIAN)
-                            ? (pos) -> unsafe.getInt(pos) & BytePackedIntFormDecoder.littleEndianMask3
-                            : (pos) -> unsafe.getInt(pos) >>> BytePackedIntFormDecoder.bigEndianShift3;
+    getInt24 = byteOrder.equals(ByteOrder.LITTLE_ENDIAN)
+                      ? (_buffer, pos) -> _buffer.getInt(pos) & BytePackedIntFormDecoder.LITTLE_ENDIAN_INT_24_MASK
+                      : (_buffer, pos) -> _buffer.getInt(pos) >>> BytePackedIntFormDecoder.BIG_ENDIAN_INT_24_SHIFT;
+    getInt24Unsafe = byteOrder.equals(ByteOrder.LITTLE_ENDIAN)
+                            ? (pos) -> unsafe.getInt(pos) & BytePackedIntFormDecoder.LITTLE_ENDIAN_INT_24_MASK
+                            : (pos) -> unsafe.getInt(pos) >>> BytePackedIntFormDecoder.BIG_ENDIAN_INT_24_SHIFT;
   }
 
   @Override
@@ -176,7 +177,7 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
     nextForm.transform(this);
     if (nextForm instanceof ArrayFormDecoder) {
       currentForm = this::decodeBlockForm;
-    } else {
+    } else if (!(nextForm instanceof CompressedFormDecoder)) {
       if (getCurrentValueBuffer().isDirect() && byteOrder.equals(ByteOrder.nativeOrder())) {
         currentForm = this::decodeUnsafeForm;
       } else {
@@ -213,7 +214,7 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
       case 2:
         return unsafe.getShort(pos) & 0xFFFF;
       case 3:
-        return oddSizeValueGetUnsafe.getInt(pos);
+        return getInt24Unsafe.getInt(pos);
       case 4:
         return unsafe.getInt(pos);
       default:
@@ -238,7 +239,7 @@ public class ShapeShiftingColumnarInts extends ShapeShiftingColumn<ShapeShifting
       case 2:
         return buffer.getShort(pos) & 0xFFFF;
       case 3:
-        return oddSizeValueGet.getInt(buffer, pos);
+        return getInt24.getInt(buffer, pos);
       case 4:
         return buffer.getInt(pos);
       default:
