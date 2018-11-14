@@ -63,9 +63,10 @@ public class BloomKFilter
   private static final int DEFAULT_BLOCK_OFFSET_MASK = DEFAULT_BLOCK_SIZE - 1;
   private static final int DEFAULT_BIT_OFFSET_MASK = Long.SIZE - 1;
   private final ThreadLocal<byte[]> BYTE_ARRAY_4 = ThreadLocal.withInitial(() -> new byte[4]);
+  private final ThreadLocal<byte[]> BYTE_ARRAY_8 = ThreadLocal.withInitial(() -> new byte[8]);
   private final BitSet bitSet;
-  private final int m;
-  private final int k;
+  final int m;
+  final int k;
   // spread k-1 bits to adjacent longs, default is 8
   // spreading hash bits within blockSize * longs will make bloom filter L1 cache friendly
   // default block size is set to 8 as most cache line sizes are 64 bytes and also AVX512 friendly
@@ -233,7 +234,7 @@ public class BloomKFilter
     addBytes(val, 0, val.length);
   }
 
-  private void addHash(long hash64)
+  void addHash(long hash64)
   {
     final int hash1 = (int) hash64;
     final int hash2 = (int) (hash64 >>> 32);
@@ -311,7 +312,7 @@ public class BloomKFilter
     return testHash(hash64);
   }
 
-  private boolean testHash(long hash64)
+  boolean testHash(long hash64)
   {
     final int hash1 = (int) hash64;
     final int hash2 = (int) (hash64 >>> 32);
@@ -381,13 +382,27 @@ public class BloomKFilter
     return testLong(Double.doubleToLongBits(val));
   }
 
-  private byte[] intToByteArrayLE(int val)
+  byte[] intToByteArrayLE(int val)
   {
     byte[] bytes = BYTE_ARRAY_4.get();
     bytes[0] = (byte) (val >> 0);
     bytes[1] = (byte) (val >> 8);
     bytes[2] = (byte) (val >> 16);
     bytes[3] = (byte) (val >> 24);
+    return bytes;
+  }
+
+  byte[] longToByteArrayLE(long val)
+  {
+    byte[] bytes = BYTE_ARRAY_8.get();
+    bytes[0] = (byte) (val >> 0);
+    bytes[1] = (byte) (val >> 8);
+    bytes[2] = (byte) (val >> 16);
+    bytes[3] = (byte) (val >> 24);
+    bytes[4] = (byte) (val >> 32);
+    bytes[5] = (byte) (val >> 40);
+    bytes[6] = (byte) (val >> 48);
+    bytes[7] = (byte) (val >> 56);
     return bytes;
   }
 
