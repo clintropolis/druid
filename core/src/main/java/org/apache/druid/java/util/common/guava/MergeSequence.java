@@ -120,7 +120,7 @@ public class MergeSequence<T> extends YieldingSequenceBase<T>
     }
 
     final OutType yieldVal = retVal;
-    return new Yielder<OutType>()
+    return new DecomposableYielder<OutType, T>(pQueue)
     {
       @Override
       public OutType get()

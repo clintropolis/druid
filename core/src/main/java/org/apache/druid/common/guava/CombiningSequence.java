@@ -20,12 +20,14 @@
 package org.apache.druid.common.guava;
 
 import org.apache.druid.java.util.common.guava.Accumulator;
+import org.apache.druid.java.util.common.guava.DecomposableYielder;
 import org.apache.druid.java.util.common.guava.Sequence;
 import org.apache.druid.java.util.common.guava.Yielder;
 import org.apache.druid.java.util.common.guava.Yielders;
 import org.apache.druid.java.util.common.guava.YieldingAccumulator;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.function.BinaryOperator;
 
@@ -112,7 +114,7 @@ public class CombiningSequence<T> implements Sequence<T>
     }
 
 
-    return new Yielder<OutType>()
+    return new DecomposableYielder<OutType, T>(Collections.singletonList(yielder))
     {
       @Override
       public OutType get()
