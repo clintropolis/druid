@@ -23,8 +23,11 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.calcite.schema.SchemaPlus;
 import org.apache.druid.common.config.NullHandling;
+import org.apache.druid.java.util.common.StringUtils;
 import org.apache.druid.java.util.common.granularity.Granularities;
 import org.apache.druid.java.util.common.guava.Sequence;
+import org.apache.druid.java.util.common.guava.Yielder;
+import org.apache.druid.java.util.common.guava.Yielders;
 import org.apache.druid.java.util.common.io.Closer;
 import org.apache.druid.java.util.common.logger.Logger;
 import org.apache.druid.query.QueryRunnerFactoryConglomerate;
@@ -45,6 +48,7 @@ import org.apache.druid.sql.calcite.util.CalciteTests;
 import org.apache.druid.sql.calcite.util.SpecificSegmentsQuerySegmentWalker;
 import org.apache.druid.timeline.DataSegment;
 import org.apache.druid.timeline.partition.LinearShardSpec;
+import org.junit.Assert;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -61,6 +65,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
 import javax.annotation.Nullable;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -70,8 +75,8 @@ import java.util.concurrent.TimeUnit;
  */
 @State(Scope.Benchmark)
 @Fork(value = 1)
-@Warmup(iterations = 5)
-@Measurement(iterations = 15)
+@Warmup(iterations = 3)
+@Measurement(iterations = 5)
 public class SqlBenchmark
 {
   static {
@@ -366,7 +371,37 @@ public class SqlBenchmark
       + "    GROUP BY dimSequential\n"
       + "  )\n"
       + ")\n"
-      + "SELECT * FROM matrix"
+      + "SELECT * FROM matrix",
+      // 20: expression timeseries
+      "SELECT SUM(longSequential * longUniform) FROM foo",
+      // 21: non-expression timeseries reference, 2 columns
+      "SELECT SUM(longSequential), SUM(longUniform) FROM foo",
+      // 22: long*long/double
+      "SELECT SUM((longSequential * longUniform) / doubleZipf) FROM foo",
+      // 23: non-expression timeseries reference, 3 columns
+      "SELECT SUM(longSequential), SUM(longUniform), SUM(doubleZipf) FROM foo",
+      // 24: float + long*long/double
+      "SELECT SUM(floatZipf + ((longSequential * longUniform)/doubleZipf)) FROM foo",
+      // 25: non-expression timeseries reference, 4 columns
+      "SELECT SUM(longSequential), SUM(longUniform), SUM(doubleZipf), SUM(floatZipf) FROM foo",
+      // 26: long - float + long*long/double
+      "SELECT SUM(longUniformWithNulls - (floatZipf + ((longSequential * longUniform)/doubleZipf))) FROM foo",
+      // 27: non-expression timeseries reference, 5 columns
+      "SELECT SUM(longSequential), SUM(longUniform), SUM(doubleZipf), SUM(floatZipf), SUM(longUniformWithNulls) FROM foo",
+      // 28: all same op
+      "SELECT SUM(longUniformWithNulls * floatZipf * longSequential * longUniform * doubleZipf) FROM foo",
+      // 29: unary negate
+      "SELECT SUM(-longUniform) FROM foo",
+      // 30: non-expression timeseries reference, 1 column
+      "SELECT SUM(longUniform) FROM foo",
+      // 31: string long
+      "SELECT SUM(PARSE_LONG(stringSequential)) FROM foo",
+      // 32: string longer
+      "SELECT SUM(PARSE_LONG(stringUniform)) FROM foo",
+      // 33: group by long expr
+      "SELECT (longSequential * longUniform), SUM(doubleZipf) FROM foo GROUP BY 1 ORDER BY 2",
+      // 34
+      "SELECT stringZipf, SUM(longSequential * longUniform) FROM foo GROUP BY 1 ORDER BY 2"
   );
 
   @Param({"5000000"})
@@ -375,7 +410,14 @@ public class SqlBenchmark
   @Param({"false", "force"})
   private String vectorize;
 
-  @Param({"10", "15"})
+
+//  @Param({"31", "32"})
+//  @Param({"20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34"})
+//  @Param({"22", "23", "24"})
+//  @Param({"20"})
+//  @Param({"30"})
+//  @Param({"33"})
+  @Param({"20", "22", "24", "26", "28", "29", "31", "32", "33", "34"})
   private String query;
 
   @Nullable
@@ -383,9 +425,9 @@ public class SqlBenchmark
   private Closer closer = Closer.create();
 
   @Setup(Level.Trial)
-  public void setup()
+  public void setup() throws Exception
   {
-    final GeneratorSchemaInfo schemaInfo = GeneratorBasicSchemas.SCHEMA_MAP.get("basic");
+    final GeneratorSchemaInfo schemaInfo = GeneratorBasicSchemas.SCHEMA_MAP.get("nulls-and-non-nulls");
 
     final DataSegment dataSegment = DataSegment.builder()
                                                .dataSource("foo")
@@ -421,6 +463,8 @@ public class SqlBenchmark
         CalciteTests.getJsonMapper(),
         CalciteTests.DRUID_SCHEMA_NAME
     );
+
+    checkSanity();
   }
 
   @TearDown(Level.Trial)
@@ -445,17 +489,65 @@ public class SqlBenchmark
     }
   }
 
-  @Benchmark
-  @BenchmarkMode(Mode.AverageTime)
-  @OutputTimeUnit(TimeUnit.MILLISECONDS)
-  public void planSql(Blackhole blackhole) throws Exception
+//  @Benchmark
+//  @BenchmarkMode(Mode.AverageTime)
+//  @OutputTimeUnit(TimeUnit.MILLISECONDS)
+//  public void planSql(Blackhole blackhole) throws Exception
+//  {
+//    final Map<String, Object> context = ImmutableMap.of("vectorize", vectorize);
+//    final AuthenticationResult authenticationResult = NoopEscalator.getInstance()
+//                                                                   .createEscalatedAuthenticationResult();
+//    try (final DruidPlanner planner = plannerFactory.createPlanner(context, ImmutableList.of(), authenticationResult)) {
+//      final PlannerResult plannerResult = planner.plan(QUERIES.get(Integer.parseInt(query)));
+//      blackhole.consume(plannerResult);
+//    }
+//  }
+
+  public void checkSanity() throws Exception
   {
-    final Map<String, Object> context = ImmutableMap.of("vectorize", vectorize);
+    final Map<String, Object> vector = ImmutableMap.of("vectorize", true);
+    final Map<String, Object> nonvector = ImmutableMap.of("vectorize", false);
     final AuthenticationResult authenticationResult = NoopEscalator.getInstance()
                                                                    .createEscalatedAuthenticationResult();
-    try (final DruidPlanner planner = plannerFactory.createPlanner(context, ImmutableList.of(), authenticationResult)) {
-      final PlannerResult plannerResult = planner.plan(QUERIES.get(Integer.parseInt(query)));
-      blackhole.consume(plannerResult);
+
+
+    try (
+        final DruidPlanner vectorPlanner = plannerFactory.createPlanner(vector, ImmutableList.of(), authenticationResult);
+        final DruidPlanner nonVectorPlanner = plannerFactory.createPlanner(nonvector, ImmutableList.of(), authenticationResult)
+    ) {
+      final PlannerResult vectorPlan = vectorPlanner.plan(QUERIES.get(Integer.parseInt(query)));
+      final PlannerResult nonVectorPlan = nonVectorPlanner.plan(QUERIES.get(Integer.parseInt(query)));
+      final Sequence<Object[]> vectorSequence = vectorPlan.run();
+      final Sequence<Object[]> nonVectorSequence = nonVectorPlan.run();
+      Yielder<Object[]> vectorizedYielder = Yielders.each(vectorSequence);
+      Yielder<Object[]> nonVectorizedYielder = Yielders.each(nonVectorSequence);
+      int row = 0;
+      int misMatch = 0;
+      while (!vectorizedYielder.isDone() || !nonVectorizedYielder.isDone()) {
+        Object[] vectorGet = vectorizedYielder.get();
+        Object[] nonVectorizedGet = nonVectorizedYielder.get();
+        try {
+          Assert.assertArrayEquals(
+              StringUtils.format(
+                  "Results differed at row %s (%s : %s)",
+                  row,
+                  Arrays.toString(vectorGet),
+                  Arrays.toString(nonVectorizedGet)
+              ),
+              vectorGet,
+              nonVectorizedGet
+          );
+        }
+        catch (Throwable t) {
+          misMatch++;
+        }
+        vectorizedYielder = vectorizedYielder.next(vectorGet);
+        nonVectorizedYielder = nonVectorizedYielder.next(nonVectorizedGet);
+        row++;
+      }
+      Assert.assertEquals(0, misMatch);
+      Assert.assertTrue(vectorizedYielder.isDone());
+      Assert.assertTrue(nonVectorizedYielder.isDone());
     }
   }
 }

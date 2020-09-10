@@ -24,6 +24,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import org.apache.druid.annotations.SubclassesMustOverrideEqualsAndHashCode;
 import org.apache.druid.java.util.common.ISE;
+import org.apache.druid.math.expr.vector.VectorExprProcessor;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -40,6 +41,7 @@ public interface Expr
 {
   String NULL_LITERAL = "null";
   Joiner ARG_JOINER = Joiner.on(", ");
+
   /**
    * Indicates expression is a constant whose literal value can be extracted by {@link Expr#getLiteralValue()},
    * making evaluating with arguments and bindings unecessary
@@ -122,6 +124,7 @@ public interface Expr
    */
   Expr visit(Shuttle shuttle);
 
+
   /**
    * Examine the usage of {@link IdentifierExpr} children of an {@link Expr}, constructing a {@link BindingAnalysis}
    */
@@ -130,10 +133,76 @@ public interface Expr
   @Nullable
   ExprType getOutputType(InputBindingTypes inputTypes);
 
+  default boolean canVectorize(InputBindingTypes inputTypes)
+  {
+    return false;
+  }
+
+  default <T> VectorExprProcessor<T> buildVectorized(VectorInputBindingTypes inputTypes)
+  {
+    throw cannotVectorize();
+  }
+
+  default UnsupportedOperationException cannotVectorize()
+  {
+    return Exprs.cannotVectorize(this);
+  }
+
   interface InputBindingTypes
   {
     @Nullable
     ExprType getType(String name);
+
+    default boolean areNumeric(List<Expr> args)
+    {
+      boolean numeric = args.size() > 0;
+      for (Expr arg : args) {
+        ExprType argType = arg.getOutputType(this);
+        if (argType == null) {
+          numeric = false;
+          break;
+        }
+        numeric &= argType.isNumeric();
+      }
+      return numeric;
+    }
+
+    default boolean areNumeric(Expr ... args)
+    {
+      boolean numeric = args.length > 0;
+      for (Expr arg : args) {
+        ExprType argType = arg.getOutputType(this);
+        if (argType == null) {
+          numeric = false;
+          break;
+        }
+        numeric &= argType.isNumeric();
+      }
+      return numeric;
+    }
+
+    default boolean canVectorize(List<Expr> args)
+    {
+      boolean canVectorize = true;
+      for (Expr arg : args) {
+        canVectorize &= arg.canVectorize(this);
+      }
+      return canVectorize;
+    }
+
+    default boolean canVectorize(Expr ... args)
+    {
+      boolean canVectorize = true;
+      for (Expr arg : args) {
+        canVectorize &= arg.canVectorize(this);
+      }
+      return canVectorize;
+    }
+  }
+
+  interface VectorInputBindingTypes extends InputBindingTypes
+  {
+    int getMaxVectorSize();
   }
 
   /**
@@ -146,6 +215,17 @@ public interface Expr
      */
     @Nullable
     Object get(String name);
+  }
+
+  interface VectorBinding extends VectorInputBindingTypes
+  {
+    <T> T[] getObjects(String name);
+
+    long[] getLongs(String name);
+    double[] getDoubles(String name);
+    boolean[] getNulls(String name);
+
+    int getCurrentVectorSize();
   }
 
   /**
