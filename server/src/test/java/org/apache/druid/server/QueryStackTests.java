@@ -93,7 +93,7 @@ public class QueryStackTests
       new ServerConfig()
   );
   private static final ServiceEmitter EMITTER = new NoopServiceEmitter();
-  private static final int COMPUTE_BUFFER_SIZE = 10 * 1024 * 1024;
+  private static final int COMPUTE_BUFFER_SIZE = 512 * 1024 * 1024;
 
   private QueryStackTests()
   {

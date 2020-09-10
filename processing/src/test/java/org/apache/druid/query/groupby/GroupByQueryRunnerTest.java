@@ -48,6 +48,7 @@ import org.apache.druid.java.util.common.guava.Sequence;
 import org.apache.druid.java.util.common.guava.Sequences;
 import org.apache.druid.java.util.common.io.Closer;
 import org.apache.druid.js.JavaScriptConfig;
+import org.apache.druid.math.expr.ExprMacroTable;
 import org.apache.druid.query.BySegmentResultValue;
 import org.apache.druid.query.BySegmentResultValueClass;
 import org.apache.druid.query.ChainedExecutionQueryRunner;
@@ -10646,6 +10647,44 @@ public class GroupByQueryRunnerTest extends InitializedNullHandlingTest
 
     List<ResultRow> expectedResults = ImmutableList.of(
         makeRow(query, "2011-04-01", "quality", "automotive", "rows", 1L, "index", 135L)
+    );
+
+    Iterable<ResultRow> results = GroupByQueryRunnerTestHelper.runQuery(factory, runner, query);
+    TestHelper.assertExpectedObjects(expectedResults, results, "groupBy");
+  }
+
+  @Test
+  public void testGroupByOnVirtualColumn()
+  {
+    if (config.getDefaultStrategy().equals(GroupByStrategySelector.STRATEGY_V1)) {
+      expectedException.expect(UnsupportedOperationException.class);
+    }
+
+    GroupByQuery query = makeQueryBuilder()
+        .setDataSource(QueryRunnerTestHelper.DATA_SOURCE)
+        .setQuerySegmentSpec(QueryRunnerTestHelper.FIRST_TO_THIRD)
+        .setVirtualColumns(
+            new ExpressionVirtualColumn(
+                "v",
+                "qualityDouble * qualityLong",
+                ValueType.LONG,
+                ExprMacroTable.nil()
+            )
+        )
+        .setDimensions(
+            new DefaultDimensionSpec("v", "v", ValueType.LONG)
+        )
+        .setAggregatorSpecs(QueryRunnerTestHelper.ROWS_COUNT)
+        .setGranularity(QueryRunnerTestHelper.ALL_GRAN)
+        .setLimit(5)
+        .build();
+
+    List<ResultRow> expectedResults = Arrays.asList(
+        makeRow(query, "2011-04-01", "v", 10000000L, "rows", 2L),
+        makeRow(query, "2011-04-01", "v", 12100000L, "rows", 2L),
+        makeRow(query, "2011-04-01", "v", 14400000L, "rows", 2L),
+        makeRow(query, "2011-04-01", "v", 16900000L, "rows", 2L),
+        makeRow(query, "2011-04-01", "v", 19600000L, "rows", 6L)
     );
 
     Iterable<ResultRow> results = GroupByQueryRunnerTestHelper.runQuery(factory, runner, query);

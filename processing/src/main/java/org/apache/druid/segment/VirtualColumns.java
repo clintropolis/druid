@@ -35,6 +35,10 @@ import org.apache.druid.segment.column.BitmapIndex;
 import org.apache.druid.segment.column.ColumnCapabilities;
 import org.apache.druid.segment.column.ColumnHolder;
 import org.apache.druid.segment.data.ReadableOffset;
+import org.apache.druid.segment.vector.ReadableVectorOffset;
+import org.apache.druid.segment.vector.VectorColumnSelectorFactory;
+import org.apache.druid.segment.vector.VectorObjectSelector;
+import org.apache.druid.segment.vector.VectorValueSelector;
 import org.apache.druid.segment.virtual.VirtualizedColumnSelectorFactory;
 
 import javax.annotation.Nullable;
@@ -203,6 +207,11 @@ public class VirtualColumns implements Cacheable
     }
   }
 
+  public boolean canVectorize(ColumnInspector columnInspector)
+  {
+    return virtualColumns.stream().allMatch(virtualColumn -> virtualColumn.canVectorize(columnInspector));
+  }
+
   @Nullable
   public ColumnValueSelector<?> makeColumnValueSelector(
       String columnName,
@@ -235,6 +244,50 @@ public class VirtualColumns implements Cacheable
       throw new IAE("No such virtual column[%s]", columnName);
     } else {
       final ColumnValueSelector<?> selector = virtualColumn.makeColumnValueSelector(columnName, factory);
+      Preconditions.checkNotNull(selector, "selector");
+      return selector;
+    }
+  }
+
+  public VectorValueSelector makeVectorValueSelector(String columnName, ColumnSelector columnSelector, ReadableVectorOffset offset)
+  {
+    final VirtualColumn virtualColumn = getVirtualColumn(columnName);
+    if (virtualColumn == null) {
+      throw new IAE("No such virtual column[%s]", columnName);
+    } else {
+      return virtualColumn.makeVectorValueSelector(columnName, columnSelector, offset);
+    }
+  }
+
+  public VectorValueSelector makeVectorValueSelector(String columnName, VectorColumnSelectorFactory factory)
+  {
+    final VirtualColumn virtualColumn = getVirtualColumn(columnName);
+    if (virtualColumn == null) {
+      throw new IAE("No such virtual column[%s]", columnName);
+    } else {
+      final VectorValueSelector selector = virtualColumn.makeVectorValueSelector(columnName, factory);
+      Preconditions.checkNotNull(selector, "selector");
+      return selector;
+    }
+  }
+
+  public VectorObjectSelector makeVectorObjectSelector(String columnName, ColumnSelector columnSelector, ReadableVectorOffset offset)
+  {
+    final VirtualColumn virtualColumn = getVirtualColumn(columnName);
+    if (virtualColumn == null) {
+      throw new IAE("No such virtual column[%s]", columnName);
+    } else {
+      return virtualColumn.makeVectorObjectSelector(columnName, columnSelector, offset);
+    }
+  }
+
+  public VectorObjectSelector makeVectorObjectSelector(String columnName, VectorColumnSelectorFactory factory)
+  {
+    final VirtualColumn virtualColumn = getVirtualColumn(columnName);
+    if (virtualColumn == null) {
+      throw new IAE("No such virtual column[%s]", columnName);
+    } else {
+      final VectorObjectSelector selector = virtualColumn.makeVectorObjectSelector(columnName, factory);
       Preconditions.checkNotNull(selector, "selector");
       return selector;
     }
@@ -339,4 +392,5 @@ public class VirtualColumns implements Cacheable
   {
     return virtualColumns.toString();
   }
+
 }

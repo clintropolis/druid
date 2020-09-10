@@ -278,7 +278,7 @@ public class GeneratorBasicSchemas
         GeneratorColumnSchema.makeDiscreteUniform("stringUniform", ValueType.STRING, false, 1, null, 1, 100000),
         GeneratorColumnSchema.makeSequential("stringSequential", ValueType.STRING, false, 1, null, 0, 1000),
 
-        // string dims with nulls
+        // string dims with nulls00
         GeneratorColumnSchema.makeZipf("stringZipfWithNulls", ValueType.STRING, false, 1, 0.8, 1, 101, 1.5),
         GeneratorColumnSchema.makeDiscreteUniform("stringUniformWithNulls", ValueType.STRING, false, 1, 0.3, 1, 100000),
         GeneratorColumnSchema.makeSequential("stringSequentialWithNulls", ValueType.STRING, false, 1, 0.5, 0, 1000),

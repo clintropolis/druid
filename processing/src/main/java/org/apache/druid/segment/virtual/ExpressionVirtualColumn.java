@@ -32,6 +32,7 @@ import org.apache.druid.math.expr.ExprMacroTable;
 import org.apache.druid.math.expr.Parser;
 import org.apache.druid.query.cache.CacheKeyBuilder;
 import org.apache.druid.query.dimension.DimensionSpec;
+import org.apache.druid.segment.ColumnInspector;
 import org.apache.druid.segment.ColumnSelectorFactory;
 import org.apache.druid.segment.ColumnValueSelector;
 import org.apache.druid.segment.DimensionSelector;
@@ -39,6 +40,9 @@ import org.apache.druid.segment.VirtualColumn;
 import org.apache.druid.segment.column.ColumnCapabilities;
 import org.apache.druid.segment.column.ColumnCapabilitiesImpl;
 import org.apache.druid.segment.column.ValueType;
+import org.apache.druid.segment.vector.VectorColumnSelectorFactory;
+import org.apache.druid.segment.vector.VectorObjectSelector;
+import org.apache.druid.segment.vector.VectorValueSelector;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -127,6 +131,27 @@ public class ExpressionVirtualColumn implements VirtualColumn
   public ColumnValueSelector<?> makeColumnValueSelector(String columnName, ColumnSelectorFactory factory)
   {
     return ExpressionSelectors.makeColumnValueSelector(factory, parsedExpression.get());
+  }
+
+
+  @Override
+  public boolean canVectorize(ColumnInspector inspector)
+  {
+    return parsedExpression.get().canVectorize(ExpressionSelectors.makeInspectorBindingTypes(inspector));
+  }
+
+  @Override
+  public VectorValueSelector makeVectorValueSelector(String columnName, VectorColumnSelectorFactory factory)
+  {
+    return ExpressionSelectors.makeVectorValueSelector(factory, parsedExpression.get());
+  }
+
+  @Override
+  public VectorObjectSelector makeVectorObjectSelector(
+      String columnName, VectorColumnSelectorFactory factory
+  )
+  {
+    return ExpressionSelectors.makeVectorObjectSelector(factory, parsedExpression.get());
   }
 
   @Override

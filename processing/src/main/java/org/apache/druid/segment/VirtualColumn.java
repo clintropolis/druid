@@ -26,14 +26,19 @@ import org.apache.druid.query.dimension.DimensionSpec;
 import org.apache.druid.segment.column.BitmapIndex;
 import org.apache.druid.segment.column.ColumnCapabilities;
 import org.apache.druid.segment.data.ReadableOffset;
+import org.apache.druid.segment.vector.ReadableVectorOffset;
+import org.apache.druid.segment.vector.VectorColumnSelectorFactory;
+import org.apache.druid.segment.vector.VectorObjectSelector;
+import org.apache.druid.segment.vector.VectorValueSelector;
 import org.apache.druid.segment.virtual.ExpressionVirtualColumn;
 
 import javax.annotation.Nullable;
 import java.util.List;
 
 /**
- * Virtual columns are "views" created over a ColumnSelectorFactory or ColumnSelector. They can potentially draw from multiple
- * underlying columns, although they always present themselves as if they were a single column.
+ * Virtual columns are "views" created over a {@link ColumnSelectorFactory} or {@link ColumnSelector}. They can
+ * potentially draw from multiple underlying columns, although they always present themselves as if they were a single
+ * column.
  *
  * A virtual column object will be shared amongst threads and must be thread safe. The selectors returned
  * from the various makeXXXSelector methods need not be thread safe.
@@ -157,6 +162,33 @@ public interface VirtualColumn extends Cacheable
    */
   @SuppressWarnings("unused")
   default BitmapIndex getBitmapIndex(String columnName, ColumnSelector selector)
+  {
+    throw new UnsupportedOperationException("not supported");
+  }
+
+  default boolean canVectorize(ColumnInspector inspector)
+  {
+    return false;
+  }
+
+  @Nullable
+  default VectorValueSelector makeVectorValueSelector(String columnName, ColumnSelector columnSelector, ReadableVectorOffset offset)
+  {
+    return null;
+  }
+
+  default VectorValueSelector makeVectorValueSelector(String columnName, VectorColumnSelectorFactory factory)
+  {
+    throw new UnsupportedOperationException("not supported");
+  }
+
+  @Nullable
+  default VectorObjectSelector makeVectorObjectSelector(String columnName, ColumnSelector columnSelector, ReadableVectorOffset offset)
+  {
+    return null;
+  }
+
+  default VectorObjectSelector makeVectorObjectSelector(String columnName, VectorColumnSelectorFactory factory)
   {
     throw new UnsupportedOperationException("not supported");
   }

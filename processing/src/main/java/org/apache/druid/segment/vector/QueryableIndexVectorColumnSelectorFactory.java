@@ -24,6 +24,7 @@ import org.apache.druid.java.util.common.io.Closer;
 import org.apache.druid.query.dimension.DimensionSpec;
 import org.apache.druid.segment.QueryableIndex;
 import org.apache.druid.segment.QueryableIndexStorageAdapter;
+import org.apache.druid.segment.VirtualColumns;
 import org.apache.druid.segment.column.BaseColumn;
 import org.apache.druid.segment.column.ColumnCapabilities;
 import org.apache.druid.segment.column.ColumnHolder;
@@ -33,9 +34,11 @@ import org.apache.druid.segment.column.ValueType;
 import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 
 public class QueryableIndexVectorColumnSelectorFactory implements VectorColumnSelectorFactory
 {
+  private final VirtualColumns virtualColumns;
   private final QueryableIndex index;
   private final ReadableVectorOffset offset;
   private final Closer closer;
@@ -52,12 +55,14 @@ public class QueryableIndexVectorColumnSelectorFactory implements VectorColumnSe
       final QueryableIndex index,
       final ReadableVectorOffset offset,
       final Closer closer,
-      final Map<String, BaseColumn> columnCache
+      final Map<String, BaseColumn> columnCache,
+      final VirtualColumns virtualColumns
   )
   {
     this.index = index;
     this.offset = offset;
     this.closer = closer;
+    this.virtualColumns = virtualColumns;
     this.columnCache = columnCache;
     this.singleValueDimensionSelectorCache = new HashMap<>();
     this.multiValueDimensionSelectorCache = new HashMap<>();
@@ -147,33 +152,63 @@ public class QueryableIndexVectorColumnSelectorFactory implements VectorColumnSe
   @Override
   public VectorValueSelector makeValueSelector(final String columnName)
   {
-    return valueSelectorCache.computeIfAbsent(
-        columnName,
-        name -> {
-          final BaseColumn column = getCachedColumn(name);
-          if (column == null) {
-            return NilVectorSelector.create(offset);
-          } else {
-            return column.makeVectorValueSelector(offset);
-          }
+    Function<String, VectorValueSelector> mappingFunction = name -> {
+      if (virtualColumns.exists(columnName)) {
+        VectorValueSelector selector = virtualColumns.makeVectorValueSelector(columnName, index, offset);
+        if (selector == null) {
+          return virtualColumns.makeVectorValueSelector(columnName, this);
+        } else {
+          return selector;
         }
-    );
+      }
+      final BaseColumn column = getCachedColumn(name);
+      if (column == null) {
+        return NilVectorSelector.create(offset);
+      } else {
+        return column.makeVectorValueSelector(offset);
+      }
+    };
+    // We cannot use valueSelectorCache.computeIfAbsent() here since the function being
+    // applied may modify the valueSelectorCache itself through virtual column references,
+    // triggering a ConcurrentModificationException in JDK 9 and above.
+    VectorValueSelector columnValueSelector = valueSelectorCache.get(columnName);
+    if (columnValueSelector == null) {
+      columnValueSelector = mappingFunction.apply(columnName);
+      valueSelectorCache.put(columnName, columnValueSelector);
+    }
+
+    return columnValueSelector;
   }
 
   @Override
   public VectorObjectSelector makeObjectSelector(final String columnName)
   {
-    return objectSelectorCache.computeIfAbsent(
-        columnName,
-        name -> {
-          final BaseColumn column = getCachedColumn(name);
-          if (column == null) {
-            return NilVectorSelector.create(offset);
-          } else {
-            return column.makeVectorObjectSelector(offset);
-          }
+    Function<String, VectorObjectSelector> mappingFunction = name -> {
+      if (virtualColumns.exists(columnName)) {
+        VectorObjectSelector selector = virtualColumns.makeVectorObjectSelector(columnName, index, offset);
+        if (selector == null) {
+          return virtualColumns.makeVectorObjectSelector(columnName, this);
+        } else {
+          return selector;
         }
-    );
+      }
+      final BaseColumn column = getCachedColumn(name);
+      if (column == null) {
+        return NilVectorSelector.create(offset);
+      } else {
+        return column.makeVectorObjectSelector(offset);
+      }
+    };
+    // We cannot use valueSelectorCache.computeIfAbsent() here since the function being
+    // applied may modify the valueSelectorCache itself through virtual column references,
+    // triggering a ConcurrentModificationException in JDK 9 and above.
+    VectorObjectSelector columnValueSelector = objectSelectorCache.get(columnName);
+    if (columnValueSelector == null) {
+      columnValueSelector = mappingFunction.apply(columnName);
+      objectSelectorCache.put(columnName, columnValueSelector);
+    }
+
+    return columnValueSelector;
   }
 
   @Nullable
@@ -193,6 +228,9 @@ public class QueryableIndexVectorColumnSelectorFactory implements VectorColumnSe
   @Override
   public ColumnCapabilities getColumnCapabilities(final String columnName)
   {
+    if (virtualColumns.exists(columnName)) {
+      return virtualColumns.getColumnCapabilities(columnName);
+    }
     return QueryableIndexStorageAdapter.getColumnCapabilities(index, columnName);
   }
 }

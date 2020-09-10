@@ -84,6 +84,7 @@ public class VectorGroupByEngine
 
     return GroupByQueryEngineV2.isAllSingleValueDims(adapter::getColumnCapabilities, query.getDimensions(), true)
            && query.getDimensions().stream().allMatch(DimensionSpec::canVectorize)
+           && query.getVirtualColumns().canVectorize(adapter)
            && query.getAggregatorSpecs().stream().allMatch(aggregatorFactory -> aggregatorFactory.canVectorize(adapter))
            && adapter.canVectorize(filter, query.getVirtualColumns(), false);
   }
