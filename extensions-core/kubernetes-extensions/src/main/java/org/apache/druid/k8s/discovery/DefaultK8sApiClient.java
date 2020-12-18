@@ -32,7 +32,6 @@ import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
 import io.kubernetes.client.util.Watch;
 import org.apache.druid.discovery.DiscoveryDruidNode;
-import org.apache.druid.discovery.NodeRole;
 import org.apache.druid.guice.annotations.Json;
 import org.apache.druid.java.util.common.RE;
 import org.apache.druid.java.util.common.logger.Logger;
@@ -76,7 +75,7 @@ public class DefaultK8sApiClient implements K8sApiClient
   public DiscoveryDruidNodeList listPods(
       String podNamespace,
       String labelSelector,
-      NodeRole nodeRole
+      String nodeRole
   )
   {
     try {
@@ -95,7 +94,7 @@ public class DefaultK8sApiClient implements K8sApiClient
     }
   }
 
-  private DiscoveryDruidNode getDiscoveryDruidNodeFromPodDef(NodeRole nodeRole, V1Pod podDef)
+  private DiscoveryDruidNode getDiscoveryDruidNodeFromPodDef(String nodeRole, V1Pod podDef)
   {
     String jsonStr = podDef.getMetadata().getAnnotations().get(K8sDruidNodeAnnouncer.getInfoAnnotation(nodeRole));
     try {
@@ -107,7 +106,7 @@ public class DefaultK8sApiClient implements K8sApiClient
   }
 
   @Override
-  public WatchResult watchPods(String namespace, String labelSelector, String lastKnownResourceVersion, NodeRole nodeRole)
+  public WatchResult watchPods(String namespace, String labelSelector, String lastKnownResourceVersion, String nodeRole)
   {
     try {
       Watch<V1Pod> watch =

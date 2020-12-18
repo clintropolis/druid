@@ -72,13 +72,8 @@ public abstract class ServerRunnable extends GuiceRunnable
 
   public static void bindNodeRoleAndAnnouncer(Binder binder, DiscoverySideEffectsProvider discoverySideEffectsProvider)
   {
-    Multibinder<NodeRole> selfBinder = Multibinder.newSetBinder(binder, NodeRole.class, Self.class);
-    selfBinder.addBinding().toInstance(discoverySideEffectsProvider.nodeRole);
-
-    bindAnnouncer(
-        binder,
-        discoverySideEffectsProvider
-    );
+    bindNodeRole(binder, discoverySideEffectsProvider);
+    bindAnnouncer(binder, discoverySideEffectsProvider);
   }
 
   public static void bindNodeRoleAndAnnouncer(
@@ -87,14 +82,17 @@ public abstract class ServerRunnable extends GuiceRunnable
       DiscoverySideEffectsProvider discoverySideEffectsProvider
   )
   {
-    Multibinder<NodeRole> selfBinder = Multibinder.newSetBinder(binder, NodeRole.class, Self.class);
-    selfBinder.addBinding().toInstance(discoverySideEffectsProvider.nodeRole);
+    bindNodeRole(binder, discoverySideEffectsProvider);
+    bindAnnouncer(binder, annotation, discoverySideEffectsProvider);
+  }
 
-    bindAnnouncer(
-        binder,
-        annotation,
-        discoverySideEffectsProvider
-    );
+  private static void bindNodeRole(
+      Binder binder,
+      DiscoverySideEffectsProvider discoverySideEffectsProvider
+  )
+  {
+    Multibinder<String> selfBinder = Multibinder.newSetBinder(binder, String.class, Self.class);
+    selfBinder.addBinding().toInstance(discoverySideEffectsProvider.nodeRoleJson);
   }
 
   private static void bindAnnouncer(
@@ -127,7 +125,7 @@ public abstract class ServerRunnable extends GuiceRunnable
    * This is a helper class used by CliXXX classes to announce {@link DiscoveryDruidNode}
    * as part of {@link Lifecycle.Stage#ANNOUNCEMENTS}.
    */
-  protected static class DiscoverySideEffectsProvider implements Provider<DiscoverySideEffectsProvider.Child>
+  public static class DiscoverySideEffectsProvider implements Provider<DiscoverySideEffectsProvider.Child>
   {
     public static class Child
     {
@@ -135,13 +133,13 @@ public abstract class ServerRunnable extends GuiceRunnable
 
     public static class Builder
     {
-      private NodeRole nodeRole;
+      private String nodeRoleJson;
       private List<Class<? extends DruidService>> serviceClasses = ImmutableList.of();
       private boolean useLegacyAnnouncer;
 
-      public Builder(final NodeRole nodeRole)
+      private Builder(final String nodeRole)
       {
-        this.nodeRole = nodeRole;
+        this.nodeRoleJson = nodeRole;
       }
 
       public Builder serviceClasses(final List<Class<? extends DruidService>> serviceClasses)
@@ -159,7 +157,7 @@ public abstract class ServerRunnable extends GuiceRunnable
       public DiscoverySideEffectsProvider build()
       {
         return new DiscoverySideEffectsProvider(
-            nodeRole,
+            nodeRoleJson,
             serviceClasses,
             useLegacyAnnouncer
         );
@@ -167,6 +165,11 @@ public abstract class ServerRunnable extends GuiceRunnable
     }
 
     public static Builder builder(final NodeRole nodeRole)
+    {
+      return new Builder(nodeRole.getJsonName());
+    }
+
+    public static Builder builder(final String nodeRole)
     {
       return new Builder(nodeRole);
     }
@@ -187,17 +190,19 @@ public abstract class ServerRunnable extends GuiceRunnable
     @Inject
     private Injector injector;
 
-    private final NodeRole nodeRole;
+    private final String nodeRoleJson;
+
+
     private final List<Class<? extends DruidService>> serviceClasses;
     private final boolean useLegacyAnnouncer;
 
     private DiscoverySideEffectsProvider(
-        final NodeRole nodeRole,
+        final String nodeRoleJson,
         final List<Class<? extends DruidService>> serviceClasses,
         final boolean useLegacyAnnouncer
     )
     {
-      this.nodeRole = nodeRole;
+      this.nodeRoleJson = nodeRoleJson;
       this.serviceClasses = serviceClasses;
       this.useLegacyAnnouncer = useLegacyAnnouncer;
     }
@@ -214,7 +219,7 @@ public abstract class ServerRunnable extends GuiceRunnable
         final Injector injector
     )
     {
-      this.nodeRole = nodeRole;
+      this.nodeRoleJson = nodeRole.getJsonName();
       this.serviceClasses = serviceClasses;
       this.useLegacyAnnouncer = useLegacyAnnouncer;
       this.druidNode = druidNode;
@@ -239,7 +244,7 @@ public abstract class ServerRunnable extends GuiceRunnable
           );
         }
       }
-      DiscoveryDruidNode discoveryDruidNode = new DiscoveryDruidNode(druidNode, nodeRole, builder.build());
+      DiscoveryDruidNode discoveryDruidNode = new DiscoveryDruidNode(druidNode, nodeRoleJson, builder.build());
 
       lifecycle.addHandler(
           new Lifecycle.Handler()

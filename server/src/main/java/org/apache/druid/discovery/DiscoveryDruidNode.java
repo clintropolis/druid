@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.druid.server.DruidNode;
 
+import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -36,6 +37,8 @@ import java.util.Objects;
 public class DiscoveryDruidNode
 {
   private final DruidNode druidNode;
+  private final String nodeRoleName;
+  @Nullable
   private final NodeRole nodeRole;
 
   /**
@@ -49,13 +52,23 @@ public class DiscoveryDruidNode
   @JsonCreator
   public DiscoveryDruidNode(
       @JsonProperty("druidNode") DruidNode druidNode,
-      @JsonProperty("nodeType") NodeRole nodeRole,
+      @JsonProperty("nodeType") String nodeRole,
       @JsonProperty("services") Map<String, DruidService> services
   )
   {
     this.druidNode = druidNode;
-    this.nodeRole = nodeRole;
+    this.nodeRoleName = nodeRole;
+    this.nodeRole = NodeRole.ofJson(nodeRole);
+    if (services != null && !services.isEmpty()) {
+      this.services.putAll(services);
+    }
+  }
 
+  public DiscoveryDruidNode(DruidNode druidNode, NodeRole nodeRole, Map<String, DruidService> services)
+  {
+    this.druidNode = druidNode;
+    this.nodeRoleName = nodeRole.getJsonName();
+    this.nodeRole = nodeRole;
     if (services != null && !services.isEmpty()) {
       this.services.putAll(services);
     }
@@ -72,6 +85,12 @@ public class DiscoveryDruidNode
    * Jackson 2.9 it could be changed, see https://github.com/apache/druid/issues/7152.
    */
   @JsonProperty("nodeType")
+  public String getNodeRoleName()
+  {
+    return nodeRoleName;
+  }
+
+  @Nullable
   public NodeRole getNodeRole()
   {
     return nodeRole;
@@ -94,14 +113,14 @@ public class DiscoveryDruidNode
     }
     DiscoveryDruidNode that = (DiscoveryDruidNode) o;
     return Objects.equals(druidNode, that.druidNode) &&
-           Objects.equals(nodeRole, that.nodeRole) &&
+           Objects.equals(nodeRoleName, that.nodeRoleName) &&
            Objects.equals(services, that.services);
   }
 
   @Override
   public int hashCode()
   {
-    return Objects.hash(druidNode, nodeRole, services);
+    return Objects.hash(druidNode, nodeRoleName, services);
   }
 
   @Override
@@ -109,7 +128,7 @@ public class DiscoveryDruidNode
   {
     return "DiscoveryDruidNode{" +
            "druidNode=" + druidNode +
-           ", nodeRole='" + nodeRole + '\'' +
+           ", nodeRole='" + nodeRoleName + '\'' +
            ", services=" + services +
            '}';
   }

@@ -24,7 +24,6 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.sun.jersey.spi.container.ResourceFilters;
 import org.apache.druid.discovery.DruidNodeDiscoveryProvider;
-import org.apache.druid.discovery.NodeRole;
 import org.apache.druid.guice.annotations.Self;
 import org.apache.druid.java.util.common.lifecycle.Lifecycle;
 import org.apache.druid.server.DruidNode;
@@ -55,7 +54,7 @@ public class SelfDiscoveryResource
   @Inject
   public SelfDiscoveryResource(
       @Self DruidNode thisDruidNode,
-      @Self Set<NodeRole> thisNodeRoles,
+      @Self Set<String> thisNodeRoles,
       DruidNodeDiscoveryProvider nodeDiscoveryProvider,
       Lifecycle lifecycle
   )

@@ -26,7 +26,6 @@ import org.apache.curator.utils.ZKPaths;
 import org.apache.druid.curator.announcement.Announcer;
 import org.apache.druid.discovery.DiscoveryDruidNode;
 import org.apache.druid.discovery.DruidNodeAnnouncer;
-import org.apache.druid.discovery.NodeRole;
 import org.apache.druid.guice.annotations.Json;
 import org.apache.druid.java.util.common.StringUtils;
 import org.apache.druid.java.util.common.logger.Logger;
@@ -35,9 +34,9 @@ import org.apache.druid.server.initialization.ZkPathsConfig;
 
 public class CuratorDruidNodeAnnouncer implements DruidNodeAnnouncer
 {
-  static String makeNodeAnnouncementPath(ZkPathsConfig config, NodeRole nodeRole, DruidNode node)
+  static String makeNodeAnnouncementPath(ZkPathsConfig config, String nodeRole, DruidNode node)
   {
-    return ZKPaths.makePath(config.getInternalDiscoveryPath(), nodeRole.toString(), node.getHostAndPortToUse());
+    return ZKPaths.makePath(config.getInternalDiscoveryPath(), nodeRole, node.getHostAndPortToUse());
   }
 
   private static final Logger log = new Logger(CuratorDruidNodeAnnouncer.class);
@@ -63,7 +62,7 @@ public class CuratorDruidNodeAnnouncer implements DruidNodeAnnouncer
       log.debug("Announcing self [%s].", asString);
 
       String path =
-          makeNodeAnnouncementPath(config, discoveryDruidNode.getNodeRole(), discoveryDruidNode.getDruidNode());
+          makeNodeAnnouncementPath(config, getNodeRole(discoveryDruidNode), discoveryDruidNode.getDruidNode());
       announcer.announce(path, StringUtils.toUtf8(asString));
 
       log.info("Announced self [%s].", asString);
@@ -80,9 +79,10 @@ public class CuratorDruidNodeAnnouncer implements DruidNodeAnnouncer
       final String asString = jsonMapper.writeValueAsString(discoveryDruidNode);
 
       log.debug("Unannouncing self [%s].", asString);
+      final String nodeRole = getNodeRole(discoveryDruidNode);
 
       String path =
-          makeNodeAnnouncementPath(config, discoveryDruidNode.getNodeRole(), discoveryDruidNode.getDruidNode());
+          makeNodeAnnouncementPath(config, getNodeRole(discoveryDruidNode), discoveryDruidNode.getDruidNode());
       announcer.unannounce(path);
 
       log.info("Unannounced self [%s].", asString);
@@ -90,5 +90,13 @@ public class CuratorDruidNodeAnnouncer implements DruidNodeAnnouncer
     catch (JsonProcessingException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  private String getNodeRole(DiscoveryDruidNode discoveryDruidNode)
+  {
+    // for backwards compat, curator announcements expect NodeRole.toString instead of json name
+    return discoveryDruidNode.getNodeRole() != null ?
+           discoveryDruidNode.getNodeRole().toString() :
+           discoveryDruidNode.getNodeRoleName();
   }
 }

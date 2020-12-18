@@ -185,13 +185,13 @@ public class DruidNodeDiscoveryProviderTest
     private List<DruidNodeDiscovery.Listener> listeners = new ArrayList<>();
 
     @Override
-    public BooleanSupplier getForNode(DruidNode node, NodeRole nodeRole)
+    public BooleanSupplier getForNode(DruidNode node, String nodeRole)
     {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public DruidNodeDiscovery getForNodeRole(NodeRole nodeRole)
+    public DruidNodeDiscovery getForNodeRole(String nodeRole)
     {
       return new DruidNodeDiscovery()
       {

@@ -41,7 +41,7 @@ public class BaseNodeRoleWatcherTest
   {
     BaseNodeRoleWatcher nodeRoleWatcher = new BaseNodeRoleWatcher(
         Execs.directExecutor(),
-        NodeRole.BROKER
+        NodeRole.BROKER.getJsonName()
     );
 
     DiscoveryDruidNode broker1 = buildDiscoveryDruidNode(NodeRole.BROKER, "broker1");

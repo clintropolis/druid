@@ -138,7 +138,7 @@ public class K8sDruidNodeDiscoveryProviderTest
     );
     discoveryProvider.start();
 
-    K8sDruidNodeDiscoveryProvider.NodeRoleWatcher nodeDiscovery = discoveryProvider.getForNodeRole(NodeRole.ROUTER, false);
+    K8sDruidNodeDiscoveryProvider.NodeRoleWatcher nodeDiscovery = discoveryProvider.getForNodeRole(NodeRole.ROUTER.getJsonName(), false);
 
     MockListener testListener = new MockListener(
         ImmutableList.of(

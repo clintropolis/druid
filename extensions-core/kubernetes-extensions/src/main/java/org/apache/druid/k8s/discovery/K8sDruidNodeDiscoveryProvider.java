@@ -28,7 +28,6 @@ import org.apache.druid.discovery.BaseNodeRoleWatcher;
 import org.apache.druid.discovery.DiscoveryDruidNode;
 import org.apache.druid.discovery.DruidNodeDiscovery;
 import org.apache.druid.discovery.DruidNodeDiscoveryProvider;
-import org.apache.druid.discovery.NodeRole;
 import org.apache.druid.guice.ManageLifecycle;
 import org.apache.druid.java.util.common.ISE;
 import org.apache.druid.java.util.common.concurrent.Execs;
@@ -59,7 +58,7 @@ public class K8sDruidNodeDiscoveryProvider extends DruidNodeDiscoveryProvider
 
   private ExecutorService listenerExecutor;
 
-  private final ConcurrentHashMap<NodeRole, NodeRoleWatcher> nodeTypeWatchers = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, NodeRoleWatcher> nodeTypeWatchers = new ConcurrentHashMap<>();
 
   private final LifecycleLock lifecycleLock = new LifecycleLock();
 
@@ -92,7 +91,7 @@ public class K8sDruidNodeDiscoveryProvider extends DruidNodeDiscoveryProvider
   }
 
   @Override
-  public BooleanSupplier getForNode(DruidNode node, NodeRole nodeRole)
+  public BooleanSupplier getForNode(DruidNode node, String nodeRole)
   {
     return () -> !k8sApiClient.listPods(
         podInfo.getPodNamespace(),
@@ -102,13 +101,13 @@ public class K8sDruidNodeDiscoveryProvider extends DruidNodeDiscoveryProvider
   }
 
   @Override
-  public DruidNodeDiscovery getForNodeRole(NodeRole nodeType)
+  public DruidNodeDiscovery getForNodeRole(String nodeType)
   {
     return getForNodeRole(nodeType, true);
   }
 
   @VisibleForTesting
-  NodeRoleWatcher getForNodeRole(NodeRole nodeType, boolean startAfterCreation)
+  NodeRoleWatcher getForNodeRole(String nodeType, boolean startAfterCreation)
   {
     Preconditions.checkState(lifecycleLock.awaitStarted(1, TimeUnit.MILLISECONDS));
 
@@ -190,14 +189,14 @@ public class K8sDruidNodeDiscoveryProvider extends DruidNodeDiscoveryProvider
     private final AtomicReference<Closeable> watchRef = new AtomicReference<>();
     private static final Closeable STOP_MARKER = () -> {};
 
-    private final NodeRole nodeRole;
+    private final String nodeRole;
     private final BaseNodeRoleWatcher baseNodeRoleWatcher;
 
     private final long watcherErrorRetryWaitMS;
 
     NodeRoleWatcher(
         ExecutorService listenerExecutor,
-        NodeRole nodeRole,
+        String nodeRole,
         PodInfo podInfo,
         K8sDiscoveryConfig discoveryConfig,
         K8sApiClient k8sApiClient,
@@ -316,7 +315,7 @@ public class K8sDruidNodeDiscoveryProvider extends DruidNodeDiscoveryProvider
 
       try {
         LOGGER.info("Starting NodeRoleWatcher for [%s]...", nodeRole);
-        this.watchExecutor = Execs.singleThreaded(this.getClass().getName() + nodeRole.getJsonName());
+        this.watchExecutor = Execs.singleThreaded(this.getClass().getName() + nodeRole);
         watchExecutor.submit(this::watch);
         lifecycleLock.started();
         LOGGER.info("Started NodeRoleWatcher for [%s].", nodeRole);

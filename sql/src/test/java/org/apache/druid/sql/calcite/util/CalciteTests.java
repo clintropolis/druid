@@ -1001,14 +1001,14 @@ public class CalciteTests
     final DruidNode coordinatorNode = new DruidNode("test-coordinator", "dummy", false, 8081, null, true, false);
     FakeDruidNodeDiscoveryProvider provider = new FakeDruidNodeDiscoveryProvider(
         ImmutableMap.of(
-            NodeRole.COORDINATOR, new FakeDruidNodeDiscovery(ImmutableMap.of(NodeRole.COORDINATOR, coordinatorNode))
+            NodeRole.COORDINATOR.getJsonName(), new FakeDruidNodeDiscovery(ImmutableMap.of(NodeRole.COORDINATOR, coordinatorNode))
         )
     );
 
     final DruidNode overlordNode = new DruidNode("test-overlord", "dummy", false, 8090, null, true, false);
     FakeDruidNodeDiscoveryProvider overlordProvider = new FakeDruidNodeDiscoveryProvider(
         ImmutableMap.of(
-            NodeRole.OVERLORD, new FakeDruidNodeDiscovery(ImmutableMap.of(NodeRole.OVERLORD, coordinatorNode))
+            NodeRole.OVERLORD.getJsonName(), new FakeDruidNodeDiscovery(ImmutableMap.of(NodeRole.OVERLORD, coordinatorNode))
         )
     );
 
@@ -1190,15 +1190,15 @@ public class CalciteTests
    */
   private static class FakeDruidNodeDiscoveryProvider extends DruidNodeDiscoveryProvider
   {
-    private final Map<NodeRole, FakeDruidNodeDiscovery> nodeDiscoveries;
+    private final Map<String, FakeDruidNodeDiscovery> nodeDiscoveries;
 
-    public FakeDruidNodeDiscoveryProvider(Map<NodeRole, FakeDruidNodeDiscovery> nodeDiscoveries)
+    public FakeDruidNodeDiscoveryProvider(Map<String, FakeDruidNodeDiscovery> nodeDiscoveries)
     {
       this.nodeDiscoveries = nodeDiscoveries;
     }
 
     @Override
-    public BooleanSupplier getForNode(DruidNode node, NodeRole nodeRole)
+    public BooleanSupplier getForNode(DruidNode node, String nodeRole)
     {
       boolean get = nodeDiscoveries.getOrDefault(nodeRole, new FakeDruidNodeDiscovery())
                                    .getAllNodes()
@@ -1208,7 +1208,7 @@ public class CalciteTests
     }
 
     @Override
-    public DruidNodeDiscovery getForNodeRole(NodeRole nodeRole)
+    public DruidNodeDiscovery getForNodeRole(String nodeRole)
     {
       return nodeDiscoveries.getOrDefault(nodeRole, new FakeDruidNodeDiscovery());
     }

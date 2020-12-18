@@ -28,10 +28,20 @@ public interface K8sApiClient
 {
   void patchPod(String podName, String namespace, String jsonPatchStr);
 
-  DiscoveryDruidNodeList listPods(String namespace, String labelSelector, NodeRole nodeRole);
+  DiscoveryDruidNodeList listPods(String namespace, String labelSelector, String nodeRole);
+
+  default DiscoveryDruidNodeList listPods(String namespace, String labelSelector, NodeRole nodeRole)
+  {
+    return listPods(namespace, labelSelector, nodeRole.getJsonName());
+  }
 
   /**
    * @return NULL if history not available or else return the {@link WatchResult} object
    */
-  WatchResult watchPods(String namespace, String labelSelector, String lastKnownResourceVersion, NodeRole nodeRole);
+  WatchResult watchPods(String namespace, String labelSelector, String lastKnownResourceVersion, String nodeRole);
+
+  default WatchResult watchPods(String namespace, String labelSelector, String lastKnownResourceVersion, NodeRole nodeRole)
+  {
+    return watchPods(namespace, labelSelector, lastKnownResourceVersion, nodeRole.getJsonName());
+  }
 }

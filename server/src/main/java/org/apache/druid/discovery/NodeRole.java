@@ -21,6 +21,10 @@ package org.apache.druid.discovery;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 
+import javax.annotation.Nullable;
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * This is a historical occasion that this enum is different from {@link
  * org.apache.druid.server.coordination.ServerType} (also called "node type" in various places) because they are
@@ -43,6 +47,13 @@ public enum NodeRole
   INDEXER("indexer");
 
   private final String jsonName;
+  static final Map<String, NodeRole> JSON_MAP = new HashMap<>();
+
+  static {
+    for (NodeRole nodeRole : NodeRole.values()) {
+      JSON_MAP.put(nodeRole.jsonName, nodeRole);
+    }
+  }
 
   NodeRole(String jsonName)
   {
@@ -59,5 +70,11 @@ public enum NodeRole
   public String getJsonName()
   {
     return jsonName;
+  }
+
+  @Nullable
+  public static NodeRole ofJson(String jsonName)
+  {
+    return JSON_MAP.get(jsonName);
   }
 }

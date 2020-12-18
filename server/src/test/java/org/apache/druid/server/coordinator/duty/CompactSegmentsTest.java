@@ -37,7 +37,6 @@ import org.apache.druid.client.indexing.IndexingWorkerInfo;
 import org.apache.druid.discovery.DruidLeaderClient;
 import org.apache.druid.discovery.DruidNodeDiscovery;
 import org.apache.druid.discovery.DruidNodeDiscoveryProvider;
-import org.apache.druid.discovery.NodeRole;
 import org.apache.druid.indexer.partitions.DynamicPartitionsSpec;
 import org.apache.druid.indexer.partitions.HashedPartitionsSpec;
 import org.apache.druid.indexer.partitions.PartitionsSpec;
@@ -1002,13 +1001,13 @@ public class CompactSegmentsTest
   private static class TestNodeDiscoveryProvider extends DruidNodeDiscoveryProvider
   {
     @Override
-    public BooleanSupplier getForNode(DruidNode node, NodeRole nodeRole)
+    public BooleanSupplier getForNode(DruidNode node, String nodeRole)
     {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public DruidNodeDiscovery getForNodeRole(NodeRole nodeRole)
+    public DruidNodeDiscovery getForNodeRole(String nodeRole)
     {
       return EasyMock.niceMock(DruidNodeDiscovery.class);
     }

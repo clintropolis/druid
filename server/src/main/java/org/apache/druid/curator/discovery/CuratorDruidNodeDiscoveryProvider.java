@@ -72,7 +72,7 @@ public class CuratorDruidNodeDiscoveryProvider extends DruidNodeDiscoveryProvide
 
   private ExecutorService listenerExecutor;
 
-  private final ConcurrentHashMap<NodeRole, NodeRoleWatcher> nodeRoleWatchers = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, NodeRoleWatcher> nodeRoleWatchers = new ConcurrentHashMap<>();
   private final ConcurrentLinkedQueue<NodeDiscoverer> nodeDiscoverers = new ConcurrentLinkedQueue<>();
 
   private final LifecycleLock lifecycleLock = new LifecycleLock();
@@ -90,7 +90,7 @@ public class CuratorDruidNodeDiscoveryProvider extends DruidNodeDiscoveryProvide
   }
 
   @Override
-  public BooleanSupplier getForNode(DruidNode node, NodeRole nodeRole)
+  public BooleanSupplier getForNode(DruidNode node, String nodeRole)
   {
     Preconditions.checkState(lifecycleLock.isStarted());
     log.debug("Creating a NodeDiscoverer for node [%s] and role [%s]", node, nodeRole);
@@ -100,7 +100,7 @@ public class CuratorDruidNodeDiscoveryProvider extends DruidNodeDiscoveryProvide
   }
 
   @Override
-  public DruidNodeDiscovery getForNodeRole(NodeRole nodeRole)
+  public DruidNodeDiscovery getForNodeRole(String nodeRole)
   {
     Preconditions.checkState(lifecycleLock.isStarted());
 
@@ -158,13 +158,19 @@ public class CuratorDruidNodeDiscoveryProvider extends DruidNodeDiscoveryProvide
     CloseableUtils.closeBoth(closer, listenerExecutor::shutdownNow);
   }
 
+  static String getNodeRolePath(String nodeRole)
+  {
+    NodeRole knownRole = NodeRole.ofJson(nodeRole);
+    return knownRole != null ? knownRole.toString() : nodeRole;
+  }
+
   private static class NodeRoleWatcher implements DruidNodeDiscovery, Closeable
   {
     private static final Logger log = new Logger(NodeRoleWatcher.class);
 
     private final CuratorFramework curatorFramework;
 
-    private final NodeRole nodeRole;
+    private final String nodeRole;
     private final ObjectMapper jsonMapper;
     private final BaseNodeRoleWatcher baseNodeRoleWatcher;
 
@@ -178,17 +184,18 @@ public class CuratorDruidNodeDiscoveryProvider extends DruidNodeDiscoveryProvide
         CuratorFramework curatorFramework,
         String basePath,
         ObjectMapper jsonMapper,
-        NodeRole nodeRole
+        String nodeRole
     )
     {
       this.curatorFramework = curatorFramework;
       this.nodeRole = nodeRole;
+
       this.jsonMapper = jsonMapper;
       this.baseNodeRoleWatcher = new BaseNodeRoleWatcher(listenerExecutor, nodeRole);
 
       // This is required to be single threaded from docs in PathChildrenCache.
       this.cacheExecutor = Execs.singleThreaded(
-          StringUtils.format("NodeRoleWatcher[%s]", StringUtils.encodeForFormat(nodeRole.toString()))
+          StringUtils.format("NodeRoleWatcher[%s]", StringUtils.encodeForFormat(nodeRole))
       );
       cache = new PathChildrenCacheFactory.Builder()
           //NOTE: cacheData is temporarily set to false and we get data directly from ZK on each event.
@@ -199,7 +206,7 @@ public class CuratorDruidNodeDiscoveryProvider extends DruidNodeDiscoveryProvide
           .withCompressed(true)
           .withExecutorService(cacheExecutor)
           .build()
-          .make(curatorFramework, ZKPaths.makePath(basePath, nodeRole.toString()));
+          .make(curatorFramework, ZKPaths.makePath(basePath, getNodeRolePath(nodeRole)));
 
       try {
         cache.getListenable().addListener((client, event) -> handleChildEvent(event));
@@ -246,12 +253,12 @@ public class CuratorDruidNodeDiscoveryProvider extends DruidNodeDiscoveryProvide
               break;
             }
             default: {
-              log.warn("Ignored event type[%s] for node watcher of role[%s].", event.getType(), nodeRole.getJsonName());
+              log.warn("Ignored event type[%s] for node watcher of role[%s].", event.getType(), nodeRole);
             }
           }
         }
         catch (Exception ex) {
-          log.error(ex, "Unknown error in node watcher of role[%s].", nodeRole.getJsonName());
+          log.error(ex, "Unknown error in node watcher of role[%s].", nodeRole);
         }
       }
     }
@@ -304,18 +311,18 @@ public class CuratorDruidNodeDiscoveryProvider extends DruidNodeDiscoveryProvide
   {
     private final ObjectMapper jsonMapper;
     private final NodeCache nodeCache;
-    private final NodeRole nodeRole;
+    private final String nodeRole;
 
     private NodeDiscoverer(
         ZkPathsConfig config,
         ObjectMapper jsonMapper,
         CuratorFramework curatorFramework,
         DruidNode node,
-        NodeRole nodeRole
+        String nodeRole
     )
     {
       this.jsonMapper = jsonMapper;
-      String path = CuratorDruidNodeAnnouncer.makeNodeAnnouncementPath(config, nodeRole, node);
+      String path = CuratorDruidNodeAnnouncer.makeNodeAnnouncementPath(config, getNodeRolePath(nodeRole), node);
       nodeCache = new NodeCache(curatorFramework, path, true);
       this.nodeRole = nodeRole;
 
@@ -346,11 +353,11 @@ public class CuratorDruidNodeDiscoveryProvider extends DruidNodeDiscoveryProvide
         return false;
       }
 
-      if (!nodeRole.equals(druidNode.getNodeRole())) {
+      if (!nodeRole.equals(druidNode.getNodeRoleName())) {
         log.error(
             "Node[%s] of role[%s] add is discovered by node watcher of different node role. Ignored.",
             druidNode.getDruidNode().getUriToUse(),
-            druidNode.getNodeRole().getJsonName()
+            druidNode.getNodeRoleName()
         );
         return false;
       }
@@ -358,7 +365,7 @@ public class CuratorDruidNodeDiscoveryProvider extends DruidNodeDiscoveryProvide
       log.info(
           "Node[%s] of role[%s] appeared.",
           druidNode.getDruidNode().getUriToUse(),
-          druidNode.getNodeRole().getJsonName()
+          druidNode.getNodeRoleName()
       );
       return true;
     }

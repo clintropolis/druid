@@ -52,10 +52,20 @@ public abstract class DruidNodeDiscoveryProvider
   private final ConcurrentHashMap<String, ServiceDruidNodeDiscovery> serviceDiscoveryMap =
       new ConcurrentHashMap<>(SERVICE_TO_NODE_TYPES.size());
 
-  public abstract BooleanSupplier getForNode(DruidNode node, NodeRole nodeRole);
+  public abstract BooleanSupplier getForNode(DruidNode node, String nodeRole);
+
+  public BooleanSupplier getForNode(DruidNode node, NodeRole nodeRole)
+  {
+    return getForNode(node, nodeRole != null ? nodeRole.getJsonName() : null);
+  }
 
   /** Get a {@link DruidNodeDiscovery} instance to discover nodes of the given node role. */
-  public abstract DruidNodeDiscovery getForNodeRole(NodeRole nodeRole);
+  public abstract DruidNodeDiscovery getForNodeRole(String nodeRole);
+
+  public DruidNodeDiscovery getForNodeRole(NodeRole nodeRole)
+  {
+    return getForNodeRole(nodeRole != null ? nodeRole.getJsonName() : null);
+  }
 
   /**
    * Get DruidNodeDiscovery instance to discover nodes that announce given service in its metadata.

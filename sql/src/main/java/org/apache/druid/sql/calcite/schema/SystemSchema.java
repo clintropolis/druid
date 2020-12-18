@@ -582,7 +582,7 @@ public class SystemSchema extends AbstractSchema
           node.getHost(),
           (long) node.getPlaintextPort(),
           (long) node.getTlsPort(),
-          StringUtils.toLowerCase(discoveryDruidNode.getNodeRole().toString()),
+          toTableNodeRole(discoveryDruidNode),
           null,
           UNKNOWN_SIZE,
           UNKNOWN_SIZE,
@@ -601,7 +601,7 @@ public class SystemSchema extends AbstractSchema
           node.getHost(),
           (long) node.getPlaintextPort(),
           (long) node.getTlsPort(),
-          StringUtils.toLowerCase(discoveryDruidNode.getNodeRole().toString()),
+          toTableNodeRole(discoveryDruidNode),
           null,
           UNKNOWN_SIZE,
           UNKNOWN_SIZE,
@@ -635,7 +635,7 @@ public class SystemSchema extends AbstractSchema
           node.getHost(),
           (long) node.getPlaintextPort(),
           (long) node.getTlsPort(),
-          StringUtils.toLowerCase(discoveryDruidNode.getNodeRole().toString()),
+          toTableNodeRole(discoveryDruidNode),
           druidServerToUse.getTier(),
           currentSize,
           druidServerToUse.getMaxSize(),
@@ -680,6 +680,14 @@ public class SystemSchema extends AbstractSchema
                    .flatMap(nodeRole -> druidNodeDiscoveryProvider.getForNodeRole(nodeRole).getAllNodes().stream())
                    .collect(Collectors.toList())
                    .iterator();
+    }
+
+    private static String toTableNodeRole(DiscoveryDruidNode node)
+    {
+      if (node.getNodeRole() != null) {
+        return StringUtils.toLowerCase(node.getNodeRole().toString());
+      }
+      return node.getNodeRoleName();
     }
   }
 
