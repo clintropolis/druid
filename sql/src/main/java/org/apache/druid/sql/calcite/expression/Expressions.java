@@ -24,6 +24,7 @@ import com.google.common.collect.Iterables;
 import org.apache.calcite.jdbc.JavaTypeFactoryImpl;
 import org.apache.calcite.rel.core.Project;
 import org.apache.calcite.rex.RexCall;
+import org.apache.calcite.rex.RexFieldAccess;
 import org.apache.calcite.rex.RexInputRef;
 import org.apache.calcite.rex.RexLiteral;
 import org.apache.calcite.rex.RexNode;
@@ -93,12 +94,7 @@ public class Expressions
   )
   {
     if (project == null) {
-      // Gian doesn't think the factory impl matters here, he's likely correct.  But, upon reading what this is doing,
-      // we are re-building the list of things in the RelDataType for every single call to `fromFieldAccess`.
-      // `fromFieldAccess` is called pretty regularly in pretty low-level areas of the code, so it would make sense
-      // that we are perhaps re-creating the exact same object over and over and over and over again and wasting CPU
-      // cycles.  It would likely be good to refactor the code such that we ensure we only ever compute the thing
-      // once and then reuse it.
+      // I don't think the factory impl matters here.
       return RexInputRef.of(fieldNumber, RowSignatures.toRelDataType(rowSignature, new JavaTypeFactoryImpl()));
     } else {
       return project.getChildExps().get(fieldNumber);
@@ -210,6 +206,8 @@ public class Expressions
     final SqlKind kind = rexNode.getKind();
     if (kind == SqlKind.INPUT_REF) {
       return inputRefToDruidExpression(rowSignature, rexNode);
+    } else if (kind == SqlKind.FIELD_ACCESS) {
+      return fieldAccessToDruidExpression(rowSignature, rexNode);
     } else if (rexNode instanceof RexCall) {
       return rexCallToDruidExpression(plannerContext, rowSignature, rexNode, postAggregatorVisitor);
     } else if (kind == SqlKind.LITERAL) {
@@ -231,6 +229,22 @@ public class Expressions
     final Optional<ColumnType> columnType = rowSignature.getColumnType(ref.getIndex());
     if (columnName == null) {
       throw new ISE("Expression referred to nonexistent index[%d]", ref.getIndex());
+    }
+
+    return DruidExpression.ofColumn(columnType.orElse(null), columnName);
+  }
+
+  private static DruidExpression fieldAccessToDruidExpression(
+      final RowSignature rowSignature,
+      final RexNode rexNode
+  )
+  {
+    // Translate field references.
+    final RexFieldAccess ref = (RexFieldAccess) rexNode;
+    final String columnName = rowSignature.getColumnName(ref.getField().getIndex());
+    final Optional<ColumnType> columnType = rowSignature.getColumnType(ref.getField().getIndex());
+    if (columnName == null) {
+      throw new ISE("Expression referred to nonexistent index[%d]", ref.getField().getIndex());
     }
 
     return DruidExpression.ofColumn(columnType.orElse(null), columnName);
