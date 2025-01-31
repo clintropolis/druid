@@ -34,6 +34,7 @@ import org.apache.druid.segment.writeout.SegmentWriteOutMedium;
 import org.apache.druid.segment.writeout.TmpFileSegmentWriteOutMediumFactory;
 import org.apache.druid.segment.writeout.WriteOutBytes;
 import org.apache.druid.utils.CloseableUtils;
+import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -244,7 +245,8 @@ public class V3CompressedVSizeColumnarMultiIntsSerializerTest
       // read from ByteBuffer and check values
       V3CompressedVSizeColumnarMultiIntsSupplier supplierFromByteBuffer = V3CompressedVSizeColumnarMultiIntsSupplier.fromByteBuffer(
           ByteBuffer.wrap(IOUtils.toByteArray(writeOutBytes.asInputStream())),
-          byteOrder
+          byteOrder,
+          EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
       );
 
       try (final ColumnarMultiInts columnarMultiInts = supplierFromByteBuffer.get()) {
@@ -316,7 +318,11 @@ public class V3CompressedVSizeColumnarMultiIntsSerializerTest
       SmooshedFileMapper mapper = Smoosh.map(tmpDirectory);
 
       V3CompressedVSizeColumnarMultiIntsSupplier supplierFromByteBuffer =
-          V3CompressedVSizeColumnarMultiIntsSupplier.fromByteBuffer(mapper.mapFile("test"), byteOrder);
+          V3CompressedVSizeColumnarMultiIntsSupplier.fromByteBuffer(
+              mapper.mapFile("test"),
+              byteOrder,
+              mapper
+          );
       ColumnarMultiInts columnarMultiInts = supplierFromByteBuffer.get();
       Assert.assertEquals(columnarMultiInts.size(), vals.size());
       for (int i = 0; i < vals.size(); ++i) {

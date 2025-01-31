@@ -22,6 +22,7 @@ package org.apache.druid.benchmark.compression;
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import org.apache.druid.java.util.common.io.Closer;
+import org.apache.druid.java.util.common.io.smoosh.SmooshedFileMapper;
 import org.apache.druid.segment.data.ColumnarInts;
 import org.apache.druid.segment.data.ColumnarMultiInts;
 import org.apache.druid.segment.data.CompressedVSizeColumnarMultiIntsSupplier;
@@ -30,6 +31,7 @@ import org.apache.druid.segment.data.IndexedInts;
 import org.apache.druid.segment.data.VSizeColumnarInts;
 import org.apache.druid.segment.data.VSizeColumnarMultiInts;
 import org.apache.druid.segment.data.WritableSupplier;
+import org.easymock.EasyMock;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Mode;
@@ -95,7 +97,8 @@ public class CompressedVSizeColumnarMultiIntsBenchmark
     );
     this.compressed = CompressedVSizeColumnarMultiIntsSupplier.fromByteBuffer(
         bufferCompressed,
-        ByteOrder.nativeOrder()
+        ByteOrder.nativeOrder(),
+        EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
     ).get();
 
     final ByteBuffer bufferUncompressed = serialize(

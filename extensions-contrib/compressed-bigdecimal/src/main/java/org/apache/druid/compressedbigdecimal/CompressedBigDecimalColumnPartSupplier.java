@@ -22,6 +22,7 @@ package org.apache.druid.compressedbigdecimal;
 
 import com.google.common.base.Supplier;
 import org.apache.druid.java.util.common.IAE;
+import org.apache.druid.java.util.common.io.smoosh.SmooshedFileMapper;
 import org.apache.druid.segment.IndexIO;
 import org.apache.druid.segment.column.ComplexColumn;
 import org.apache.druid.segment.data.CompressedVSizeColumnarIntsSupplier;
@@ -43,7 +44,8 @@ public class CompressedBigDecimalColumnPartSupplier implements Supplier<ComplexC
    * @return new instance of CompressedBigDecimalColumnPartSupplier
    */
   public static CompressedBigDecimalColumnPartSupplier fromByteBuffer(
-      ByteBuffer buffer
+      ByteBuffer buffer,
+      SmooshedFileMapper smooshedFileMapper
   )
   {
     byte versionFromBuffer = buffer.get();
@@ -53,11 +55,16 @@ public class CompressedBigDecimalColumnPartSupplier implements Supplier<ComplexC
 
       CompressedVSizeColumnarIntsSupplier scaleSupplier = CompressedVSizeColumnarIntsSupplier.fromByteBuffer(
           buffer,
-          IndexIO.BYTE_ORDER
+          IndexIO.BYTE_ORDER,
+          smooshedFileMapper
       );
 
       V3CompressedVSizeColumnarMultiIntsSupplier magnitudeSupplier =
-          V3CompressedVSizeColumnarMultiIntsSupplier.fromByteBuffer(buffer, IndexIO.BYTE_ORDER);
+          V3CompressedVSizeColumnarMultiIntsSupplier.fromByteBuffer(
+              buffer,
+              IndexIO.BYTE_ORDER,
+              smooshedFileMapper
+          );
 
       return new CompressedBigDecimalColumnPartSupplier(
           buffer.position() - positionStart,

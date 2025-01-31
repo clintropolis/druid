@@ -21,6 +21,7 @@ package org.apache.druid.segment.data;
 
 import com.google.common.base.Supplier;
 import org.apache.druid.java.util.common.IAE;
+import org.apache.druid.java.util.common.io.smoosh.SmooshedFileMapper;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -36,7 +37,8 @@ public class CompressedColumnarDoublesSuppliers
 
   public static Supplier<ColumnarDoubles> fromByteBuffer(
       ByteBuffer buffer,
-      ByteOrder order
+      ByteOrder order,
+      SmooshedFileMapper smooshedFileMapper
   )
   {
     byte versionFromBuffer = buffer.get();
@@ -54,7 +56,8 @@ public class CompressedColumnarDoublesSuppliers
           sizePer,
           buffer.asReadOnlyBuffer(),
           order,
-          compression
+          compression,
+          smooshedFileMapper
       );
     }
     throw new IAE("Unknown version[%s]", versionFromBuffer);

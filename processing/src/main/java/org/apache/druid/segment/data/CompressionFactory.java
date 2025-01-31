@@ -25,6 +25,7 @@ import com.google.common.base.Supplier;
 import org.apache.druid.java.util.common.IAE;
 import org.apache.druid.java.util.common.StringUtils;
 import org.apache.druid.java.util.common.io.Closer;
+import org.apache.druid.java.util.common.io.smoosh.SmooshedFileMapper;
 import org.apache.druid.segment.serde.MetaSerdeHelper;
 import org.apache.druid.segment.writeout.SegmentWriteOutMedium;
 import org.apache.druid.segment.writeout.WriteOutBytes;
@@ -312,7 +313,8 @@ public class CompressionFactory
       ByteBuffer fromBuffer,
       ByteOrder order,
       LongEncodingFormat encodingFormat,
-      CompressionStrategy strategy
+      CompressionStrategy strategy,
+      SmooshedFileMapper smooshedFileMapper
   )
   {
     if (strategy == CompressionStrategy.NONE) {
@@ -324,7 +326,8 @@ public class CompressionFactory
           fromBuffer,
           order,
           encodingFormat.getReader(fromBuffer, order),
-          strategy
+          strategy,
+          smooshedFileMapper
       );
     }
   }
@@ -378,13 +381,14 @@ public class CompressionFactory
       int sizePer,
       ByteBuffer fromBuffer,
       ByteOrder order,
-      CompressionStrategy strategy
+      CompressionStrategy strategy,
+      SmooshedFileMapper smooshedFileMapper
   )
   {
     if (strategy == CompressionStrategy.NONE) {
       return new EntireLayoutColumnarFloatsSupplier(totalSize, fromBuffer, order);
     } else {
-      return new BlockLayoutColumnarFloatsSupplier(totalSize, sizePer, fromBuffer, order, strategy);
+      return new BlockLayoutColumnarFloatsSupplier(totalSize, sizePer, fromBuffer, order, strategy, smooshedFileMapper);
     }
   }
 
@@ -416,14 +420,22 @@ public class CompressionFactory
       int sizePer,
       ByteBuffer fromBuffer,
       ByteOrder byteOrder,
-      CompressionStrategy strategy
+      CompressionStrategy strategy,
+      SmooshedFileMapper smooshedFileMapper
   )
   {
     switch (strategy) {
       case NONE:
         return new EntireLayoutColumnarDoublesSupplier(totalSize, fromBuffer, byteOrder);
       default:
-        return new BlockLayoutColumnarDoublesSupplier(totalSize, sizePer, fromBuffer, byteOrder, strategy);
+        return new BlockLayoutColumnarDoublesSupplier(
+            totalSize,
+            sizePer,
+            fromBuffer,
+            byteOrder,
+            strategy,
+            smooshedFileMapper
+        );
     }
 
   }

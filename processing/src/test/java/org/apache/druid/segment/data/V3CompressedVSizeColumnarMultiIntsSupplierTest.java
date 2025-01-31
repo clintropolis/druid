@@ -22,6 +22,8 @@ package org.apache.druid.segment.data;
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import org.apache.druid.java.util.common.io.Closer;
+import org.apache.druid.java.util.common.io.smoosh.SmooshedFileMapper;
+import org.easymock.EasyMock;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -85,7 +87,8 @@ public class V3CompressedVSizeColumnarMultiIntsSupplierTest extends CompressedVS
     return wrapSupplier(
         V3CompressedVSizeColumnarMultiIntsSupplier.fromByteBuffer(
             buffer,
-            ByteOrder.nativeOrder()
+            ByteOrder.nativeOrder(),
+            EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
         ),
         closer
     );

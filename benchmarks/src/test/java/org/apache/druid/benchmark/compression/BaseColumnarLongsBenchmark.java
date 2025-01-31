@@ -21,6 +21,7 @@ package org.apache.druid.benchmark.compression;
 
 import org.apache.druid.collections.bitmap.WrappedImmutableRoaringBitmap;
 import org.apache.druid.java.util.common.RE;
+import org.apache.druid.java.util.common.io.smoosh.SmooshedFileMapper;
 import org.apache.druid.segment.BitmapOffset;
 import org.apache.druid.segment.SimpleAscendingOffset;
 import org.apache.druid.segment.data.ColumnarLongs;
@@ -34,6 +35,7 @@ import org.apache.druid.segment.vector.NoFilterVectorOffset;
 import org.apache.druid.segment.vector.VectorOffset;
 import org.apache.druid.segment.writeout.OnHeapMemorySegmentWriteOutMedium;
 import org.apache.druid.segment.writeout.SegmentWriteOutMedium;
+import org.easymock.EasyMock;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
@@ -318,7 +320,11 @@ public class BaseColumnarLongsBenchmark
       case "none-longs":
       case "zstd-auto":
       case "zstd-longs":
-        return CompressedColumnarLongsSupplier.fromByteBuffer(buffer, ByteOrder.LITTLE_ENDIAN).get();
+        return CompressedColumnarLongsSupplier.fromByteBuffer(
+            buffer,
+            ByteOrder.LITTLE_ENDIAN,
+            EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
+        ).get();
     }
 
     throw new IllegalArgumentException("unknown encoding");

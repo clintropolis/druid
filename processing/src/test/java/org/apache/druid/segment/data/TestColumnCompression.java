@@ -23,6 +23,8 @@ import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import org.apache.druid.java.util.common.ByteBufferUtils;
 import org.apache.druid.java.util.common.io.Closer;
+import org.apache.druid.java.util.common.io.smoosh.SmooshedFileMapper;
+import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -92,7 +94,8 @@ public class TestColumnCompression
     );
     this.compressed = CompressedVSizeColumnarMultiIntsSupplier.fromByteBuffer(
         buffer,
-        ByteOrder.nativeOrder()
+        ByteOrder.nativeOrder(),
+        EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
     ).get();
 
     filter = new BitSet();

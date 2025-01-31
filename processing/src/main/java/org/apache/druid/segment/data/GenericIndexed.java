@@ -174,21 +174,6 @@ public abstract class GenericIndexed<T> implements CloseableIndexed<T>, Serializ
     }
   };
 
-  public static <T> GenericIndexed<T> read(ByteBuffer buffer, ObjectStrategy<T> strategy)
-  {
-    byte versionFromBuffer = buffer.get();
-
-    if (VERSION_ONE == versionFromBuffer) {
-      return createGenericIndexedVersionOne(buffer, strategy);
-    } else if (VERSION_TWO == versionFromBuffer) {
-      throw new IAE(
-          "use read(ByteBuffer buffer, ObjectStrategy<T> strategy, SmooshedFileMapper fileMapper)"
-          + " to read version 2 indexed."
-      );
-    }
-    throw new IAE("Unknown version[%d]", (int) versionFromBuffer);
-  }
-
   public static <T> GenericIndexed<T> read(ByteBuffer buffer, ObjectStrategy<T> strategy, SmooshedFileMapper fileMapper)
   {
     byte versionFromBuffer = buffer.get();

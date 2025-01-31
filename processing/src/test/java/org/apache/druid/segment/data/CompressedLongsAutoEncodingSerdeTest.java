@@ -20,8 +20,10 @@
 package org.apache.druid.segment.data;
 
 import org.apache.druid.java.util.common.StringUtils;
+import org.apache.druid.java.util.common.io.smoosh.SmooshedFileMapper;
 import org.apache.druid.segment.writeout.OffHeapMemorySegmentWriteOutMedium;
 import org.apache.druid.segment.writeout.SegmentWriteOutMedium;
+import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -115,7 +117,11 @@ public class CompressedLongsAutoEncodingSerdeTest
     serializer.writeTo(Channels.newChannel(baos), null);
     Assert.assertEquals(baos.size(), serializer.getSerializedSize());
     CompressedColumnarLongsSupplier supplier =
-        CompressedColumnarLongsSupplier.fromByteBuffer(ByteBuffer.wrap(baos.toByteArray()), order);
+        CompressedColumnarLongsSupplier.fromByteBuffer(
+            ByteBuffer.wrap(baos.toByteArray()),
+            order,
+            EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
+        );
     ColumnarLongs longs = supplier.get();
 
     assertIndexMatchesVals(longs, values);

@@ -34,6 +34,7 @@ import org.apache.druid.segment.writeout.SegmentWriteOutMedium;
 import org.apache.druid.segment.writeout.TmpFileSegmentWriteOutMediumFactory;
 import org.apache.druid.segment.writeout.WriteOutBytes;
 import org.apache.druid.utils.CloseableUtils;
+import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -149,7 +150,8 @@ public class CompressedVSizeColumnarIntsSerializerTest
     // read from ByteBuffer and check values
     CompressedVSizeColumnarIntsSupplier supplierFromByteBuffer = CompressedVSizeColumnarIntsSupplier.fromByteBuffer(
         ByteBuffer.wrap(IOUtils.toByteArray(writeOutBytes.asInputStream())),
-        byteOrder
+        byteOrder,
+        EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
     );
     ColumnarInts columnarInts = supplierFromByteBuffer.get();
     for (int i = 0; i < vals.length; ++i) {
@@ -264,7 +266,8 @@ public class CompressedVSizeColumnarIntsSerializerTest
 
     CompressedVSizeColumnarIntsSupplier supplierFromByteBuffer = CompressedVSizeColumnarIntsSupplier.fromByteBuffer(
         mapper.mapFile("test"),
-        byteOrder
+        byteOrder,
+        mapper
     );
 
     ColumnarInts columnarInts = supplierFromByteBuffer.get();

@@ -23,6 +23,7 @@ import com.google.common.base.Supplier;
 import org.apache.druid.io.Channels;
 import org.apache.druid.java.util.common.IAE;
 import org.apache.druid.java.util.common.io.smoosh.FileSmoosher;
+import org.apache.druid.java.util.common.io.smoosh.SmooshedFileMapper;
 import org.apache.druid.segment.serde.MetaSerdeHelper;
 import org.apache.druid.segment.serde.Serializer;
 
@@ -97,7 +98,11 @@ public class CompressedColumnarLongsSupplier implements Supplier<ColumnarLongs>,
     Channels.writeFully(channel, buffer.asReadOnlyBuffer());
   }
 
-  public static CompressedColumnarLongsSupplier fromByteBuffer(ByteBuffer buffer, ByteOrder order)
+  public static CompressedColumnarLongsSupplier fromByteBuffer(
+      ByteBuffer buffer,
+      ByteOrder order,
+      SmooshedFileMapper smooshedFileMapper
+  )
   {
     byte versionFromBuffer = buffer.get();
 
@@ -120,7 +125,8 @@ public class CompressedColumnarLongsSupplier implements Supplier<ColumnarLongs>,
           buffer.asReadOnlyBuffer(),
           order,
           encoding,
-          compression
+          compression,
+          smooshedFileMapper
       );
       return new CompressedColumnarLongsSupplier(
           totalSize,

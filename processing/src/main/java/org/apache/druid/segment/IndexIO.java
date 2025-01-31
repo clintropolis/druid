@@ -357,13 +357,14 @@ public class IndexIO
 
       CompressedColumnarLongsSupplier timestamps = CompressedColumnarLongsSupplier.fromByteBuffer(
           smooshedFiles.mapFile(makeTimeFile(inDir, BYTE_ORDER).getName()),
-          BYTE_ORDER
+          BYTE_ORDER,
+          smooshedFiles
       );
 
       Map<String, MetricHolder> metrics = Maps.newLinkedHashMap();
       for (String metric : availableMetrics) {
         final String metricFilename = makeMetricFile(inDir, metric, BYTE_ORDER).getName();
-        final MetricHolder holder = MetricHolder.fromByteBuffer(smooshedFiles.mapFile(metricFilename));
+        final MetricHolder holder = MetricHolder.fromByteBuffer(smooshedFiles, metricFilename);
 
         if (!metric.equals(holder.getName())) {
           throw new ISE("Metric[%s] loaded up metric[%s] from disk.  File names do matter.", metric, holder.getName());
@@ -385,7 +386,7 @@ public class IndexIO
             fileDimensionName
         );
 
-        dimValueUtf8Lookups.put(dimension, GenericIndexed.read(dimBuffer, GenericIndexed.UTF8_STRATEGY));
+        dimValueUtf8Lookups.put(dimension, GenericIndexed.read(dimBuffer, GenericIndexed.UTF8_STRATEGY, smooshedFiles));
         dimColumns.put(dimension, VSizeColumnarMultiInts.readFromByteBuffer(dimBuffer));
       }
 
@@ -393,7 +394,7 @@ public class IndexIO
       for (int i = 0; i < availableDimensions.size(); ++i) {
         bitmaps.put(
             SERIALIZER_UTILS.readString(invertedBuffer),
-            GenericIndexed.read(invertedBuffer, bitmapSerdeFactory.getObjectStrategy())
+            GenericIndexed.read(invertedBuffer, bitmapSerdeFactory.getObjectStrategy(), smooshedFiles)
         );
       }
 

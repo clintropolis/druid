@@ -24,9 +24,11 @@ import it.unimi.dsi.fastutil.bytes.ByteArrays;
 import org.apache.druid.data.input.InputRow;
 import org.apache.druid.hll.HyperLogLogCollector;
 import org.apache.druid.java.util.common.StringUtils;
+import org.apache.druid.java.util.common.io.smoosh.SmooshedFileMapper;
 import org.apache.druid.segment.column.ColumnBuilder;
 import org.apache.druid.segment.data.GenericIndexed;
 import org.apache.druid.segment.data.ObjectStrategy;
+import org.easymock.EasyMock;
 
 import java.nio.ByteBuffer;
 import java.util.Comparator;
@@ -93,7 +95,11 @@ public class HyperUniquesSerdeForTest extends ComplexMetricSerde
   {
     final GenericIndexed column;
     if (columnBuilder.getFileMapper() == null) {
-      column = GenericIndexed.read(byteBuffer, getObjectStrategy());
+      column = GenericIndexed.read(
+          byteBuffer,
+          getObjectStrategy(),
+          EasyMock.createMock(SmooshedFileMapper.class)// expect v1 so this is not expected to be called
+      );
     } else {
       column = GenericIndexed.read(byteBuffer, getObjectStrategy(), columnBuilder.getFileMapper());
     }

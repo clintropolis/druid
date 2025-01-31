@@ -19,7 +19,9 @@
 
 package org.apache.druid.segment.data;
 
+import org.apache.druid.java.util.common.io.smoosh.SmooshedFileMapper;
 import org.apache.druid.testing.InitializedNullHandlingTest;
+import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -126,7 +128,11 @@ public class GenericIndexedTest extends InitializedNullHandlingTest
 
     final ByteBuffer byteBuffer = ByteBuffer.wrap(baos.toByteArray());
     Assert.assertEquals(indexed.getSerializedSize(), byteBuffer.remaining());
-    GenericIndexed<String> deserialized = GenericIndexed.read(byteBuffer, GenericIndexed.STRING_STRATEGY);
+    GenericIndexed<String> deserialized = GenericIndexed.read(
+        byteBuffer,
+        GenericIndexed.STRING_STRATEGY,
+        EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
+    );
     Assert.assertEquals(0, byteBuffer.remaining());
     return deserialized;
   }

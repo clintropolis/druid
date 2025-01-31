@@ -24,6 +24,7 @@ import com.google.common.collect.ImmutableSet;
 import org.apache.druid.collections.bitmap.ImmutableBitmap;
 import org.apache.druid.collections.bitmap.MutableBitmap;
 import org.apache.druid.java.util.common.guava.Comparators;
+import org.apache.druid.java.util.common.io.smoosh.SmooshedFileMapper;
 import org.apache.druid.query.BitmapResultFactory;
 import org.apache.druid.query.DefaultBitmapResultFactory;
 import org.apache.druid.query.filter.DruidObjectPredicate;
@@ -53,6 +54,7 @@ import org.apache.druid.segment.index.semantic.StringValueSetIndexes;
 import org.apache.druid.segment.serde.Serializer;
 import org.apache.druid.segment.writeout.OnHeapMemorySegmentWriteOutMedium;
 import org.apache.druid.testing.InitializedNullHandlingTest;
+import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -146,7 +148,11 @@ public class NestedFieldColumnIndexSupplierTest extends InitializedNullHandlingT
     arrayWriter.open();
     writeToBuffer(arrayBuffer, arrayWriter);
 
-    GenericIndexed<ByteBuffer> strings = GenericIndexed.read(stringBuffer, GenericIndexed.UTF8_STRATEGY);
+    GenericIndexed<ByteBuffer> strings = GenericIndexed.read(
+        stringBuffer,
+        GenericIndexed.UTF8_STRATEGY,
+        EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
+    );
     globalStrings = () -> strings.singleThreaded();
     globalLongs = FixedIndexed.read(longBuffer, TypeStrategies.LONG, ByteOrder.nativeOrder(), Long.BYTES);
     globalDoubles = FixedIndexed.read(doubleBuffer, TypeStrategies.DOUBLE, ByteOrder.nativeOrder(), Double.BYTES);
@@ -1241,7 +1247,11 @@ public class NestedFieldColumnIndexSupplierTest extends InitializedNullHandlingT
     doubleWriter.open();
     writeToBuffer(doubleBuffer, doubleWriter);
 
-    GenericIndexed<ByteBuffer> strings = GenericIndexed.read(stringBuffer, GenericIndexed.UTF8_STRATEGY);
+    GenericIndexed<ByteBuffer> strings = GenericIndexed.read(
+        stringBuffer,
+        GenericIndexed.UTF8_STRATEGY,
+        EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
+    );
     Supplier<Indexed<ByteBuffer>> stringIndexed = () -> strings.singleThreaded();
     Supplier<FixedIndexed<Long>> longIndexed = FixedIndexed.read(longBuffer, TypeStrategies.LONG, ByteOrder.nativeOrder(), Long.BYTES);
     Supplier<FixedIndexed<Double>> doubleIndexed = FixedIndexed.read(doubleBuffer, TypeStrategies.DOUBLE, ByteOrder.nativeOrder(), Double.BYTES);
@@ -1293,7 +1303,11 @@ public class NestedFieldColumnIndexSupplierTest extends InitializedNullHandlingT
         Integer.BYTES
     );
 
-    GenericIndexed<ImmutableBitmap> bitmaps = GenericIndexed.read(bitmapsBuffer, roaringFactory.getObjectStrategy());
+    GenericIndexed<ImmutableBitmap> bitmaps = GenericIndexed.read(
+        bitmapsBuffer,
+        roaringFactory.getObjectStrategy(),
+        EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
+    );
 
     NestedFieldColumnIndexSupplier<?> indexSupplier = new NestedFieldColumnIndexSupplier<>(
         new FieldTypeInfo.TypeSet(
@@ -1397,7 +1411,11 @@ public class NestedFieldColumnIndexSupplierTest extends InitializedNullHandlingT
         Integer.BYTES
     );
 
-    GenericIndexed<ImmutableBitmap> bitmaps = GenericIndexed.read(bitmapsBuffer, roaringFactory.getObjectStrategy());
+    GenericIndexed<ImmutableBitmap> bitmaps = GenericIndexed.read(
+        bitmapsBuffer,
+        roaringFactory.getObjectStrategy(),
+        EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
+    );
 
     return new NestedFieldColumnIndexSupplier<>(
         new FieldTypeInfo.TypeSet(
@@ -1481,7 +1499,11 @@ public class NestedFieldColumnIndexSupplierTest extends InitializedNullHandlingT
         Integer.BYTES
     );
 
-    GenericIndexed<ImmutableBitmap> bitmaps = GenericIndexed.read(bitmapsBuffer, roaringFactory.getObjectStrategy());
+    GenericIndexed<ImmutableBitmap> bitmaps = GenericIndexed.read(
+        bitmapsBuffer,
+        roaringFactory.getObjectStrategy(),
+        EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
+    );
 
     return new NestedFieldColumnIndexSupplier<>(
         new FieldTypeInfo.TypeSet(
@@ -1561,7 +1583,11 @@ public class NestedFieldColumnIndexSupplierTest extends InitializedNullHandlingT
         Integer.BYTES
     );
 
-    GenericIndexed<ImmutableBitmap> bitmaps = GenericIndexed.read(bitmapsBuffer, roaringFactory.getObjectStrategy());
+    GenericIndexed<ImmutableBitmap> bitmaps = GenericIndexed.read(
+        bitmapsBuffer,
+        roaringFactory.getObjectStrategy(),
+        EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
+    );
 
     return new NestedFieldColumnIndexSupplier<>(
         new FieldTypeInfo.TypeSet(
@@ -1646,7 +1672,11 @@ public class NestedFieldColumnIndexSupplierTest extends InitializedNullHandlingT
         Integer.BYTES
     );
 
-    GenericIndexed<ImmutableBitmap> bitmaps = GenericIndexed.read(bitmapsBuffer, roaringFactory.getObjectStrategy());
+    GenericIndexed<ImmutableBitmap> bitmaps = GenericIndexed.read(
+        bitmapsBuffer,
+        roaringFactory.getObjectStrategy(),
+        EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
+    );
 
     return new NestedFieldColumnIndexSupplier<>(
         new FieldTypeInfo.TypeSet(
@@ -1726,7 +1756,11 @@ public class NestedFieldColumnIndexSupplierTest extends InitializedNullHandlingT
         Integer.BYTES
     );
 
-    GenericIndexed<ImmutableBitmap> bitmaps = GenericIndexed.read(bitmapsBuffer, roaringFactory.getObjectStrategy());
+    GenericIndexed<ImmutableBitmap> bitmaps = GenericIndexed.read(
+        bitmapsBuffer,
+        roaringFactory.getObjectStrategy(),
+        EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
+    );
 
     return new NestedFieldColumnIndexSupplier<>(
         new FieldTypeInfo.TypeSet(
@@ -1811,7 +1845,11 @@ public class NestedFieldColumnIndexSupplierTest extends InitializedNullHandlingT
         Integer.BYTES
     );
 
-    GenericIndexed<ImmutableBitmap> bitmaps = GenericIndexed.read(bitmapsBuffer, roaringFactory.getObjectStrategy());
+    GenericIndexed<ImmutableBitmap> bitmaps = GenericIndexed.read(
+        bitmapsBuffer,
+        roaringFactory.getObjectStrategy(),
+        EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
+    );
 
     return new NestedFieldColumnIndexSupplier<>(
         new FieldTypeInfo.TypeSet(
@@ -1903,7 +1941,11 @@ public class NestedFieldColumnIndexSupplierTest extends InitializedNullHandlingT
         Integer.BYTES
     );
 
-    GenericIndexed<ImmutableBitmap> bitmaps = GenericIndexed.read(bitmapsBuffer, roaringFactory.getObjectStrategy());
+    GenericIndexed<ImmutableBitmap> bitmaps = GenericIndexed.read(
+        bitmapsBuffer,
+        roaringFactory.getObjectStrategy(),
+        EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
+    );
 
     return new NestedFieldColumnIndexSupplier<>(
         new FieldTypeInfo.TypeSet(

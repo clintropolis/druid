@@ -21,13 +21,14 @@ package org.apache.druid.segment;
 
 import org.apache.druid.common.utils.SerializerUtils;
 import org.apache.druid.java.util.common.ISE;
+import org.apache.druid.java.util.common.io.smoosh.SmooshedFileMapper;
 import org.apache.druid.segment.data.CompressedColumnarFloatsSupplier;
 import org.apache.druid.segment.data.GenericIndexed;
 import org.apache.druid.segment.serde.ComplexMetricSerde;
 import org.apache.druid.segment.serde.ComplexMetrics;
 
 import javax.annotation.Nullable;
-
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -38,8 +39,10 @@ public class MetricHolder
   private static final byte[] VERSION = new byte[]{0x0};
   private static final SerializerUtils SERIALIZER_UTILS = new SerializerUtils();
 
-  public static MetricHolder fromByteBuffer(ByteBuffer buf)
+  public static MetricHolder fromByteBuffer(SmooshedFileMapper smooshedFileMapper, String metricFilename)
+      throws IOException
   {
+    final ByteBuffer buf = smooshedFileMapper.mapFile(metricFilename);
     final byte ver = buf.get();
     if (VERSION[0] != ver) {
       throw new ISE("Unknown version[%s] of MetricHolder", ver);
@@ -51,7 +54,11 @@ public class MetricHolder
 
     switch (holder.type) {
       case FLOAT:
-        holder.floatType = CompressedColumnarFloatsSupplier.fromByteBuffer(buf, ByteOrder.nativeOrder());
+        holder.floatType = CompressedColumnarFloatsSupplier.fromByteBuffer(
+            buf,
+            ByteOrder.nativeOrder(),
+            smooshedFileMapper
+        );
         break;
       case COMPLEX:
         final ComplexMetricSerde serdeForType = ComplexMetrics.getSerdeForType(holder.getTypeName());
@@ -60,7 +67,7 @@ public class MetricHolder
           throw new ISE("Unknown type[%s], cannot load.", holder.getTypeName());
         }
 
-        holder.complexType = read(buf, serdeForType);
+        holder.complexType = GenericIndexed.read(buf, serdeForType.getObjectStrategy(), smooshedFileMapper);
         break;
       case LONG:
       case DOUBLE:
@@ -68,11 +75,6 @@ public class MetricHolder
     }
 
     return holder;
-  }
-
-  private static <T> GenericIndexed<T> read(ByteBuffer buf, ComplexMetricSerde serde)
-  {
-    return GenericIndexed.read(buf, serde.getObjectStrategy());
   }
 
   public enum MetricType

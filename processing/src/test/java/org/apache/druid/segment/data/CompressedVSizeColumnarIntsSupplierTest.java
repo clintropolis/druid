@@ -28,8 +28,10 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrays;
 import org.apache.druid.java.util.common.StringUtils;
 import org.apache.druid.java.util.common.io.Closer;
+import org.apache.druid.java.util.common.io.smoosh.SmooshedFileMapper;
 import org.apache.druid.segment.CompressedPools;
 import org.apache.druid.utils.CloseableUtils;
+import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -136,7 +138,11 @@ public class CompressedVSizeColumnarIntsSupplierTest extends CompressionStrategy
     final byte[] bytes = baos.toByteArray();
     Assert.assertEquals(theSupplier.getSerializedSize(), bytes.length);
 
-    supplier = CompressedVSizeColumnarIntsSupplier.fromByteBuffer(ByteBuffer.wrap(bytes), byteOrder);
+    supplier = CompressedVSizeColumnarIntsSupplier.fromByteBuffer(
+        ByteBuffer.wrap(bytes),
+        byteOrder,
+        EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
+    );
     columnarInts = supplier.get();
   }
 

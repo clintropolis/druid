@@ -23,10 +23,12 @@ import com.google.common.base.Supplier;
 import com.google.common.primitives.Doubles;
 import it.unimi.dsi.fastutil.ints.IntArrays;
 import org.apache.druid.java.util.common.StringUtils;
+import org.apache.druid.java.util.common.io.smoosh.SmooshedFileMapper;
 import org.apache.druid.segment.writeout.OffHeapMemorySegmentWriteOutMedium;
 import org.apache.druid.segment.writeout.SegmentWriteOutMedium;
 import org.apache.druid.segment.writeout.TmpFileSegmentWriteOutMediumFactory;
 import org.apache.druid.utils.CloseableUtils;
+import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -178,8 +180,11 @@ public class CompressedDoublesSerdeTest
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     serializer.writeTo(Channels.newChannel(baos), null);
     Assert.assertEquals(baos.size(), serializer.getSerializedSize());
-    Supplier<ColumnarDoubles> supplier = CompressedColumnarDoublesSuppliers
-        .fromByteBuffer(ByteBuffer.wrap(baos.toByteArray()), order);
+    Supplier<ColumnarDoubles> supplier = CompressedColumnarDoublesSuppliers.fromByteBuffer(
+        ByteBuffer.wrap(baos.toByteArray()),
+        order,
+        EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
+    );
     try (ColumnarDoubles doubles = supplier.get()) {
       assertIndexMatchesVals(doubles, values);
       for (int i = 0; i < 10; i++) {

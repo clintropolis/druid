@@ -22,6 +22,7 @@ package org.apache.druid.segment.serde;
 import com.google.common.collect.ImmutableSet;
 import org.apache.druid.collections.bitmap.ImmutableBitmap;
 import org.apache.druid.collections.bitmap.MutableBitmap;
+import org.apache.druid.java.util.common.io.smoosh.SmooshedFileMapper;
 import org.apache.druid.query.BitmapResultFactory;
 import org.apache.druid.query.DefaultBitmapResultFactory;
 import org.apache.druid.query.filter.InDimFilter;
@@ -33,6 +34,7 @@ import org.apache.druid.segment.index.BitmapColumnIndex;
 import org.apache.druid.segment.index.semantic.StringValueSetIndexes;
 import org.apache.druid.segment.writeout.OnHeapMemorySegmentWriteOutMedium;
 import org.apache.druid.testing.InitializedNullHandlingTest;
+import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Test;
 import org.roaringbitmap.IntIterator;
@@ -157,10 +159,18 @@ public class DictionaryEncodedStringIndexSupplierTest extends InitializedNullHan
     writeToBuffer(byteBuffer, stringWriter);
     writeToBuffer(bitmapsBuffer, bitmapWriter);
 
-    GenericIndexed<ImmutableBitmap> bitmaps = GenericIndexed.read(bitmapsBuffer, roaringFactory.getObjectStrategy());
+    GenericIndexed<ImmutableBitmap> bitmaps = GenericIndexed.read(
+        bitmapsBuffer,
+        roaringFactory.getObjectStrategy(),
+        EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
+    );
     return new StringUtf8ColumnIndexSupplier<>(
         roaringFactory.getBitmapFactory(),
-        GenericIndexed.read(byteBuffer, GenericIndexed.UTF8_STRATEGY)::singleThreaded,
+        GenericIndexed.read(
+            byteBuffer,
+            GenericIndexed.UTF8_STRATEGY,
+            EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
+        )::singleThreaded,
         bitmaps,
         null
     );

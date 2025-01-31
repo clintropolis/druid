@@ -23,10 +23,12 @@ import com.google.common.base.Supplier;
 import com.google.common.primitives.Longs;
 import it.unimi.dsi.fastutil.ints.IntArrays;
 import org.apache.druid.java.util.common.StringUtils;
+import org.apache.druid.java.util.common.io.smoosh.SmooshedFileMapper;
 import org.apache.druid.segment.writeout.OffHeapMemorySegmentWriteOutMedium;
 import org.apache.druid.segment.writeout.SegmentWriteOutMedium;
 import org.apache.druid.segment.writeout.TmpFileSegmentWriteOutMediumFactory;
 import org.apache.druid.utils.CloseableUtils;
+import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -192,8 +194,11 @@ public class CompressedLongsSerdeTest
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     serializer.writeTo(Channels.newChannel(baos), null);
     Assert.assertEquals(baos.size(), serializer.getSerializedSize());
-    CompressedColumnarLongsSupplier supplier = CompressedColumnarLongsSupplier
-        .fromByteBuffer(ByteBuffer.wrap(baos.toByteArray()), order);
+    CompressedColumnarLongsSupplier supplier = CompressedColumnarLongsSupplier.fromByteBuffer(
+        ByteBuffer.wrap(baos.toByteArray()),
+        order,
+        EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
+    );
     try (ColumnarLongs longs = supplier.get()) {
 
       assertIndexMatchesVals(longs, values);
@@ -257,7 +262,8 @@ public class CompressedLongsSerdeTest
     Assert.assertEquals(supplier.getSerializedSize(), bytes.length);
     CompressedColumnarLongsSupplier anotherSupplier = CompressedColumnarLongsSupplier.fromByteBuffer(
         ByteBuffer.wrap(bytes),
-        order
+        order,
+        EasyMock.createMock(SmooshedFileMapper.class) // expect v1 so this is not expected to be called
     );
     try (ColumnarLongs indexed = anotherSupplier.get()) {
       assertIndexMatchesVals(indexed, vals);
