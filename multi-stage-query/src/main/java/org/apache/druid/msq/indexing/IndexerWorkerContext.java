@@ -384,6 +384,10 @@ public class IndexerWorkerContext implements WorkerContext
   {
     toolbox.removeMonitor(storageMonitor);
     controllerLocator.close();
+    // Stop this worker's segment cache manager's loading pool (SegmentManager.shutdown() delegates to it). This cache
+    // manager is created per worker by createProductionInstance() and is not lifecycle-managed, so its loading threads
+    // would otherwise leak on long-lived workers (e.g. the Indexer) that run many tasks in one JVM.
+    segmentManager.shutdown();
 
     synchronized (this) {
       if (processingBuffersSet != null) {

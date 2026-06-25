@@ -117,6 +117,11 @@ public class SegmentLocalCacheManager implements SegmentCacheManager
   private final IndexIO indexIO;
 
   private final StorageLoadingThreadPool virtualStorageLoadingThreadPool;
+  /**
+   * Whether this manager created its own {@link #virtualStorageLoadingThreadPool} and is therefore responsible for
+   * stopping it on {@link #shutdown()}.
+   */
+  private final boolean ownsLoadingThreadPool;
   private ExecutorService loadOnBootstrapExec = null;
   private ExecutorService loadOnDownloadExec = null;
 
@@ -124,7 +129,7 @@ public class SegmentLocalCacheManager implements SegmentCacheManager
   public SegmentLocalCacheManager(
       List<StorageLocation> locations,
       SegmentLoaderConfig config,
-      StorageLoadingThreadPool virtualStorageLoadingThreadPool,
+      @Nullable StorageLoadingThreadPool virtualStorageLoadingThreadPool,
       @Nonnull StorageLocationSelectorStrategy strategy,
       IndexIO indexIO,
       @Json ObjectMapper mapper
@@ -132,7 +137,10 @@ public class SegmentLocalCacheManager implements SegmentCacheManager
   {
     this.locations = locations;
     this.config = config;
-    this.virtualStorageLoadingThreadPool = virtualStorageLoadingThreadPool;
+    this.ownsLoadingThreadPool = virtualStorageLoadingThreadPool == null;
+    this.virtualStorageLoadingThreadPool = virtualStorageLoadingThreadPool != null
+                                           ? virtualStorageLoadingThreadPool
+                                           : StorageLoadingThreadPool.createFromConfig(config);
     this.strategy = strategy;
     this.indexIO = indexIO;
     this.jsonMapper = mapper;
@@ -1081,6 +1089,11 @@ public class SegmentLocalCacheManager implements SegmentCacheManager
   {
     if (loadOnDownloadExec != null) {
       loadOnDownloadExec.shutdown();
+    }
+    // Stop the loading pool only if we created it; an externally-owned pool is stopped by its owner (e.g. the
+    // StorageNodeModule lifecycle singleton).
+    if (ownsLoadingThreadPool) {
+      virtualStorageLoadingThreadPool.stop();
     }
   }
 

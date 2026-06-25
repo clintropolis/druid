@@ -42,6 +42,7 @@ import org.apache.druid.java.util.emitter.service.ServiceMetricEvent;
 import org.apache.druid.query.Query;
 import org.apache.druid.query.QueryRunner;
 import org.apache.druid.segment.indexing.BatchIOConfig;
+import org.apache.druid.segment.loading.SegmentCacheManager;
 import org.apache.druid.server.DruidNode;
 import org.joda.time.Interval;
 
@@ -184,7 +185,18 @@ public abstract class AbstractTask implements Task
         cleanUp(taskToolbox, taskStatus);
       }
       finally {
-        cleanupCompletionLatch.countDown();
+        try {
+          // Stop the per-task segment cache manager. The toolbox's manager is created fresh per task by
+          // TaskToolboxFactory and is not lifecycle-managed, so its loading threads would otherwise leak on long-lived
+          // workers (e.g. the Indexer) that run many tasks in one JVM. Harmless where the JVM exits per task (Peon).
+          final SegmentCacheManager segmentCacheManager = taskToolbox.getSegmentCacheManager();
+          if (segmentCacheManager != null) {
+            segmentCacheManager.shutdown();
+          }
+        }
+        finally {
+          cleanupCompletionLatch.countDown();
+        }
       }
     }
   }

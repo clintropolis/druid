@@ -23,11 +23,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
 import org.apache.druid.guice.annotations.Json;
 import org.apache.druid.segment.IndexIO;
+import org.apache.druid.segment.loading.AcquireMode;
 import org.apache.druid.segment.loading.LeastBytesUsedStorageLocationSelectorStrategy;
 import org.apache.druid.segment.loading.SegmentCacheManager;
 import org.apache.druid.segment.loading.SegmentLoaderConfig;
 import org.apache.druid.segment.loading.SegmentLocalCacheManager;
-import org.apache.druid.segment.loading.StorageLoadingThreadPool;
 import org.apache.druid.segment.loading.StorageLocation;
 import org.apache.druid.segment.loading.StorageLocationConfig;
 import org.apache.druid.timeline.DataSegment;
@@ -61,8 +61,8 @@ public class SegmentCacheManagerFactory
    * @param storageDir     storage location
    * @param maxSize        size limit, or null for no limit
    * @param virtualStorage whether to configure the cache manager in ephemeral virtual storage mode. In this mode,
-   *                       loading is triggered by {@link SegmentCacheManager#acquireSegment(DataSegment)}, and
-   *                       segment files are deleted as soon as all holds are closed.
+   *                       loading is triggered by {@link SegmentCacheManager#acquireSegment(DataSegment, AcquireMode)},
+   *                       and segment files are deleted as soon as all holds are closed.
    */
   public SegmentCacheManager manufacturate(File storageDir, Long maxSize, boolean virtualStorage)
   {
@@ -77,11 +77,12 @@ public class SegmentCacheManagerFactory
             .setVirtualStorage(virtualStorage)
             .setVirtualStorageIsEphemeral(virtualStorage);
     final List<StorageLocation> storageLocations = loaderConfig.toStorageLocations();
-    final StorageLoadingThreadPool loadingThreadPool = StorageLoadingThreadPool.createFromConfig(loaderConfig);
+    // Pass a null loading pool so the cache manager creates and owns its own pool (from loaderConfig) and stops it on
+    // shutdown(). Per-task/MSQ caches are not lifecycle-managed, so an externally-created pool here would leak.
     return new SegmentLocalCacheManager(
         storageLocations,
         loaderConfig,
-        loadingThreadPool,
+        null,
         new LeastBytesUsedStorageLocationSelectorStrategy(storageLocations),
         indexIO,
         jsonMapper
